@@ -1,0 +1,27 @@
+#!/bin/bash
+
+while true
+do
+	#Talk to server, get next directory name
+	DIR=`netcat $@`
+
+	#Check if netcat reported an error
+	if [ "$?" -ne "0" ]; then
+		echo "Failed to contact server"
+		exit 1
+	fi
+
+	echo "GOT DIR $DIR"
+
+	if [ "$DIR" = "exit" ]
+	then
+		#Exit is magic string send by server if we are done
+		echo "server says we're done"
+		exit
+	else
+		#Insert actual processing script call here
+		echo "running next dir: $DIR"
+		sleep 5
+	fi
+done
+
