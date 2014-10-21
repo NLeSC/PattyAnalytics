@@ -1,7 +1,7 @@
 #!/bin/bash
 
 HOST=fs0
-PORT=5556
+PORT=19876
 
 while true
 do
@@ -24,7 +24,10 @@ do
 	else
 		#Insert actual processing script call here
 		echo "running next dir: $DIR"
-		sleep 5
+                cd /var/scratch/jason/patty/
+                cp -r SITES_image_based/$DIR processed/$DIR
+                cd processed/$DIR
+                time /var/scratch/jason/patty/code/bundler-v0.4-source/RunBundler.sh 2>&1 >RunBundler.log
 	fi
 done
 

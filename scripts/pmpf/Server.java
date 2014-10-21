@@ -34,12 +34,10 @@ public class Server {
     
     private ServerSocket ss;
     private BufferedReader input;
-    private int clients;
     
-    public Server(File inputfile, int clients, short port) throws IOException {
-        this.clients = clients;
+    public Server(File inputfile, short port) throws IOException {
         input = new BufferedReader(new FileReader(inputfile));
-        ss = new ServerSocket(port, clients);
+        ss = new ServerSocket(port, 1024);
     }
 
     public void run() throws IOException { 
@@ -55,7 +53,7 @@ public class Server {
                 // We've reached EOF!
                 input.close();
                 done = true;
-            } else { 
+            } else if (!line.startsWith("#")) {
                 Socket tmp = ss.accept();
                 System.out.println("Returning line: " + line);
                 tmp.getOutputStream().write((line+"\n").getBytes()); 
@@ -63,28 +61,16 @@ public class Server {
             }
         }
 
-        System.out.println("No more input -- informing clients");
-
-        int count = 0;
-
-        while (count < clients) {
-            Socket tmp = ss.accept();
-            tmp.getOutputStream().write(("exit\n").getBytes()); 
-            tmp.close();
-            count++;
-        }
-        
+        System.out.println("No more input -- shutting down");
         ss.close();
-        System.out.println("Server done");
     }
 
     public static void main(String [] args) {
 
-        int clients = 0;
         short port = DEFAULT_PORT;
 
-        if (args.length < 1 || args.length > 3) { 
-            System.err.println("Usage nls.esciencecenter.patty.Server <inputfile> <clients> [port]");
+        if (args.length < 1 || args.length > 2) { 
+            System.err.println("Usage nls.esciencecenter.patty.Server <inputfile> [port]");
             System.exit(1);
         }
 
@@ -95,14 +81,12 @@ public class Server {
             System.exit(1);
         }
 
-        clients = Integer.parseInt(args[1]);
-        
-        if (args.length == 3) { 
-            port = Short.parseShort(args[2]);
+        if (args.length == 2) { 
+            port = Short.parseShort(args[1]);
         }
 
         try { 
-            Server s = new Server(f, clients, port);
+            Server s = new Server(f, port);
             s.run();
         } catch (Exception e) { 
             System.err.println("Server failed: " + e.getLocalizedMessage());
