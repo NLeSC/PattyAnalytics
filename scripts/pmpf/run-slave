@@ -1,9 +1,12 @@
 #!/bin/bash
 
+HOST=fs0
+PORT=5556
+
 while true
 do
 	#Talk to server, get next directory name
-	DIR=`netcat $@`
+	DIR=`nc $HOST $PORT`
 
 	#Check if netcat reported an error
 	if [ "$?" -ne "0" ]; then
