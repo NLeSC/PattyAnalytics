@@ -1,0 +1,6 @@
+*.o
+*.py[co]
+*.so
+
+# Vim
+*.sw[op]
