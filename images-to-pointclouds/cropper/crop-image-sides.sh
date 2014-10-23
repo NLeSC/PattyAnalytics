@@ -68,7 +68,7 @@ if [ "$9" == "--vmirror" ]; then
 else
   if [ "$9" == "" ]; then
         cropBottom=0
-    else
+  else
     echo
     echo 'example usage:'
     for index in 0 1 2 3 4 5 6; do
@@ -76,12 +76,14 @@ else
     done
     echo
     exit -1
+  fi
 fi
 
 echo "cropLeft   = $cropLeft"
 echo "cropRight  = $cropRight"
 echo "cropTop    = $cropTop"
 echo "cropBottom = $cropBottom"
+
 
 mkdir -p $theOutputDir
 
