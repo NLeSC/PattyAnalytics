@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/bin/sh
 
 #This script is in charge of starting as many workers as there are cores.
 
-for i in {0..8}
+for i in $(seq 1 8)
 do
 	./run-slave $@&
 done
