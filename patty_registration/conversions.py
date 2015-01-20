@@ -41,6 +41,7 @@ The offset is the offset of the center point of the pointcloud
 The scale is the scale of the pointcloud.'''
 def loadLas(lasFile):
     try:
+        print lasFile
         las = liblas.file.File(lasFile)
         nPoints = las.header.get_count()
         data_xyz = np.zeros((nPoints, 6), dtype=np.float64)
@@ -58,50 +59,52 @@ def loadLas(lasFile):
 		# reduce the offset to decrease floating point errors
         data_xyz[:,0:3] -= offset
         # point cloud colors live in [0,1]^3 space, not in [0,255]^3
+        print "min", las.header.get_min(), ", max", las.header.get_max(), ", offset", las.header.get_offset()
+        print "pc min", data_xyz.min(axis=0), "pc max", data_xyz.max(axis=0)
+        print "color orig", data_xyz[:10,3:6]
         data_xyz[:,3:6] /= 256.0
 
         pc = pcl.PointCloudXYZRGB(data_xyz.astype(np.float32))
-        return pc, offset, scale
+        return pc, offset, las.header
     finally:
         las.close()
 
 def loadCsvPolygon(csvFile, delimiter=','):
     return np.genfromtxt(csvFile, delimiter=delimiter)
 
-def writeLas(lasFile, pc, CRS = None):
+def writeLas(lasFile, pc, offset, header):
     try:
-        f = liblas.schema.Schema()
-        f.time = False
-        f.color = True
-
-        h = liblas.header.Header()
-        h.schema = f
-        h.dataformat_id = 3
-        h.minor_version = 2
-
-        # FIXME: set CRS
-
-        a = pc.to_array()
-        h.min = a.min(axis=0)
-        h.max = a.max(axis=0)
-
-        h.scale = [1.0, 1.0, 1.0]
-        h.offset = [0., 0., 0.]
-
-        las = liblas.file.File(lasFile, mode="w", header=h)
-
-        for i in range(pc.size):
+        # f = liblas.schema.Schema()
+        # f.time = False
+        # f.color = True
+        #
+        # h = liblas.header.Header()
+        # h.schema = f
+        # h.dataformat_id = 3
+        # h.minor_version = 2
+        #
+        # # FIXME: set CRS
+        
+        a = np.asarray(pc)
+        a += offset
+        header.min = a.min(axis=0)
+        header.max = a.max(axis=0)
+        
+        las = liblas.file.File(lasFile, mode="w", header=header)
+        
+        for i in xrange(pc.size):
             pt = liblas.point.Point()
             pt.x,pt.y,pt.z, r,g,b = pc[i]
             pt.color = liblas.color.Color( red = int(r * 256), green = int(g * 256), blue = int(b * 256) )
             las.write(pt)
-
+    except Exception as e:
+        print e
     finally:
         las.close()
 
 
 def las2ply(lasFile, plyFile):
-    pc, offset = loadLas(lasFile)
+    pc, offset, header = loadLas(lasFile)
     pcl.save(pc, plyFile, format='PLY')
 
 def ply2las(plyFile, lasFile):

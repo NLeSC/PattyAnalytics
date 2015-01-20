@@ -88,7 +88,7 @@ def register_from_footprint(footprint, pointcloud, pc_offset):
     fp_max = footprint.max(axis=0)
     fp_center = (fp_min + fp_max) / 2
 
-    xyz_array = pointcloud.to_array()[:,0:3]
+    xyz_array = np.asarray(pointcloud)
     pc_min = xyz_array.min(axis=0)
     pc_max = xyz_array.max(axis=0)
     
@@ -112,11 +112,12 @@ def register_from_footprint(footprint, pointcloud, pc_offset):
     print(pc_offset)
     print(pc_registration_offset)
     
-    transform = np.eye(4) * pc_registration_scale
-    transform[3,3] = 1
-    print("transform")
-    print(transform)
-    pointcloud.transform(transform)
+    xyz_array *= pc_registration_scale
+    # transform = np.eye(4) * pc_registration_scale
+    # transform[3,3] = 1
+    # print("transform")
+    # print(transform)
+    # pointcloud.transform(transform)
     
     return pc_registration_offset, pc_registration_scale
 
