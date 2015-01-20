@@ -65,6 +65,9 @@ def loadLas(lasFile):
     finally:
         las.close()
 
+def loadCsvPolygon(csvFile, delimiter=','):
+    return np.genfromtxt(csvFile, delimiter=delimiter)
+
 def writeLas(lasFile, pc, CRS = None):
     try:
         f = liblas.schema.Schema()

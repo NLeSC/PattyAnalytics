@@ -83,6 +83,43 @@ def downsample(pointcloud, voxel_size=0.01):
     log("number of points reduced from", old_len, "to", new_len, "(", decrease_percent, "% decrease)")
     return filtered_pointcloud
 
+def register_from_footprint(footprint, pointcloud, pc_offset):
+    fp_min = footprint.min(axis=0)
+    fp_max = footprint.max(axis=0)
+    fp_center = (fp_min + fp_max) / 2
+
+    xyz_array = pointcloud.to_array()[:,0:3]
+    pc_min = xyz_array.min(axis=0)
+    pc_max = xyz_array.max(axis=0)
+    
+    pc_size = pc_max - pc_min
+    fp_size = fp_max - fp_min
+    
+    print ("Point cloud size; footprint size")
+    print(pc_size)
+    print(fp_size)
+
+    pc_registration_scale = np.mean(fp_size[0:1]/pc_size[0:1])
+    # Take the footprint as the real offset, and correct the z-offset
+    # The z-offset of the footprint will be ground level, the z-offset of the
+    # pointcloud will include the monuments height
+    pc_registration_offset = [fp_center[0], fp_center[1], fp_center[2] - pc_min[2]]
+
+    print("Point cloud min; footprint center")
+    print(pc_min)
+    print(fp_center)
+    print("Point cloud offset; new offset")
+    print(pc_offset)
+    print(pc_registration_offset)
+    
+    transform = np.eye(4) * pc_registration_scale
+    transform[3,3] = 1
+    print("transform")
+    print(transform)
+    pointcloud.transform(transform)
+    
+    return pc_registration_offset, pc_registration_scale
+
 if __name__ == '__main__':
     source, target, algo, voxel_size = process_args()
     
