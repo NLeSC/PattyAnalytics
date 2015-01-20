@@ -103,7 +103,7 @@ def register_from_footprint(footprint, pointcloud, pc_offset):
     # Take the footprint as the real offset, and correct the z-offset
     # The z-offset of the footprint will be ground level, the z-offset of the
     # pointcloud will include the monuments height
-    pc_registration_offset = [fp_center[0], fp_center[1], fp_center[2] - pc_min[2]]
+    pc_registration_offset = [fp_center[0], fp_center[1], fp_center[2]]
 
     print("Point cloud min; footprint center")
     print(pc_min)
