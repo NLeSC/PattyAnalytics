@@ -1,6 +1,7 @@
 *.o
 *.py[co]
 *.so
+/build
 
 # Vim
 *.sw[op]
