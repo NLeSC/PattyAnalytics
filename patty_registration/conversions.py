@@ -11,41 +11,14 @@ Created on Oct 22, 2014
 import liblas
 import pcl
 import numpy as np
-# Rome / via appia is in EPSG:32633
-# http://pcjericks.github.io/py-gdalogr-cookbook/projection.html
 
-from osgeo import gdal
-
-spatialRef = osr.SpatialReference()
-spatialRef.ImportFromEPSG(2927)         # from EPSG
-
-target = osr.SpatialReference()
-target.ImportFromEPSG(4326)
-
-transform = osr.CoordinateTransformation(source, target)
-
-point = ogr.CreateGeometryFromWkt("POINT (1120351.57 741921.42)")
-point.Transform(transform)
-
-print point.ExportToWkt()
-
-
-# http://pcjericks.github.io/py-gdalogr-cookbook/geometry.html#create-a-point
-from osgeo import ogr
-point = ogr.Geometry(ogr.wkbPoint)
-point.AddPoint(1198054.34, 648493.09)
-print point.ExportToWkt()
-
-
-
-
-def RegisteredPointCloud:
+# def RegisteredPointCloud:
 # holds a PointCloudXYZRBG
 # holds a CRS (ie. latlon, or rome coordinates, or RD-NEW, etc. given as EPSG srid) int
 # holds additional offset (to prevent underflow on cooridnates in the double->float conversion) double
 # scaling probably not needed? double
  
-def RegisterPointCloud:
+# def RegisterPointCloud:
 # input: intentin     a registered point cloud (drivemap)
 #        intentin/out unregistered point cloud (object), PointXYZRGB
 #        intentin     method?
@@ -61,7 +34,11 @@ def RegisterPointCloud:
 #           6. warp in a RegisterPointCloud class with correct metadata
 #
 
-
+''' Read a las file
+returns (pointcloudxyzrgb, offset, scale)
+The pointcloud has color and XYZ coordinates
+The offset is the offset of the center point of the pointcloud
+The scale is the scale of the pointcloud.'''
 def loadLas(lasFile):
     try:
         las = liblas.file.File(lasFile)
@@ -70,17 +47,21 @@ def loadLas(lasFile):
         min_point = np.array(las.header.get_min())
         max_point = np.array(las.header.get_max())
         offset = min_point + (max_point - min_point)/2
-
-        CRS = None # FIXME: keep track of CRS
+        scale = np.array(las.header.get_scale())
+		
+        # CRS = None # FIXME: keep track of CRS
 
         for i,point in enumerate(las):
             data_xyz[i,0:3] = point.x,point.y,point.z
-            data_xyz[i,0:3] -= offset
             data_xyz[i,3:6] = point.color.red,point.color.green,point.color.blue
-            data_xyz[i,3:6] /= 256
+        
+		# reduce the offset to decrease floating point errors
+        data_xyz[:,0:3] -= offset
+        # point cloud colors live in [0,1]^3 space, not in [0,255]^3
+        data_xyz[:,3:6] /= 256.0
 
         pc = pcl.PointCloudXYZRGB(data_xyz.astype(np.float32))
-        return pc, offset, CRS
+        return pc, offset, scale
     finally:
         las.close()
 
@@ -135,4 +116,30 @@ if __name__ == '__main__':
     # las2ply(lasFile, plyFile)
 
 
+# Test code for the projection CRS
 
+# Rome / via appia is in EPSG:32633
+# http://pcjericks.github.io/py-gdalogr-cookbook/projection.html
+#
+# from osgeo import gdal
+#
+# spatialRef = osr.SpatialReference()
+# spatialRef.ImportFromEPSG(2927)         # from EPSG
+#
+# target = osr.SpatialReference()
+# target.ImportFromEPSG(4326)
+#
+# transform = osr.CoordinateTransformation(source, target)
+#
+# point = ogr.CreateGeometryFromWkt("POINT (1120351.57 741921.42)")
+# point.Transform(transform)
+#
+# print point.ExportToWkt()
+#
+#
+# # http://pcjericks.github.io/py-gdalogr-cookbook/geometry.html#create-a-point
+# from osgeo import ogr
+# point = ogr.Geometry(ogr.wkbPoint)
+# point.AddPoint(1198054.34, 648493.09)
+# print point.ExportToWkt()
+#
