@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 Run the registration algorithm on PCD or ply files files.
 """
@@ -14,16 +16,44 @@ import conversions
 def log(*args, **kwargs):
     print(time.strftime("[%H:%M:%S]"), *args, **kwargs)
 
-def fail_process_args(parser, *args, **kwargs):
-    log(*args, **kwargs)
-    parser.print_help()
-    sys.exit(1)
-
 def process_args():
     """ Parse arguments from the command-line using argparse """
+
+    # Implemented registration functions
+    funcs = {
+        'icp': pcl.registration.icp,
+        'gicp': pcl.registration.gicp,
+        'icp_nl': pcl.registration.icp_nl,
+        'ia_ransac': pcl.registration.ia_ransac
+    }
+
+    # For use in the argparser to select value from interval
+    class Interval(object):
+        def __init__(self, minimum, maximum):
+            self._min = minimum
+            self._max = maximum
+
+        # for the 0.5 in Interval(0, 0.5)
+        def __contains__(self, x):
+            return self._min < x < self._max
+
+        # make it iterable for pretty printing
+        def __iter__(self):
+            self._istate = 0
+            return self
+        def next(self):
+            if self._istate == 0:
+                self._istate = 1
+                return self._min
+            elif self._istate == 1:
+                self._istate = 2
+                return self._max
+            else:
+                raise StopIteration
+
     parser = argparse.ArgumentParser(description='Registration for two PLY point clouds')
-    parser.add_argument('-f','--function', help='Registration algorithm to run. Choose between gicp, icp, icp_nl, and ia_ransac.', default='gicp')
-    parser.add_argument('-d','--downsample', type=float, help='Downsample to use one point per given voxel size. Suggested value: 0.005.')
+    parser.add_argument('-f','--function', choices=funcs.keys(), help='Registration algorithm to run. Choose between gicp, icp, icp_nl, and ia_ransac.', default='gicp')
+    parser.add_argument('-d','--downsample', metavar="downsample", nargs=1, type=float, help='Downsample to use one point per given voxel size. Suggested value: 0.005.', choices=Interval(0.0, 1.0) )
     parser.add_argument('source', metavar="SOURCE", help="Source LAS file")
     parser.add_argument('target', metavar="TARGET", help="Target LAS file to map source to")
     
@@ -38,21 +68,8 @@ def process_args():
     log("offset:", tgt_offset)
     # target = pcl.load(args.target)
     
-    funcs = {
-        'icp': pcl.registration.icp,
-        'gicp': pcl.registration.gicp,
-        'icp_nl': pcl.registration.icp_nl,
-        'ia_ransac': pcl.registration.ia_ransac
-    }
-
-    if args.function in funcs:
-        algo = funcs[args.function]
-    else:
-        fail_process_args(parser, "unknown algorithm", args.function)
+    algo = funcs[args.function]
     
-    if args.downsample is not None and (args.downsample >= 1.0 or args.downsample < 0.0):
-        fail_process_args("choose downsampling size between 0 and 1 -- suggested: 0.005")
-        
     return source, target, algo, args.downsample
 
 def print_output(algo, converged, transf, fitness):
