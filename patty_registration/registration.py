@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 Run the registration algorithm on PCD or ply files files.
 """
@@ -14,30 +16,10 @@ import conversions
 def log(*args, **kwargs):
     print(time.strftime("[%H:%M:%S]"), *args, **kwargs)
 
-def fail_process_args(parser, *args, **kwargs):
-    log(*args, **kwargs)
-    parser.print_help()
-    sys.exit(1)
-
 def process_args():
     """ Parse arguments from the command-line using argparse """
-    parser = argparse.ArgumentParser(description='Registration for two PLY point clouds')
-    parser.add_argument('-f','--function', help='Registration algorithm to run. Choose between gicp, icp, icp_nl, and ia_ransac.', default='gicp')
-    parser.add_argument('-d','--downsample', type=float, help='Downsample to use one point per given voxel size. Suggested value: 0.005.')
-    parser.add_argument('source', metavar="SOURCE", help="Source LAS file")
-    parser.add_argument('target', metavar="TARGET", help="Target LAS file to map source to")
-    
-    args = parser.parse_args()
 
-    log("reading source", args.source)
-    # source = pcl.load(args.source)
-    source, src_offset = conversions.loadLas(args.source)
-    log("offset:", src_offset)
-    log("reading target ", args.target)
-    target, tgt_offset = conversions.loadLas(args.target)
-    log("offset:", tgt_offset)
-    # target = pcl.load(args.target)
-    
+    # Implemented registration functions
     funcs = {
         'icp': pcl.registration.icp,
         'gicp': pcl.registration.gicp,
@@ -45,14 +27,49 @@ def process_args():
         'ia_ransac': pcl.registration.ia_ransac
     }
 
-    if args.function in funcs:
-        algo = funcs[args.function]
-    else:
-        fail_process_args(parser, "unknown algorithm", args.function)
+    # For use in the argparser to select value from interval
+    class Interval(object):
+        def __init__(self, minimum, maximum):
+            self._min = minimum
+            self._max = maximum
+
+        # for the 0.5 in Interval(0, 0.5)
+        def __contains__(self, x):
+            return self._min < x < self._max
+
+        # make it iterable for pretty printing
+        def __iter__(self):
+            self._istate = 0
+            return self
+        def next(self):
+            if self._istate == 0:
+                self._istate = 1
+                return self._min
+            elif self._istate == 1:
+                self._istate = 2
+                return self._max
+            else:
+                raise StopIteration
+
+    parser = argparse.ArgumentParser(description='Registration for two PLY point clouds')
+    parser.add_argument('-f','--function', choices=funcs.keys(), help='Registration algorithm to run. Choose between gicp, icp, icp_nl, and ia_ransac.', default='gicp')
+    parser.add_argument('-d','--downsample', metavar="downsample", nargs=1, type=float, help='Downsample to use one point per given voxel size. Suggested value: 0.005.', choices=Interval(0.0, 1.0) )
+    parser.add_argument('source', metavar="SOURCE", help="Source LAS file")
+    parser.add_argument('target', metavar="TARGET", help="Target LAS file to map source to")
     
-    if args.downsample is not None and (args.downsample >= 1.0 or args.downsample < 0.0):
-        fail_process_args("choose downsampling size between 0 and 1 -- suggested: 0.005")
-        
+    args = parser.parse_args()
+
+    log("reading source", args.source)
+    # source = pcl.load(args.source)
+    source = conversions.loadLas(args.source)
+    log("offset:", source.offset)
+    log("reading target ", args.target)
+    target = conversions.loadLas(args.target)
+    log("offset:", target.offset)
+    # target = pcl.load(args.target)
+    
+    algo = funcs[args.function]
+    
     return source, target, algo, args.downsample
 
 def print_output(algo, converged, transf, fitness):
@@ -65,7 +82,7 @@ def print_output(algo, converged, transf, fitness):
     log("---------------")
 
 def length_3d(pointcloud):
-    xyz_array = pointcloud.to_array()[:,0:3]
+    xyz_array = np.asarray(pointcloud)
     return xyz_array.max(axis=0) - xyz_array.min(axis=0)
 
 def scale(pointcloud, scale_factor):
@@ -83,10 +100,12 @@ def downsample(pointcloud, voxel_size=0.01):
     log("number of points reduced from", old_len, "to", new_len, "(", decrease_percent, "% decrease)")
     return filtered_pointcloud
 
-def register_from_footprint(footprint, pointcloud, pc_offset):
+def register_from_footprint(footprint, pointcloud):
+    ''' Returns a 3d-offset and uniform scale value from footprint.
+    The scale is immediately applied to the pointcloud, the offset is set to the patty_registration.conversions.RegisteredPointCloud'''
     fp_min = footprint.min(axis=0)
     fp_max = footprint.max(axis=0)
-    fp_center = (fp_min + fp_max) / 2
+    fp_center = (fp_min + fp_max) / 2.0
 
     xyz_array = np.asarray(pointcloud)
     pc_min = xyz_array.min(axis=0)
@@ -95,44 +114,35 @@ def register_from_footprint(footprint, pointcloud, pc_offset):
     pc_size = pc_max - pc_min
     fp_size = fp_max - fp_min
     
-    print ("Point cloud size; footprint size")
-    print(pc_size)
-    print(fp_size)
-
     pc_registration_scale = np.mean(fp_size[0:1]/pc_size[0:1])
     # Take the footprint as the real offset, and correct the z-offset
     # The z-offset of the footprint will be ground level, the z-offset of the
     # pointcloud will include the monuments height
-    pc_registration_offset = [fp_center[0], fp_center[1], fp_center[2]]
 
-    print("Point cloud min; footprint center")
-    print(pc_min)
-    print(fp_center)
-    print("Point cloud offset; new offset")
-    print(pc_offset)
-    print(pc_registration_offset)
-    
     xyz_array *= pc_registration_scale
-    # transform = np.eye(4) * pc_registration_scale
-    # transform[3,3] = 1
-    # print("transform")
-    # print(transform)
-    # pointcloud.transform(transform)
+    pc_min *= pc_registration_scale
+    pc_max *= pc_registration_scale
     
-    return pc_registration_offset, pc_registration_scale
+    conversions.register(pointcloud, offset=fp_center - (pc_min + pc_max) / 2.0, precision=pointcloud.precision * pc_registration_scale)
+    # print(pc_min)
+    # print(pc_max)
+    # print(pointcloud.offset)
+    # print(fp_center)
+    
+    return pointcloud.offset, pc_registration_scale
 
 if __name__ == '__main__':
     source, target, algo, voxel_size = process_args()
     
     # choose the maximum size over all coordinates to determine scale
-    src_maxsize = max(length_3d(source))
-    tgt_maxsize = max(length_3d(target))
+    # src_maxsize = max(length_3d(source))
+    # tgt_maxsize = max(length_3d(target))
     
     # preprocess source and target
-    log("scaling source down by: ", src_maxsize)
-    source = scale(source, 1.0/src_maxsize)
-    log("scaling target down by: ", tgt_maxsize)
-    target = scale(target, 1.0/tgt_maxsize)
+    # log("scaling source down by: ", src_maxsize)
+    # source = scale(source, 1.0/src_maxsize)
+    # log("scaling target down by: ", tgt_maxsize)
+    # target = scale(target, 1.0/tgt_maxsize)
 
     if voxel_size is not None:
         log("downsampling source using voxel size", voxel_size)
