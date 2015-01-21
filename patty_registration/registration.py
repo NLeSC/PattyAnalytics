@@ -61,11 +61,11 @@ def process_args():
 
     log("reading source", args.source)
     # source = pcl.load(args.source)
-    source, src_offset = conversions.loadLas(args.source)
-    log("offset:", src_offset)
+    source = conversions.loadLas(args.source)
+    log("offset:", source.offset)
     log("reading target ", args.target)
-    target, tgt_offset = conversions.loadLas(args.target)
-    log("offset:", tgt_offset)
+    target = conversions.loadLas(args.target)
+    log("offset:", target.offset)
     # target = pcl.load(args.target)
     
     algo = funcs[args.function]
@@ -82,7 +82,7 @@ def print_output(algo, converged, transf, fitness):
     log("---------------")
 
 def length_3d(pointcloud):
-    xyz_array = pointcloud.to_array()[:,0:3]
+    xyz_array = np.asarray(pointcloud)
     return xyz_array.max(axis=0) - xyz_array.min(axis=0)
 
 def scale(pointcloud, scale_factor):
@@ -135,14 +135,14 @@ if __name__ == '__main__':
     source, target, algo, voxel_size = process_args()
     
     # choose the maximum size over all coordinates to determine scale
-    src_maxsize = max(length_3d(source))
-    tgt_maxsize = max(length_3d(target))
+    # src_maxsize = max(length_3d(source))
+    # tgt_maxsize = max(length_3d(target))
     
     # preprocess source and target
-    log("scaling source down by: ", src_maxsize)
-    source = scale(source, 1.0/src_maxsize)
-    log("scaling target down by: ", tgt_maxsize)
-    target = scale(target, 1.0/tgt_maxsize)
+    # log("scaling source down by: ", src_maxsize)
+    # source = scale(source, 1.0/src_maxsize)
+    # log("scaling target down by: ", tgt_maxsize)
+    # target = scale(target, 1.0/tgt_maxsize)
 
     if voxel_size is not None:
         log("downsampling source using voxel size", voxel_size)
