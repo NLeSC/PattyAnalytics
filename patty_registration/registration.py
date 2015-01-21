@@ -105,7 +105,7 @@ def register_from_footprint(footprint, pointcloud):
     The scale is immediately applied to the pointcloud, the offset is set to the patty_registration.conversions.RegisteredPointCloud'''
     fp_min = footprint.min(axis=0)
     fp_max = footprint.max(axis=0)
-    fp_center = (fp_min + fp_max) / 2
+    fp_center = (fp_min + fp_max) / 2.0
 
     xyz_array = np.asarray(pointcloud)
     pc_min = xyz_array.min(axis=0)
@@ -120,9 +120,16 @@ def register_from_footprint(footprint, pointcloud):
     # pointcloud will include the monuments height
 
     xyz_array *= pc_registration_scale
-    pointcloud.offset = fp_center
+    pc_min *= pc_registration_scale
+    pc_max *= pc_registration_scale
     
-    return fp_center, pc_registration_scale
+    conversions.register(pointcloud, offset=fp_center - (pc_min + pc_max) / 2.0, precision=pointcloud.precision * pc_registration_scale)
+    # print(pc_min)
+    # print(pc_max)
+    # print(pointcloud.offset)
+    # print(fp_center)
+    
+    return pointcloud.offset, pc_registration_scale
 
 if __name__ == '__main__':
     source, target, algo, voxel_size = process_args()

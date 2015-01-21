@@ -30,14 +30,14 @@ class TestWriteLas(unittest.TestCase):
     def testWrite162(self):
         fname = 'data/footprints/162.las'
         assert os.path.exists(fname)
-        pc, scale = conversions.loadLas(fname)
+        pc = conversions.loadLas(fname)
         print pc.offset
         
         wfname = mktemp()
         conversions.writeLas(wfname, pc, scale)
         
         assert os.path.exists(wfname)
-        pc_new, scale_new = conversions.loadLas(wfname)
+        pc_new = conversions.loadLas(wfname)
         os.remove(wfname)
         
         assert_array_almost_equal(np.asarray(pc), np.asarray(pc_new))
