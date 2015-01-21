@@ -12,6 +12,8 @@ import liblas
 import pcl
 import numpy as np
 
+
+
 # def RegisteredPointCloud:
 # holds a PointCloudXYZRBG
 # holds a CRS (ie. latlon, or rome coordinates, or RD-NEW, etc. given as EPSG srid) int
@@ -33,6 +35,48 @@ import numpy as np
 #           5. move object 
 #           6. warp in a RegisterPointCloud class with correct metadata
 #
+#
+# class RegisteredPointCloud(pcl.PointCloudXYZRGB):
+#     """Point cloud with registration information.
+#
+#     Parameters
+#     ----------
+#     crs : int
+#         Coordinate reference system. Will be passed to GDAL.
+#         Laspy does not support reading/writing these in LAS files.
+#     offset : 3-vector of float64
+#         Offset from the origin; defaults to (0, 0, 0).
+#     """
+#     def __init__(self, data):
+#         super(RegisteredPointCloud, self).__init__(data)
+#
+#         self.crs = 4326
+#         self.offset = np.zeros(3)
+#
+#     def register(self, crs=None, offset=None):
+#         if crs is not None:
+#             self.crs = crs
+#         if offset is not None:
+#             self.offset = np.asarray(offset, dtype=np.float64)
+#
+#     def transform_crs(self, crs):
+#         """Transform to other coordinate reference system."""
+#         source = osr.SpatialReference()
+#         source.ImportFromEPSG(self.crs)
+#
+#         target = osr.SpatialReference()
+#         target.ImportFromEPSG(crs)
+#
+#         transf = osr.CoordinateTransformation(source, target)
+#         point = ogr.Geometry(ogr.wkbPoint)
+#         for i, (x, y, z) in enumerate(self):
+#             point.AddPoint(x, y, z)
+#             point.Transform(transf)
+#             self[i] = point.GetPoint()
+#
+#         self.crs = crs
+
+
 
 ''' Read a las file
 returns (pointcloudxyzrgb, offset, scale)
@@ -41,10 +85,10 @@ The offset is the offset of the center point of the pointcloud
 The scale is the scale of the pointcloud.'''
 def loadLas(lasFile):
     try:
-        print lasFile
+        print "--READING--", lasFile, "---------"
         las = liblas.file.File(lasFile)
         nPoints = las.header.get_count()
-        data_xyz = np.zeros((nPoints, 6), dtype=np.float64)
+        data = np.zeros((nPoints, 6), dtype=np.float64)
         min_point = np.array(las.header.get_min())
         max_point = np.array(las.header.get_max())
         offset = min_point + (max_point - min_point)/2
@@ -53,63 +97,65 @@ def loadLas(lasFile):
         # CRS = None # FIXME: keep track of CRS
 
         for i,point in enumerate(las):
-            data_xyz[i,0:3] = point.x,point.y,point.z
-            data_xyz[i,3:6] = point.color.red,point.color.green,point.color.blue
-        
-		# reduce the offset to decrease floating point errors
-        data_xyz[:,0:3] -= offset
-        # point cloud colors live in [0,1]^3 space, not in [0,255]^3
-        print "min", las.header.get_min(), ", max", las.header.get_max(), ", offset", las.header.get_offset()
-        print "pc min", data_xyz.min(axis=0), "pc max", data_xyz.max(axis=0)
-        print "color orig", data_xyz[:10,3:6]
-        data_xyz[:,3:6] /= 256.0
+            data[i] = (point.x,point.y,point.z,point.color.red/256,point.color.green/256,point.color.blue/256)
 
-        pc = pcl.PointCloudXYZRGB(data_xyz.astype(np.float32))
-        return pc, offset, las.header
+		# reduce the offset to decrease floating point errors
+        data[:,0:3] -= offset
+        
+        pc = pcl.PointCloudXYZRGB(data.astype(np.float32))
+        pc.offset = offset
+        
+        return pc, las.header.scale
     finally:
         las.close()
 
 def loadCsvPolygon(csvFile, delimiter=','):
     return np.genfromtxt(csvFile, delimiter=delimiter)
 
-def writeLas(lasFile, pc, offset, header):
+def writeLas(lasFile, pc, scale):
     try:
-        # f = liblas.schema.Schema()
-        # f.time = False
-        # f.color = True
-        #
-        # h = liblas.header.Header()
-        # h.schema = f
-        # h.dataformat_id = 3
-        # h.minor_version = 2
-        #
+        print "--WRITING--", lasFile, "--------"
+        f = liblas.schema.Schema()
+        f.time = False
+        f.color = True
+
+        h = liblas.header.Header()
+        h.schema = f
+        h.dataformat_id = 3
+        h.major_version = 1
+        h.minor_version = 2
+        
+        h.offset = pc.offset
+        h.scale = np.array(scale)*0.5 # FIXME: need extra precision to reduce floating point errors. We don't know exactly why this works. It might reduce precision on the top of the float, but reduces an error of one bit for the last digit.
+        
         # # FIXME: set CRS
         
         a = np.asarray(pc)
-        a += offset
-        header.min = a.min(axis=0)
-        header.max = a.max(axis=0)
-        
-        las = liblas.file.File(lasFile, mode="w", header=header)
+        precise_points = np.array(a, dtype=np.float64)
+        precise_points /= h.scale
+        h.min = precise_points.min(axis=0) + pc.offset
+        h.max = precise_points.max(axis=0) + pc.offset
+        las = liblas.file.File(lasFile, mode="w", header=h)
         
         for i in xrange(pc.size):
             pt = liblas.point.Point()
-            pt.x,pt.y,pt.z, r,g,b = pc[i]
-            pt.color = liblas.color.Color( red = int(r * 256), green = int(g * 256), blue = int(b * 256) )
+            pt.x,pt.y,pt.z = precise_points[i]
+            r,g,b = pc[i][3:6]
+            pt.color = liblas.color.Color( red = int(round(r * 256.0)), green = int(round(g * 256.0)), blue = int(round(b * 256.0)) )
             las.write(pt)
     except Exception as e:
         print e
     finally:
         las.close()
 
-
-def las2ply(lasFile, plyFile):
-    pc, offset, header = loadLas(lasFile)
-    pcl.save(pc, plyFile, format='PLY')
-
-def ply2las(plyFile, lasFile):
-    pc = pcl.load(plyFile, loadRGB=True)
-    writeLas( lasFile, pc )
+#
+# def las2ply(lasFile, plyFile):
+#     pc, scale = loadLas(lasFile)
+#     pcl.save(pc, plyFile, format='PLY')
+#
+# def ply2las(plyFile, lasFile):
+#     pc = pcl.load(plyFile, loadRGB=True)
+#     writeLas( lasFile, pc )
 
 if __name__ == '__main__':
     plyFile = 'tests/10.ply'

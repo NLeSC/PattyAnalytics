@@ -83,7 +83,9 @@ def downsample(pointcloud, voxel_size=0.01):
     log("number of points reduced from", old_len, "to", new_len, "(", decrease_percent, "% decrease)")
     return filtered_pointcloud
 
-def register_from_footprint(footprint, pointcloud, pc_offset):
+def register_from_footprint(footprint, pointcloud):
+    ''' Returns a 3d-offset and uniform scale value from footprint.
+    The scale is immediately applied to the pointcloud, the offset is set to the patty_registration.conversions.RegisteredPointCloud'''
     fp_min = footprint.min(axis=0)
     fp_max = footprint.max(axis=0)
     fp_center = (fp_min + fp_max) / 2
@@ -95,31 +97,15 @@ def register_from_footprint(footprint, pointcloud, pc_offset):
     pc_size = pc_max - pc_min
     fp_size = fp_max - fp_min
     
-    print ("Point cloud size; footprint size")
-    print(pc_size)
-    print(fp_size)
-
     pc_registration_scale = np.mean(fp_size[0:1]/pc_size[0:1])
     # Take the footprint as the real offset, and correct the z-offset
     # The z-offset of the footprint will be ground level, the z-offset of the
     # pointcloud will include the monuments height
-    pc_registration_offset = [fp_center[0], fp_center[1], fp_center[2]]
 
-    print("Point cloud min; footprint center")
-    print(pc_min)
-    print(fp_center)
-    print("Point cloud offset; new offset")
-    print(pc_offset)
-    print(pc_registration_offset)
-    
     xyz_array *= pc_registration_scale
-    # transform = np.eye(4) * pc_registration_scale
-    # transform[3,3] = 1
-    # print("transform")
-    # print(transform)
-    # pointcloud.transform(transform)
+    pointcloud.offset = fp_center
     
-    return pc_registration_offset, pc_registration_scale
+    return fp_center, pc_registration_scale
 
 if __name__ == '__main__':
     source, target, algo, voxel_size = process_args()
