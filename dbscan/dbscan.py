@@ -16,7 +16,10 @@ args = docopt(__doc__, sys.argv[1:])
 eps = float(args['<epsilon>'])
 minpoints = int(args['<minpoints>'])
 
-pc = pcl.load(args['<path>'])
+# Kludge to get a proper exception for file not found
+# (PCL will report "problem parsing header!").
+with open(args['<path>']) as _:
+    pc = pcl.load(args['<path>'])
 X = np.asarray(pc)
 print("%d points" % X.shape[0])
 
