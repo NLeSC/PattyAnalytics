@@ -34,11 +34,12 @@ class TestWriteLas(unittest.TestCase):
         print pc.offset
         
         wfname = mktemp()
-        conversions.writeLas(wfname, pc, scale)
+        conversions.writeLas(wfname, pc)
         
         assert os.path.exists(wfname)
         pc_new = conversions.loadLas(wfname)
         os.remove(wfname)
         
         assert_array_almost_equal(np.asarray(pc), np.asarray(pc_new))
+        assert_array_equal(pc.to_array()[:,3:6], pc_new.to_array()[:,3:6])
         assert_array_almost_equal(pc.offset, pc_new.offset)

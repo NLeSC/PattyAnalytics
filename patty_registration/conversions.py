@@ -103,7 +103,8 @@ def loadLas(lasFile):
         data[:,0:3] -= offset
         
         pc = pcl.PointCloudXYZRGB(data.astype(np.float32))
-        register(pc, offset, las.header.scale, las.header.srs.get_wkt(), las.header.srs.get_proj4(), las.header.srs.get_verticalcs())
+        
+        register(pc, offset, las.header.scale, las.header.srs.get_wkt(), las.header.srs.get_proj4())
         
         return pc
     finally:
