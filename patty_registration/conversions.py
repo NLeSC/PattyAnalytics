@@ -103,17 +103,40 @@ def loadLas(lasFile):
         data[:,0:3] -= offset
         
         pc = pcl.PointCloudXYZRGB(data.astype(np.float32))
-        pc.offset = offset
+        register(pc, offset, las.header.scale, las.header.srs.get_wkt(), las.header.srs.get_proj4(), las.header.srs.get_verticalcs())
         
-        return pc, las.header.scale
+        return pc
     finally:
         las.close()
+
+def is_registered(pointcloud):
+    return hasattr(pointcloud, 'is_registered') and pointcloud.is_registered
+
+def register(pointcloud, offset=None, precision=None, crs_wkt=None, crs_proj4=None,crs_verticalcs=None):
+    if not is_registered(pointcloud):
+        pointcloud.is_registered = True
+        pointcloud.offset = np.array([0., 0., 0.],dtype=np.float64)
+        pointcloud.precision = np.array([0.01, 0.01, 0.01],dtype=np.float64)
+        pointcloud.crs_wkt = ''
+        pointcloud.crs_proj4 = ''
+        pointcloud.crs_verticalcs = ''
+
+    if offset is not None:
+        pointcloud.offset = np.array(offset,dtype=np.float64)
+    if precision is not None:
+        pointcloud.precision = np.array(precision,dtype=np.float64)            
+    if crs_wkt is not None:
+        pointcloud.crs_wkt = crs_wkt
+    if crs_proj4 is not None:
+        pointcloud.crs_proj4 = crs_proj4
+    if crs_verticalcs is not None:
+        pointcloud.crs_verticalcs = crs_verticalcs
 
 def loadCsvPolygon(csvFile, delimiter=','):
     return np.genfromtxt(csvFile, delimiter=delimiter)
 
-def writeLas(lasFile, pc, scale):
-    try:
+def writeLas(lasFile, pc):
+    # try:
         print "--WRITING--", lasFile, "--------"
         f = liblas.schema.Schema()
         f.time = False
@@ -125,16 +148,25 @@ def writeLas(lasFile, pc, scale):
         h.major_version = 1
         h.minor_version = 2
         
+        register(pc)
+        h.scale = np.array(pc.precision)*0.5 # FIXME: need extra precision to reduce floating point errors. We don't know exactly why this works. It might reduce precision on the top of the float, but reduces an error of one bit for the last digit.
+            
         h.offset = pc.offset
-        h.scale = np.array(scale)*0.5 # FIXME: need extra precision to reduce floating point errors. We don't know exactly why this works. It might reduce precision on the top of the float, but reduces an error of one bit for the last digit.
+
+        if pc.crs_wkt != '':
+            h.srs.set_wkt(pc.crs_wkt)
+        if pc.crs_proj4 != '':
+            h.srs.set_proj4(pc.crs_proj4)
+        if pc.crs_verticalcs != '':
+            h.srs.set_verticalcs(pc.crs_verticalcs)        
         
         # # FIXME: set CRS
         
         a = np.asarray(pc)
         precise_points = np.array(a, dtype=np.float64)
         precise_points /= h.scale
-        h.min = precise_points.min(axis=0) + pc.offset
-        h.max = precise_points.max(axis=0) + pc.offset
+        h.min = precise_points.min(axis=0) + h.offset
+        h.max = precise_points.max(axis=0) + h.offset
         las = liblas.file.File(lasFile, mode="w", header=h)
         
         for i in xrange(pc.size):
@@ -143,10 +175,8 @@ def writeLas(lasFile, pc, scale):
             r,g,b = pc[i][3:6]
             pt.color = liblas.color.Color( red = int(round(r * 256.0)), green = int(round(g * 256.0)), blue = int(round(b * 256.0)) )
             las.write(pt)
-    except Exception as e:
-        print e
-    finally:
-        las.close()
+    # finally:
+        # las.close()
 
 #
 # def las2ply(lasFile, plyFile):
