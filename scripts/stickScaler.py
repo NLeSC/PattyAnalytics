@@ -4,24 +4,7 @@ import argparse
 from sklearn.cluster import dbscan
 from sklearn.decomposition import PCA
 from patty.segmentation.pointCloudMeasurer import measureLength
-
-def getStickScale(ar, eps, minSamples):
-    clusters = getClusters(ar, eps, minSamples)
-    segmentLengths = np.array(map(lambda cluster : measureLength(cluster), clusters))
-    stickLengths = segmentLengths * 4.
-    return np.median(stickLengths), np.min(stickLengths), np.max(stickLengths)
-
-def getClusters(ar, eps, minSamples):
-    """Returns a list of clustered point clouds."""
-    _, labels = dbscan(ar, eps=eps, min_samples=minSamples, algorithm='kd_tree')
-        
-    uniqueLabels = np.unique(labels)
-    for label in uniqueLabels:
-        if label == -1:
-            continue            
-        mask = labels == label
-        indices = np.where(mask)
-        yield ar[indices]    
+from patty.registration.stickScale import getStickScale
 
 if __name__=='__main__':
     """Takes a point cloud containing only the red segments of scale sticks and returns the median, min and max of the scale estimation."""
