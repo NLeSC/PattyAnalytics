@@ -13,7 +13,8 @@ from patty.segmentation import segment_dbscan
 
 args = docopt(__doc__, sys.argv[1:])
 
-rgb_weight = float(args.get('--rgb_weight', 0))
+print(args.get('--rgb_weight'))
+rgb_weight = float(args['--rgb_weight'] or 0)
 eps = float(args['<epsilon>'])
 minpoints = int(args['<minpoints>'])
 

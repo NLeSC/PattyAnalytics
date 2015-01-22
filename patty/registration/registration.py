@@ -9,7 +9,10 @@ from pcl.boundaries import estimate_boundaries
 import numpy as np
 import logging
 from patty import conversions
+<<<<<<< HEAD
 from patty.conversions import copy_registration, extract_mask
+=======
+>>>>>>> f628440da89f4320b3bd027f705b808e94c19967
 from sklearn.decomposition import PCA
 from patty.segmentation import dbscan
 from matplotlib import path
