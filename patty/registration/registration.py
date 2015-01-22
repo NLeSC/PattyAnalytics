@@ -5,15 +5,11 @@ Registration algorithms and utility functions
 """
 
 from __future__ import print_function
-import argparse
-import pcl
-import pcl.registration
 from pcl.boundaries import estimate_boundaries
-import time
 import numpy as np
 import logging
-from patty.conversions import conversions
-from patty.conversions.conversions import copy_registration, extract_mask
+from patty import conversions
+from patty.conversions import copy_registration, extract_mask
 from sklearn.decomposition import PCA
 from patty.segmentation import dbscan
 from matplotlib import path
@@ -38,7 +34,7 @@ def downsample(pointcloud, voxel_size=0.01):
         filtered_pointcloud
     '''
     old_len = len(pointcloud)
-    pc_filter = source.make_voxel_grid_filter()
+    pc_filter = pointcloud.make_voxel_grid_filter()
     pc_filter.set_leaf_size(voxel_size, voxel_size, voxel_size)
     filtered_pointcloud = pc_filter.filter()
     new_len = len(filtered_pointcloud)
@@ -112,11 +108,10 @@ def register_from_footprint(pc, footprint):
     '''
     logging.info("Finding largest cluster")
     pc_main = dbscan.largest_dbscan_cluster(pc, .1, 250)
-    conversions.copy_registration(pc_main, pc)
+    copy_registration(pc_main, pc)
     
     logging.info("Detecting boundary")
     boundary = get_pointcloud_boundaries(pc_main)
-    conversions.copy_registration(boundary, pc_main)
     
     logging.info("Finding rotation")
     pc_transform = principal_axes_rotation(np.asarray(boundary))
@@ -126,7 +121,7 @@ def register_from_footprint(pc, footprint):
 
     logging.info("Registering pointcloud to footprint")
     registered_offset, registered_scale = register_offset_scale_from_ref(boundary, footprint)
-    conversions.copy_registration(pc, boundary)
+    copy_registration(pc, boundary)
     
     # rotate and scale up
     transform[:3,:3] *= registered_scale
@@ -144,7 +139,7 @@ def register_from_reference(pc, pc_ref):
     '''
     logging.info("Finding largest cluster")
     pc_main = dbscan.largest_dbscan_cluster(pc, .1, 250)
-    conversions.copy_registration(pc_main, pc)
+    copy_registration(pc_main, pc)
     
     logging.info("Finding rotation")
     pc_transform = principal_axes_rotation(np.asarray(pc_main))
@@ -154,7 +149,7 @@ def register_from_reference(pc, pc_ref):
 
     logging.info("Registering pointcloud to footprint")
     registered_offset, registered_scale = register_offset_scale_from_ref(pc_main, np.asarray(pc_ref), pc_ref.offset)
-    conversions.copy_registration(pc, pc_main)
+    copy_registration(pc, pc_main)
     
     # rotate and scale up
     transform[:3,:3] *= registered_scale

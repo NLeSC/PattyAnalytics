@@ -39,11 +39,11 @@ def loadLas(lasFile):
 
         # reduce the offset to decrease floating point errors
         data[:,0:3] -= offset
-        
+
         pc = pcl.PointCloudXYZRGB(data.astype(np.float32))
-        
+
         register(pc, offset, las.header.scale, las.header.srs.get_wkt(), las.header.srs.get_proj4())
-        
+
         return pc
     finally:
         las.close()
@@ -60,7 +60,7 @@ def register(pointcloud, offset=None, precision=None, crs_wkt=None, crs_proj4=No
             Offset [dx, dy, dz] for the pointcloud.
             Pointclouds often use double precision coordinates, this is necessary for some spatial reference systems like standard lat/lon.
             Subtracting an offset, typically the center of the pointcloud, allows us to use floats without losing precission.
-            
+
         precision=None
             Precision of the points
 
@@ -84,7 +84,7 @@ def register(pointcloud, offset=None, precision=None, crs_wkt=None, crs_proj4=No
     if offset is not None:
         pointcloud.offset = np.array(offset,dtype=np.float64)
     if precision is not None:
-        pointcloud.precision = np.array(precision,dtype=np.float64)            
+        pointcloud.precision = np.array(precision,dtype=np.float64)
     if crs_wkt is not None:
         pointcloud.crs_wkt = crs_wkt
     if crs_proj4 is not None:
@@ -135,10 +135,10 @@ def writeLas(lasFile, pc):
         h.dataformat_id = 3
         h.major_version = 1
         h.minor_version = 2
-        
+
         register(pc)
         h.scale = np.array(pc.precision)*0.5 # FIXME: need extra precision to reduce floating point errors. We don't know exactly why this works. It might reduce precision on the top of the float, but reduces an error of one bit for the last digit.
-            
+
         h.offset = pc.offset
 
         if pc.crs_wkt != '':
@@ -146,15 +146,15 @@ def writeLas(lasFile, pc):
         if pc.crs_proj4 != '':
             h.srs.set_proj4(pc.crs_proj4)
         if pc.crs_verticalcs != '':
-            h.srs.set_verticalcs(pc.crs_verticalcs)        
-        
+            h.srs.set_verticalcs(pc.crs_verticalcs)
+
         a = np.asarray(pc)
         precise_points = np.array(a, dtype=np.float64)
         precise_points /= h.scale
         h.min = precise_points.min(axis=0) + h.offset
         h.max = precise_points.max(axis=0) + h.offset
         las = liblas.file.File(lasFile, mode="w", header=h)
-        
+
         for i in xrange(pc.size):
             pt = liblas.point.Point()
             pt.x,pt.y,pt.z = precise_points[i]

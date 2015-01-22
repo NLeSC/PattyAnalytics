@@ -2,7 +2,7 @@ import unittest
 import os
 import os.path
 import numpy as np
-from patty.conversions import conversions
+from patty import conversions
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 from tempfile import mktemp
 
