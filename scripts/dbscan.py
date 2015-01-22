@@ -7,7 +7,6 @@ Usage:
 from docopt import docopt
 import sys
 
-import numpy as np
 import pcl
 
 from patty.segmentation import segment_dbscan

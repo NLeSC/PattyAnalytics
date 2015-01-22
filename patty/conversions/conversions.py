@@ -92,7 +92,7 @@ def loadLas(lasFile):
         min_point = np.array(las.header.get_min())
         max_point = np.array(las.header.get_max())
         offset = min_point + (max_point - min_point)/2
-        scale = np.array(las.header.get_scale())
+        #scale = np.array(las.header.get_scale())
 		
         # CRS = None # FIXME: keep track of CRS
 

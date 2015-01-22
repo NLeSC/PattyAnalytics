@@ -1,7 +1,5 @@
 import unittest
-import pcl
 from patty.conversions.conversions import loadLas, writeLas
-import numpy as np
 
 class TestVoxelFilter(unittest.TestCase):
     def testFilter162(self):
