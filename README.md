@@ -6,6 +6,7 @@ Python 2.7 packages:
 - liblas
 - Cython
 - scikit-learn
+- matplotlib
 
 System packages:
 
