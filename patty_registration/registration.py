@@ -8,10 +8,12 @@ from __future__ import print_function
 import argparse
 import pcl
 import pcl.registration
+from pcl.boundaries import estimate_boundaries
 import time
 import sys
 import numpy as np
 import conversions
+from sklearn.decomposition import PCA
 
 def log(*args, **kwargs):
     print(time.strftime("[%H:%M:%S]"), *args, **kwargs)
@@ -100,7 +102,7 @@ def downsample(pointcloud, voxel_size=0.01):
     log("number of points reduced from", old_len, "to", new_len, "(", decrease_percent, "% decrease)")
     return filtered_pointcloud
 
-def register_from_footprint(footprint, pointcloud):
+def register_scale_offset_from_footprint(footprint, pointcloud):
     ''' Returns a 3d-offset and uniform scale value from footprint.
     The scale is immediately applied to the pointcloud, the offset is set to the patty_registration.conversions.RegisteredPointCloud'''
     fp_min = footprint.min(axis=0)
@@ -130,6 +132,22 @@ def register_from_footprint(footprint, pointcloud):
     # print(fp_center)
     
     return pointcloud.offset, pc_registration_scale
+
+def get_pointcloud_boundaries(pointcloud):
+    boundary = estimate_boundaries(pointcloud, angle_threshold=0.1, search_radius=0.02, normal_search_radius=0.02)
+    return pointcloud.extract(np.where(boundary)[0])
+
+def principal_axes_rotation(data):
+    pca = PCA(n_components=data.shape[1])
+    pca.fit(data)
+    transform = np.zeros((4,4))
+    transform[:3,:3] = np.array(pca.components_)
+    transform[3,3] = 1.
+    
+    return transform
+
+def register_from_footprint(pc, footprint):
+    
 
 if __name__ == '__main__':
     source, target, algo, voxel_size = process_args()

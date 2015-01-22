@@ -133,6 +133,14 @@ def register(pointcloud, offset=None, precision=None, crs_wkt=None, crs_proj4=No
     if crs_verticalcs is not None:
         pointcloud.crs_verticalcs = crs_verticalcs
 
+def copy_registration(pointcloud_target, pointcloud_src):
+    pointcloud_target.is_registered = True
+    pointcloud_target.offset          = pointcloud_src.offset
+    pointcloud_target.precision       = pointcloud_src.precision
+    pointcloud_target.crs_wkt         = pointcloud_src.crs_wkt
+    pointcloud_target.crs_proj4       = pointcloud_src.crs_proj4
+    pointcloud_target.crs_verticalcs  = pointcloud_src.crs_verticalcs
+
 def loadCsvPolygon(csvFile, delimiter=','):
     return np.genfromtxt(csvFile, delimiter=delimiter)
 
