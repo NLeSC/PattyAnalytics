@@ -9,7 +9,6 @@ import sys
 
 import numpy as np
 import pcl
-#from sklearn.cluster import dbscan
 
 from patty.segmentation import segment_dbscan
 
