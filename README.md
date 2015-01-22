@@ -9,6 +9,8 @@ Python 2.7 packages:
 - matplotlib
 - numpy
 
+(`pip install -r requirements.txt` to install some of these.)
+
 System packages:
 
 - liblas

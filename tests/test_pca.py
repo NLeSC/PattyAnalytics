@@ -1,9 +1,6 @@
 import unittest
-import pcl
-import numpy as np
 from patty.conversions.conversions import loadLas, writeLas
 from patty.registration.principalComponents import pcaRotate
-from numpy.testing import assert_array_equal, assert_array_almost_equal
 
 class TestPrincipalComponentRotation(unittest.TestCase):
     def testPCARotation(self):
