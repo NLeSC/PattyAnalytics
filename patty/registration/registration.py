@@ -5,7 +5,6 @@ Registration algorithms and utility functions
 """
 
 from __future__ import print_function
-import pcl.registration
 from pcl.boundaries import estimate_boundaries
 import numpy as np
 import logging
