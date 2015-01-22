@@ -1,11 +1,11 @@
 ## Dependencies
 
-Python packages:
+Python 2.7 packages:
 
 - python-pcl (lars repo / scrum branch)
-- fiona
-- shapely
 - liblas
+- Cython
+- scikit-learn
 
 System packages:
 
