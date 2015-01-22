@@ -146,7 +146,7 @@ def principal_axes_rotation(data):
     
     return transform
 
-def register_from_footprint(pc, footprint):
+#def register_from_footprint(pc, footprint):
     
 
 if __name__ == '__main__':
