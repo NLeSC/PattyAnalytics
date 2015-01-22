@@ -28,7 +28,7 @@ def segment_dbscan(pointcloud, epsilon, minpoints, rgb_weight=0):
 
     Returns
     -------
-    clusters : list of PointCloud
+    clusters : iterable over PointCloud
     """
     if rgb_weight > 0:
         X = pointcloud.to_array()
@@ -39,8 +39,8 @@ def segment_dbscan(pointcloud, epsilon, minpoints, rgb_weight=0):
         X = np.asarray(pointcloud)
     labels = _dbscan_labels(X, epsilon, minpoints)
 
-    return [pointcloud.extract(np.where(labels == label)[0])
-            for label in np.unique(labels[labels != -1])]
+    return (pointcloud.extract(np.where(labels == label)[0])
+            for label in np.unique(labels[labels != -1]))
 
 
 def largest_dbscan_cluster(pointcloud, epsilon=0.1, minpoints=250):
