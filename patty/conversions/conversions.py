@@ -1,89 +1,30 @@
 '''
+Pointcloud functions for reading/writing LAS files, and functions for dealing with the spatial reference system.
+
 Created on Oct 22, 2014
 
-@author: carlosm
+@author: carlosm, joris, jisk, lars, christiaan (NLeSC)
 '''
 
-# TODO: liblas is deprecated, use laspy instead!
+# DONT: liblas is deprecated, use laspy instead!
+#       laspy does not work nice with numpy, keep using liblas
 # http://laspy.readthedocs.org/en/latest/
 # https://github.com/grantbrown/laspy.git
 
 import liblas
 import pcl
 import numpy as np
+import osgeo.osr as osr
 
-
-
-# def RegisteredPointCloud:
-# holds a PointCloudXYZRBG
-# holds a CRS (ie. latlon, or rome coordinates, or RD-NEW, etc. given as EPSG srid) int
-# holds additional offset (to prevent underflow on cooridnates in the double->float conversion) double
-# scaling probably not needed? double
- 
-# def RegisterPointCloud:
-# input: intentin     a registered point cloud (drivemap)
-#        intentin/out unregistered point cloud (object), PointXYZRGB
-#        intentin     method?
-# output: 
-#                     the object translated/rotated to its new position
-#                     fitness
-#
-# Approach: 1. estimate scale factor: drivemap part is just the ST_Buffer( , 5) on the object's footprint
-#           2. scale
-#           3. SAC-IA?
-#           4. one / all of the ICP functions?
-#           5. move object 
-#           6. warp in a RegisterPointCloud class with correct metadata
-#
-#
-# class RegisteredPointCloud(pcl.PointCloudXYZRGB):
-#     """Point cloud with registration information.
-#
-#     Parameters
-#     ----------
-#     crs : int
-#         Coordinate reference system. Will be passed to GDAL.
-#         Laspy does not support reading/writing these in LAS files.
-#     offset : 3-vector of float64
-#         Offset from the origin; defaults to (0, 0, 0).
-#     """
-#     def __init__(self, data):
-#         super(RegisteredPointCloud, self).__init__(data)
-#
-#         self.crs = 4326
-#         self.offset = np.zeros(3)
-#
-#     def register(self, crs=None, offset=None):
-#         if crs is not None:
-#             self.crs = crs
-#         if offset is not None:
-#             self.offset = np.asarray(offset, dtype=np.float64)
-#
-#     def transform_crs(self, crs):
-#         """Transform to other coordinate reference system."""
-#         source = osr.SpatialReference()
-#         source.ImportFromEPSG(self.crs)
-#
-#         target = osr.SpatialReference()
-#         target.ImportFromEPSG(crs)
-#
-#         transf = osr.CoordinateTransformation(source, target)
-#         point = ogr.Geometry(ogr.wkbPoint)
-#         for i, (x, y, z) in enumerate(self):
-#             point.AddPoint(x, y, z)
-#             point.Transform(transf)
-#             self[i] = point.GetPoint()
-#
-#         self.crs = crs
-
-
-
-''' Read a las file
-returns (pointcloudxyzrgb, offset, scale)
-The pointcloud has color and XYZ coordinates
-The offset is the offset of the center point of the pointcloud
-The scale is the scale of the pointcloud.'''
 def loadLas(lasFile):
+    """ Read a LAS file
+    Returns:
+        pointcloudxyzrgb, offset, scale)
+
+    The pointcloud has color and XYZ coordinates
+    The offset is the offset of the center point of the pointcloud
+    The scale is the scale of the pointcloud."""
+
     try:
         print "--READING--", lasFile, "---------"
         las = liblas.file.File(lasFile)
@@ -92,14 +33,11 @@ def loadLas(lasFile):
         min_point = np.array(las.header.get_min())
         max_point = np.array(las.header.get_max())
         offset = min_point + (max_point - min_point)/2
-        scale = np.array(las.header.get_scale())
-		
-        # CRS = None # FIXME: keep track of CRS
 
         for i,point in enumerate(las):
             data[i] = (point.x,point.y,point.z,point.color.red/256,point.color.green/256,point.color.blue/256)
 
-		# reduce the offset to decrease floating point errors
+        # reduce the offset to decrease floating point errors
         data[:,0:3] -= offset
         
         pc = pcl.PointCloudXYZRGB(data.astype(np.float32))
@@ -111,9 +49,30 @@ def loadLas(lasFile):
         las.close()
 
 def is_registered(pointcloud):
+    """Returns True when a pointcloud is registerd"""
     return hasattr(pointcloud, 'is_registered') and pointcloud.is_registered
 
 def register(pointcloud, offset=None, precision=None, crs_wkt=None, crs_proj4=None,crs_verticalcs=None):
+    """Register a pointcloud
+
+    Arguments:
+        offset=None
+            Offset [dx, dy, dz] for the pointcloud.
+            Pointclouds often use double precision coordinates, this is necessary for some spatial reference systems like standard lat/lon.
+            Subtracting an offset, typically the center of the pointcloud, allows us to use floats without losing precission.
+            
+        precision=None
+            Precision of the points
+
+        crs_wkt=None
+            Well Knonw Text form of the spatial reference system
+
+        crs_proj4=None
+            PROJ4 projection string for the spatial reference system
+
+        crs_verticalcs=None
+            Well Known Text form of the vertical coordinate system.
+    """
     if not is_registered(pointcloud):
         pointcloud.is_registered = True
         pointcloud.offset = np.array([0., 0., 0.],dtype=np.float64)
@@ -134,6 +93,11 @@ def register(pointcloud, offset=None, precision=None, crs_wkt=None, crs_proj4=No
         pointcloud.crs_verticalcs = crs_verticalcs
 
 def copy_registration(pointcloud_target, pointcloud_src):
+    """Copy spatial reference system metadata from src to target.
+    Arguments:
+        pointcloud_target
+        pointcloud_src
+    """
     pointcloud_target.is_registered = True
     pointcloud_target.offset          = pointcloud_src.offset
     pointcloud_target.precision       = pointcloud_src.precision
@@ -142,6 +106,10 @@ def copy_registration(pointcloud_target, pointcloud_src):
     pointcloud_target.crs_verticalcs  = pointcloud_src.crs_verticalcs
 
 def loadCsvPolygon(csvFile, delimiter=','):
+    """Load a polygon from a simple CSV file
+    Returns:
+        numpy array containing the CSV file
+    """
     return np.genfromtxt(csvFile, delimiter=delimiter)
 
 def extract_mask(pointcloud, mask):
@@ -150,7 +118,13 @@ def extract_mask(pointcloud, mask):
     return pointcloud_new
 
 def writeLas(lasFile, pc):
-    # try:
+    """Write a pointcloud to a LAS file
+    Arguments:
+        lasFile  filename
+        pc       Pointclout to write
+    """
+
+    try:
         print "--WRITING--", lasFile, "--------"
         f = liblas.schema.Schema()
         f.time = False
@@ -174,8 +148,6 @@ def writeLas(lasFile, pc):
         if pc.crs_verticalcs != '':
             h.srs.set_verticalcs(pc.crs_verticalcs)        
         
-        # # FIXME: set CRS
-        
         a = np.asarray(pc)
         precise_points = np.array(a, dtype=np.float64)
         precise_points /= h.scale
@@ -189,53 +161,5 @@ def writeLas(lasFile, pc):
             r,g,b = pc[i][3:6]
             pt.color = liblas.color.Color( red = int(round(r * 256.0)), green = int(round(g * 256.0)), blue = int(round(b * 256.0)) )
             las.write(pt)
-    # finally:
-        # las.close()
-
-#
-# def las2ply(lasFile, plyFile):
-#     pc, scale = loadLas(lasFile)
-#     pcl.save(pc, plyFile, format='PLY')
-#
-# def ply2las(plyFile, lasFile):
-#     pc = pcl.load(plyFile, loadRGB=True)
-#     writeLas( lasFile, pc )
-
-if __name__ == '__main__':
-    plyFile = 'tests/10.ply'
-    lasFile = 'tests/10.las.out'
-
-    print 'From ply to las...'
-    pc = pcl.load(plyFile, format='PLY', loadRGB=True)
-
-    # print 'From las to ply...'
-    # las2ply(lasFile, plyFile)
-
-
-# Test code for the projection CRS
-
-# Rome / via appia is in EPSG:32633
-# http://pcjericks.github.io/py-gdalogr-cookbook/projection.html
-#
-# from osgeo import gdal
-#
-# spatialRef = osr.SpatialReference()
-# spatialRef.ImportFromEPSG(2927)         # from EPSG
-#
-# target = osr.SpatialReference()
-# target.ImportFromEPSG(4326)
-#
-# transform = osr.CoordinateTransformation(source, target)
-#
-# point = ogr.CreateGeometryFromWkt("POINT (1120351.57 741921.42)")
-# point.Transform(transform)
-#
-# print point.ExportToWkt()
-#
-#
-# # http://pcjericks.github.io/py-gdalogr-cookbook/geometry.html#create-a-point
-# from osgeo import ogr
-# point = ogr.Geometry(ogr.wkbPoint)
-# point.AddPoint(1198054.34, 648493.09)
-# print point.ExportToWkt()
-#
+    finally:
+        las.close()

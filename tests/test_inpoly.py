@@ -1,8 +1,6 @@
 import unittest
-import pcl
 import numpy as np
-from patty_registration.conversions import loadLas, loadCsvPolygon
-from numpy.testing import assert_array_equal, assert_array_almost_equal
+from patty.conversions.conversions import loadLas, loadCsvPolygon
 from matplotlib import path
 
 class TestInPoly(unittest.TestCase):
@@ -11,7 +9,7 @@ class TestInPoly(unittest.TestCase):
         filePoly = 'data/footprints/162.las_footprint.csv'
         pc = loadLas(fileLas)
         footprint = loadCsvPolygon(filePoly)
-        pc2 = points_in_poly(pc, footprint)
+        points_in_poly(pc, footprint)
 
 def point_in_poly(point, polyPath):
     return polyPath.contains_point(point[:2])
