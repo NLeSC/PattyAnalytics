@@ -1,3 +1,4 @@
 Cython>=0.21.2
 docopt
+liblas
 scikit-learn>=0.15.2
