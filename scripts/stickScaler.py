@@ -3,9 +3,7 @@ import numpy as np
 import argparse
 from sklearn.cluster import dbscan
 from patty.segmentation.pointCloudMeasurer import measureLength
-<<<<<<< HEAD
 from patty.registration.stickScale import getStickScale
-=======
 
 def getStickScale(ar, eps, minSamples):
     clusters = getClusters(ar, eps, minSamples)
@@ -24,7 +22,6 @@ def getClusters(ar, eps, minSamples):
         mask = labels == label
         indices = np.where(mask)
         yield ar[indices]
->>>>>>> 93272c52f780e3bc2e2dfd15358b340ac2a3ba02
 
 if __name__=='__main__':
     """Takes a point cloud containing only the red segments of scale sticks and returns the median, min and max of the scale estimation."""

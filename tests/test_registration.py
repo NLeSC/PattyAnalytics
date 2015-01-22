@@ -1,7 +1,7 @@
 import unittest
 import pcl
 import os.path
-from patty.conversions import conversions
+from patty import conversions
 from patty.registration import registration
 
 class TestRegistrationScaleOffset(unittest.TestCase):

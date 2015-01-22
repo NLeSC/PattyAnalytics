@@ -5,14 +5,11 @@ Registration algorithms and utility functions
 """
 
 from __future__ import print_function
-import argparse
-import pcl
 import pcl.registration
 from pcl.boundaries import estimate_boundaries
-import time
 import numpy as np
 import logging
-from patty.conversions import conversions
+from patty import conversions
 from sklearn.decomposition import PCA
 from patty.segmentation import dbscan
 from matplotlib import path
@@ -37,7 +34,7 @@ def downsample(pointcloud, voxel_size=0.01):
         filtered_pointcloud
     '''
     old_len = len(pointcloud)
-    pc_filter = source.make_voxel_grid_filter()
+    pc_filter = pointcloud.make_voxel_grid_filter()
     pc_filter.set_leaf_size(voxel_size, voxel_size, voxel_size)
     filtered_pointcloud = pc_filter.filter()
     new_len = len(filtered_pointcloud)
