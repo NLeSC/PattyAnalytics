@@ -31,6 +31,11 @@ def largest_dbscan_cluster(pointcloud, epsilon=0.1, minpoints=250):
 
     # Labels start at -1, so increase all by 1.
     bins = np.bincount(np.array(labels) + 1)
+    
+    # Pointcloud is the only cluster
+    if len(bins)<2:
+        return pointcloud
+
     # Move it back
     max_label = np.argmax(bins[1:]) - 1
     
