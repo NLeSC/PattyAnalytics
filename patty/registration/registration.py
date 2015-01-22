@@ -10,7 +10,6 @@ import pcl
 import pcl.registration
 from pcl.boundaries import estimate_boundaries
 import time
-import sys
 import numpy as np
 from patty.conversions import conversions
 from sklearn.decomposition import PCA

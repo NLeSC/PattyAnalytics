@@ -33,7 +33,6 @@ def loadLas(lasFile):
         min_point = np.array(las.header.get_min())
         max_point = np.array(las.header.get_max())
         offset = min_point + (max_point - min_point)/2
-        scale = np.array(las.header.get_scale())
 
         for i,point in enumerate(las):
             data[i] = (point.x,point.y,point.z,point.color.red/256,point.color.green/256,point.color.blue/256)

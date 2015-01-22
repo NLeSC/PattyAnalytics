@@ -1,11 +1,8 @@
 import unittest
 import pcl
 import os.path
-import numpy as np
 from patty.conversions import conversions
 from patty.registration import registration
-from patty.segmentation import dbscan
-from numpy.testing import assert_array_equal, assert_array_almost_equal
 
 class TestRegistrationScaleOffset(unittest.TestCase):
     def testRegistrationFromFootprint(self):
@@ -15,7 +12,7 @@ class TestRegistrationScaleOffset(unittest.TestCase):
         assert os.path.exists(fp_name)
         pc = conversions.loadLas(fname)
         footprint = conversions.loadCsvPolygon(fp_name)
-        pc2 = registration.register_from_footprint(pc, footprint)
+        registration.register_from_footprint(pc, footprint)
 
 class TestRegistrationSite20(unittest.TestCase):
     def testRegistrationFromFootprint20(self):
