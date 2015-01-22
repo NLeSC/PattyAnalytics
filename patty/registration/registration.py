@@ -13,6 +13,7 @@ import time
 import sys
 import numpy as np
 from patty.conversions import conversions
+from patty.conversions.conversions import copy_registration, extract_mask
 from sklearn.decomposition import PCA
 from patty.segmentation import dbscan
 from matplotlib import path
@@ -133,7 +134,7 @@ def register_offset_scale_from_ref(pc, ref_array, ref_offset=np.zeros(3)):
 
 def get_pointcloud_boundaries(pointcloud):
     boundary = estimate_boundaries(pointcloud, angle_threshold=0.1, search_radius=0.02, normal_search_radius=0.02)
-    return pointcloud.extract(np.where(boundary)[0])
+    return extract_mask(pointcloud, boundary)
 
 def principal_axes_rotation(data):
     pca = PCA(n_components=data.shape[1])
@@ -208,8 +209,12 @@ def point_in_polygon2d(points, polygon):
 
 def intersect_polgyon2d(pc, polygon):
     in_polygon = point_in_polygon2d(np.asarray(pc) + pc.offset, polygon)
-    intersection = pc.extract( np.where(in_polygon)[0] )
-    return intersection
+    return extract_mask(pc, in_polygon)
+
+def scale_points(polygon, factor):
+    polygon = np.array(polygon,dtype=np.float64)
+    offset = (polygon.max(axis=0) + polygon.min(axis=0)) / 2.0
+    return ((polygon - offset) * factor) + offset
 
 if __name__ == '__main__':
     source, target, algo, voxel_size = process_args()

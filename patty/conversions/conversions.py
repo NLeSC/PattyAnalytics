@@ -144,6 +144,11 @@ def copy_registration(pointcloud_target, pointcloud_src):
 def loadCsvPolygon(csvFile, delimiter=','):
     return np.genfromtxt(csvFile, delimiter=delimiter)
 
+def extract_mask(pointcloud, mask):
+    pointcloud_new = pointcloud.extract(np.where(mask)[0])
+    copy_registration(pointcloud_new, pointcloud)
+    return pointcloud_new
+
 def writeLas(lasFile, pc):
     # try:
         print "--WRITING--", lasFile, "--------"
