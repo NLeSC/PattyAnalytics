@@ -5,7 +5,7 @@ from sklearn.cluster import dbscan
 def _dbscan_labels(pointcloud, epsilon, minpoints):
     ''' returns an array of point-labels of all dbscan clusters found '''
     _, labels = dbscan(pointcloud, eps=epsilon, min_samples=minpoints,
-                       algorithm='kd_tree')
+                       algorithm='ball_tree')
     return labels
 
 
