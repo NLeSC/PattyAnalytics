@@ -1,7 +1,7 @@
 import unittest
 import pcl
 import numpy as np
-from patty_registration.conversions import loadLas, loadCsvPolygon
+from patty.conversions.conversions import loadLas, loadCsvPolygon
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 from matplotlib import path
 
