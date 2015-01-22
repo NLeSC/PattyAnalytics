@@ -12,9 +12,10 @@ from pcl.boundaries import estimate_boundaries
 import time
 import sys
 import numpy as np
-import conversions
+from patty.conversions import conversions
 from sklearn.decomposition import PCA
-from patty_segmentation import dbscan
+from patty.segmentation import dbscan
+from matplotlib import path
 
 def log(*args, **kwargs):
     print(time.strftime("[%H:%M:%S]"), *args, **kwargs)
@@ -149,17 +150,17 @@ def register_from_footprint(pc, footprint):
     conversions.copy_registration(pc_main, pc)
     
     log("Detecting boundary")
-    boundary = registration.get_pointcloud_boundaries(pc_main)
+    boundary = get_pointcloud_boundaries(pc_main)
     conversions.copy_registration(boundary, pc_main)
     
     log("Finding rotation")
-    pc_transform = registration.principal_axes_rotation(np.asarray(boundary))
-    fp_transform = registration.principal_axes_rotation(footprint)
+    pc_transform = principal_axes_rotation(np.asarray(boundary))
+    fp_transform = principal_axes_rotation(footprint)
     transform = np.linalg.inv(fp_transform) * pc_transform
     boundary.transform(transform)
 
     log("Registering pointcloud to footprint")
-    registered_offset, registered_scale = registration.register_offset_scale_from_ref(boundary, footprint)
+    registered_offset, registered_scale = register_offset_scale_from_ref(boundary, footprint)
     conversions.copy_registration(pc, boundary)
     
     # rotate and scale up
@@ -174,13 +175,13 @@ def register_from_reference(pc, pc_ref):
     conversions.copy_registration(pc_main, pc)
     
     log("Finding rotation")
-    pc_transform = registration.principal_axes_rotation(np.asarray(pc_main))
-    ref_transform = registration.principal_axes_rotation(np.asarray(pc_ref))
+    pc_transform = principal_axes_rotation(np.asarray(pc_main))
+    ref_transform = principal_axes_rotation(np.asarray(pc_ref))
     transform = np.linalg.inv(ref_transform) * pc_transform
     pc_main.transform(transform)
 
     log("Registering pointcloud to footprint")
-    registered_offset, registered_scale = registration.register_offset_scale_from_ref(pc_main, np.asarray(pc_ref), pc_ref.offset)
+    registered_offset, registered_scale = register_offset_scale_from_ref(pc_main, np.asarray(pc_ref), pc_ref.offset)
     conversions.copy_registration(pc, pc_main)
     
     # rotate and scale up
@@ -189,15 +190,26 @@ def register_from_reference(pc, pc_ref):
     
     return pc
 
-def point_in_polygon(points, polygon):
+def point_in_convex_polygon(points, polygon):
+    ''' WARNING: Only works for convex polygons '''
+    mask = np.ones(len(points),dtype=np.bool)
     for i in xrange(len(polygon)):
         v1 = polygon[i - 1] - polygon[i]
         v2 = points - polygon[i - 1]
         
         is_left = v1[0]*v2[:,1] - v1[1]*v2[:,0] >= 0
-        points = points[is_left]
-        
-    return points
+        mask = mask & is_left
+         
+    return mask
+
+def point_in_polygon2d(points, polygon):
+    p = path.Path(polygon[:,:2])
+    return np.array( [p.contains_point(point[:2]) for point in points] )        
+
+def intersect_polgyon2d(pc, polygon):
+    in_polygon = point_in_polygon2d(np.asarray(pc) + pc.offset, polygon)
+    intersection = pc.extract( np.where(in_polygon)[0] )
+    return intersection
 
 if __name__ == '__main__':
     source, target, algo, voxel_size = process_args()

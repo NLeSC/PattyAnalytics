@@ -8,12 +8,12 @@ from sklearn.cluster import dbscan
 import numpy as np
 
 def dbscan_labels(pointcloud, epsilon, minpoints):
-    ''' returns a number of clusters'''
+    ''' returns an array of point-labels of all dbscan clusters found '''
     _, labels = dbscan(np.asarray(pointcloud), eps=epsilon, min_samples=minpoints, algorithm='kd_tree')
     return labels
 
 def segment_dbscan(pointcloud, epsilon, minpoints):
-    ''' returns a number of clusters'''
+    ''' returns an array of pointclouds, each a cluster'''
     labels = dbscan_labels(pointcloud, epsilon, minpoints)
     
     clusters = []
@@ -24,10 +24,14 @@ def segment_dbscan(pointcloud, epsilon, minpoints):
     return clusters
     
 def largest_dbscan_cluster(pointcloud, epsilon=0.1, minpoints=250):
-    ''' returns a number of clusters'''
+    ''' returns the largest cluster found in the pointcloud'''
     labels = dbscan_labels(pointcloud, epsilon, minpoints)
     
-    bins = np.bincount(labels)
-    max_label = np.argmax(bins)
+    print np.unique(labels)
+
+    # Labels start at -1, so increase all by 1.
+    bins = np.bincount(np.array(labels) + 1)
+    # Move it back
+    max_label = np.argmax(bins[1:]) - 1
     
     return pointcloud.extract(np.where(labels == max_label)[0])
