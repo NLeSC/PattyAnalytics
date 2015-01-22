@@ -32,6 +32,9 @@ class TestRegistrationSite20(unittest.TestCase):
         pc = pcl.load(fname,loadRGB=True)
         conversions.register(pc)
         footprint = conversions.loadCsvPolygon(fp_name)
+        # translate
+        footprint[:,0] += -1.579381346780
+        footprint[:,1] += 0.52519696509
         
         print "Selecting main cluster"
         clusters = dbscan.segment_dbscan(pc, .1, 250)
@@ -43,13 +46,13 @@ class TestRegistrationSite20(unittest.TestCase):
         conversions.copy_registration(boundary, pc_main)
         
         print "Finding rotation"
-        pc_transform = np.matrix(registration.principal_axes_rotation(np.asarray(boundary)))
-        fp_transform = np.matrix(registration.principal_axes_rotation(footprint))
+        pc_transform = registration.principal_axes_rotation(np.asarray(boundary))
+        fp_transform = registration.principal_axes_rotation(footprint)
         transform = np.linalg.inv(fp_transform) * pc_transform
         boundary.transform(transform)
 
         print "Registering pointcloud to footprint"
-        registered_offset, registered_scale = registration.register_from_footprint(footprint, boundary)
+        registered_offset, registered_scale = registration.register_offset_scale_from_footprint(footprint, boundary)
         
         conversions.copy_registration(pc, boundary)
         pc.transform(transform)
