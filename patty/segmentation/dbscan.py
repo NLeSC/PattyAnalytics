@@ -1,32 +1,52 @@
-"""Segmentation using DBSCAN.
-
-Usage:
-    dbscan pointcloud <epsilon> <minpoints>
-"""
-
-from sklearn.cluster import dbscan
 import numpy as np
+from sklearn.cluster import dbscan
 
-def dbscan_labels(pointcloud, epsilon, minpoints):
+
+def _dbscan_labels(pointcloud, epsilon, minpoints):
     ''' returns an array of point-labels of all dbscan clusters found '''
-    _, labels = dbscan(np.asarray(pointcloud), eps=epsilon, min_samples=minpoints, algorithm='kd_tree')
+    _, labels = dbscan(pointcloud, eps=epsilon, min_samples=minpoints,
+                       algorithm='kd_tree')
     return labels
 
-def segment_dbscan(pointcloud, epsilon, minpoints):
-    ''' returns an array of pointclouds, each a cluster'''
-    labels = dbscan_labels(pointcloud, epsilon, minpoints)
-    
-    clusters = []
-    
-    for label in np.unique(labels[labels != -1]):
-        clusters.append(pointcloud.extract(np.where(labels == label)[0]))
-    
-    return clusters
-    
+
+
+def segment_dbscan(pointcloud, epsilon, minpoints, rgb_weight=0):
+    """Run the DBSCAN clustering+outlier detection algorithm on pointcloud.
+
+    Parameters
+    ----------
+    pointcloud : pcl.PointCloud
+    epsilon : float
+        Neighborhood radius for DBSCAN.
+    minpoints : integer
+        Minimum neighborhood density for DBSCAN.
+    rgb_weight : float, optional
+        If non-zero, cluster on color information as well as location;
+        specifies the relative weight of the RGB components to spatial
+        coordinates in distance computations.
+        (RGB values have wildly different scales than spatial coordinates.)
+
+    Returns
+    -------
+    clusters : list of PointCloud
+    """
+    if rgb_weight > 0:
+        X = pointcloud.to_array()
+        print(repr(X.mean(axis=0)))
+        X[:, 3:] *= rgb_weight
+        print(repr(X.mean(axis=0)))
+    else:
+        X = np.asarray(pointcloud)
+    labels = _dbscan_labels(X, epsilon, minpoints)
+
+    return [pointcloud.extract(np.where(labels == label)[0])
+            for label in np.unique(labels[labels != -1])]
+
+
 def largest_dbscan_cluster(pointcloud, epsilon=0.1, minpoints=250):
     ''' returns the largest cluster found in the pointcloud'''
-    labels = dbscan_labels(pointcloud, epsilon, minpoints)
-    
+    labels = _dbscan_labels(pointcloud, epsilon, minpoints)
+
     print np.unique(labels)
 
     # Labels start at -1, so increase all by 1.
@@ -38,5 +58,4 @@ def largest_dbscan_cluster(pointcloud, epsilon=0.1, minpoints=250):
 
     # Move it back
     max_label = np.argmax(bins[1:]) - 1
-    
     return pointcloud.extract(np.where(labels == max_label)[0])

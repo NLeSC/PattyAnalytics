@@ -1,7 +1,7 @@
 """Segmentation using DBSCAN.
 
 Usage:
-    dbscan <epsilon> <minpoints> <path>
+    dbscan [--rgb_weight=weight] <epsilon> <minpoints> <path>
 """
 
 from docopt import docopt
@@ -9,27 +9,29 @@ import sys
 
 import numpy as np
 import pcl
-from sklearn.cluster import dbscan
+#from sklearn.cluster import dbscan
+
+from patty.segmentation import segment_dbscan
 
 args = docopt(__doc__, sys.argv[1:])
 
+rgb_weight = float(args.get('--rgb_weight', 0))
 eps = float(args['<epsilon>'])
 minpoints = int(args['<minpoints>'])
 
 # Kludge to get a proper exception for file not found
 # (PCL will report "problem parsing header!").
 with open(args['<path>']) as _:
-    pc = pcl.load(args['<path>'])
-X = np.asarray(pc)
-print("%d points" % X.shape[0])
+    pc = pcl.load(args['<path>'], loadRGB=True)
+print("%d points" % len(pc))
 
-_, labels = dbscan(X, eps=eps, min_samples=minpoints, algorithm='kd_tree')
+clusters = segment_dbscan(pc, epsilon=eps, minpoints=minpoints,
+                          rgb_weight=rgb_weight)
 
-for label in np.unique(labels[labels != -1]):
-    cluster = pc.extract(np.where(labels == label)[0])
-    print("%d points in cluster %d" % (len(cluster), label))
-    pcl.save(cluster, 'cluster%d.ply' % label)
+n_outliers = len(pc)
+for i, cluster in enumerate(clusters):
+    print("%d points in cluster %d" % (len(cluster), i))
+    pcl.save(cluster, 'cluster%d.ply' % i)
+    n_outliers -= len(cluster)
 
-print("%d outliers" % np.sum(labels == -1))
-out_pc = pcl.PointCloud(X[np.where(labels == -1)])
-pcl.save(out_pc, 'outliers.ply')
+print("%d outliers" % n_outliers)
