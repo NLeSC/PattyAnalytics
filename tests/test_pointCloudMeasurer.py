@@ -39,9 +39,21 @@ class TestPointCloudMeasurer(unittest.TestCase):
         assert_almost_equal(expected, length)
         
     
-    def test_singleoint_return0(self):
+    def test_singlePoint_return0(self):
         #Arrange
         line = np.array([[0, -1.,0]])
+        expected = 0
+        
+        #Act
+        length = measureLength(line)
+        
+        #Assert
+        assert_almost_equal(expected, length)
+        
+    
+    def test_noPoints_return0(self):
+        #Arrange
+        line = np.array([])
         expected = 0
         
         #Act
