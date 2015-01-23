@@ -9,13 +9,11 @@ from pcl.boundaries import estimate_boundaries
 import numpy as np
 import logging
 from patty import conversions
-<<<<<<< HEAD
 from patty.conversions import copy_registration, extract_mask
-=======
->>>>>>> f628440da89f4320b3bd027f705b808e94c19967
 from sklearn.decomposition import PCA
 from patty.segmentation import dbscan
 from matplotlib import path
+from patty.utils import BoundingBox
 
 logging.basicConfig(level=logging.INFO)
 
@@ -23,12 +21,7 @@ def length_3d(pointcloud):
     xyz_array = np.asarray(pointcloud)
     return xyz_array.max(axis=0) - xyz_array.min(axis=0)
 
-def scale(pointcloud, scale_factor):
-    transf = np.identity(4, dtype=float)*scale_factor
-    transf[3,3] = 1.0
-    return pointcloud.transform(transf)
-
-def downsample(pointcloud, voxel_size=0.01):
+def downsample_voxel(pointcloud, voxel_size=0.01):
     ''' Downsample a pointcloud using a voxel grid filter.
     Arguments:
         pointcloud    Original pointcloud
@@ -42,12 +35,13 @@ def downsample(pointcloud, voxel_size=0.01):
     filtered_pointcloud = pc_filter.filter()
     new_len = len(filtered_pointcloud)
     decrease_percent = (old_len - new_len)*100 / old_len
-    logging.info("number of points reduced from", old_len, "to", new_len, "(", decrease_percent, "% decrease)")
+    logging.info("number of points reduced from", old_len, "to", new_len, "(", decrease_percent, "pct. decrease)")
     return filtered_pointcloud
 
 def register_offset_scale_from_ref(pc, ref_array, ref_offset=np.zeros(3)):
     ''' Returns a 3d-offset and uniform scale value from footprint.
-    The scale is immediately applied to the pointcloud, the offset is set to the patty_registration.conversions.RegisteredPointCloud'''
+    The scale is immediately applied to the pointcloud, the offset is
+    set to the patty_registration.conversions.RegisteredPointCloud'''
     ref_min = ref_array.min(axis=0)
     ref_max = ref_array.max(axis=0)
     ref_center = (ref_min + ref_max) / 2.0 + ref_offset
@@ -82,7 +76,9 @@ def get_pointcloud_boundaries(pointcloud, angle_threshold=0.1, search_radius=0.0
     Returns:
         a pointcloud
     '''
-    boundary = estimate_boundaries(pointcloud, angle_threshold=0.1, search_radius=0.02, normal_search_radius=0.02)
+    boundary = estimate_boundaries(pointcloud, angle_threshold=angle_threshold, search_radius=search_radius, normal_search_radius=normal_search_radius)
+    logging.info("sum",np.sum(boundary))
+    logging.info("len",len(boundary))
     return extract_mask(pointcloud, boundary)
 
 def principal_axes_rotation(data):
@@ -173,15 +169,21 @@ def point_in_convex_polygon(points, polygon):
     return mask
 
 def point_in_polygon2d(points, polygon):
-    p = path.Path(polygon[:,:2])
-    return np.array( [p.contains_point(point[:2]) for point in points] )        
+    p = path.Path(np.asarray(polygon)[:,:2])
+    return np.array( [p.contains_point(point[:2]) for point in points], dtype=np.bool )        
 
 def intersect_polgyon2d(pc, polygon):
     in_polygon = point_in_polygon2d(np.asarray(pc) + pc.offset, polygon)
     return extract_mask(pc, in_polygon)
 
 def scale_points(polygon, factor):
-    polygon = np.array(polygon,dtype=np.float64)
+    polygon = np.asarray(polygon,dtype=np.float64)
     offset = (polygon.max(axis=0) + polygon.min(axis=0)) / 2.0
     return ((polygon - offset) * factor) + offset
 
+def center_boundingbox(pointcloud):
+    conversions.register(pointcloud)
+    pc_array = np.asarray(pointcloud)
+    bb = BoundingBox(points=pc_array)
+    pc_array -= bb.center
+    pointcloud.offset += bb.center

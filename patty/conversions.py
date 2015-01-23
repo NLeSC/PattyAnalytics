@@ -14,7 +14,7 @@ Created on Oct 22, 2014
 import liblas
 import pcl
 import numpy as np
-import osgeo.osr as osr
+from patty.utils import BoundingBox
 
 def loadLas(lasFile):
     """ Read a LAS file
@@ -30,26 +30,24 @@ def loadLas(lasFile):
         las = liblas.file.File(lasFile)
         nPoints = las.header.get_count()
         data = np.zeros((nPoints, 6), dtype=np.float64)
-        min_point = np.array(las.header.get_min())
-        max_point = np.array(las.header.get_max())
-        offset = min_point + (max_point - min_point)/2
 
         for i,point in enumerate(las):
             data[i] = (point.x,point.y,point.z,point.color.red/256,point.color.green/256,point.color.blue/256)
 
+        bb = BoundingBox(points=data[:,0:3])
         # reduce the offset to decrease floating point errors
-        data[:,0:3] -= offset
-
+        data[:,0:3] -= bb.center
+        
         pc = pcl.PointCloudXYZRGB(data.astype(np.float32))
 
-        register(pc, offset, las.header.scale, las.header.srs.get_wkt(), las.header.srs.get_proj4())
+        register(pc, offset=bb.center, precision=las.header.scale, crs_wkt=las.header.srs.get_wkt(), crs_proj4=las.header.srs.get_proj4())
 
         return pc
     finally:
         las.close()
 
 def is_registered(pointcloud):
-    """Returns True when a pointcloud is registerd"""
+    """Returns True when a pointcleoud is registerd"""
     return hasattr(pointcloud, 'is_registered') and pointcloud.is_registered
 
 def register(pointcloud, offset=None, precision=None, crs_wkt=None, crs_proj4=None,crs_verticalcs=None):
@@ -60,9 +58,11 @@ def register(pointcloud, offset=None, precision=None, crs_wkt=None, crs_proj4=No
             Offset [dx, dy, dz] for the pointcloud.
             Pointclouds often use double precision coordinates, this is necessary for some spatial reference systems like standard lat/lon.
             Subtracting an offset, typically the center of the pointcloud, allows us to use floats without losing precission.
+            If no offset is set, defaults to [0, 0, 0]
 
         precision=None
-            Precision of the points
+            Precision of the points, used to store into a LAS file. Update when scaling the pointcloud.
+            If no precision is set, defaults to [0.01, 0.01, 0.01].
 
         crs_wkt=None
             Well Knonw Text form of the spatial reference system
@@ -82,9 +82,9 @@ def register(pointcloud, offset=None, precision=None, crs_wkt=None, crs_proj4=No
         pointcloud.crs_verticalcs = ''
 
     if offset is not None:
-        pointcloud.offset = np.array(offset,dtype=np.float64)
+        pointcloud.offset = np.asarray(offset,dtype=np.float64)
     if precision is not None:
-        pointcloud.precision = np.array(precision,dtype=np.float64)
+        pointcloud.precision = np.asarray(precision,dtype=np.float64)
     if crs_wkt is not None:
         pointcloud.crs_wkt = crs_wkt
     if crs_proj4 is not None:
@@ -137,8 +137,10 @@ def writeLas(lasFile, pc):
         h.minor_version = 2
 
         register(pc)
-        h.scale = np.array(pc.precision)*0.5 # FIXME: need extra precision to reduce floating point errors. We don't know exactly why this works. It might reduce precision on the top of the float, but reduces an error of one bit for the last digit.
-
+        # FIXME: need extra precision to reduce floating point errors. We don't
+        # know exactly why this works. It might reduce precision on the top of
+        # the float, but reduces an error of one bit for the last digit.
+        h.scale = np.asarray(pc.precision)*0.5
         h.offset = pc.offset
 
         if pc.crs_wkt != '':
@@ -148,8 +150,7 @@ def writeLas(lasFile, pc):
         if pc.crs_verticalcs != '':
             h.srs.set_verticalcs(pc.crs_verticalcs)
 
-        a = np.asarray(pc)
-        precise_points = np.array(a, dtype=np.float64)
+        precise_points = np.array(pc, dtype=np.float64)
         precise_points /= h.scale
         h.min = precise_points.min(axis=0) + h.offset
         h.max = precise_points.max(axis=0) + h.offset
@@ -159,7 +160,7 @@ def writeLas(lasFile, pc):
             pt = liblas.point.Point()
             pt.x,pt.y,pt.z = precise_points[i]
             r,g,b = pc[i][3:6]
-            pt.color = liblas.color.Color( red = int(round(r * 256.0)), green = int(round(g * 256.0)), blue = int(round(b * 256.0)) )
+            pt.color = liblas.color.Color( red = int(r) * 256, green = int(g) * 256, blue = int(b) * 256 )
             las.write(pt)
     finally:
         las.close()

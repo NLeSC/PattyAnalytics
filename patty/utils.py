@@ -1,5 +1,68 @@
 import numpy as np
 
+class BoundingBox(object):
+    '''A bounding box for a sequence of points.
+
+    Center, size and diagonal are updated when the minimum or maximum are updated
+    '''
+
+    def __init__(self, points=None, min=None, max=None):
+        ''' Either set points or a fixed min and max'''
+        if min is not None and max is not None:
+            self._min = np.asarray(min,dtype=float)
+            self._max = np.asarray(max,dtype=float)
+        elif points is not None:
+            self._min = np.min(points, axis=0)
+            self._max = np.max(points, axis=0)
+        else:
+            raise ValueError("Need to give min and max or matrix")
+
+        self._reset()
+
+    def _reset(self):
+        self._center = None
+        self._size = None
+
+    @property
+    def min(self):
+        return self._min
+
+    @min.setter
+    def min(self, new_min):
+        self._reset()
+        self.min = new_min
+
+    @property
+    def max(self):
+        return self._max
+
+    @max.setter
+    def max(self, new_max):
+        self._reset()
+        self.max = new_max
+
+    @property
+    def center(self):
+        ''' Center point of the bounding box'''
+        if self._center is None:
+            self._center = (self.min + self.max) / 2.0
+        return self._center
+
+    @property
+    def size(self):
+        ''' N-dimensional size array '''
+        if self._size is None:
+            self._size = self.max - self.min
+        return self._size
+
+    @property
+    def diagonal(self):
+        ''' Length of the diagonal of the box. '''
+        return np.linalg.norm(self.size)
+
+    def contains(self, pos):
+        ''' Whether the bounding box contains given position. '''
+        return np.all((pos >= self.min) & (pos <= self.max))
 
 def downsample(pc, fraction, random_seed=None):
     """Randomly downsample pointcloud to a fraction of its size.
