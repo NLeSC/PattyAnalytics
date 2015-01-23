@@ -1,14 +1,11 @@
 import numpy as np
 from sklearn.cluster import dbscan
 
-
 def _dbscan_labels(pointcloud, epsilon, minpoints):
     ''' returns an array of point-labels of all dbscan clusters found '''
     _, labels = dbscan(pointcloud, eps=epsilon, min_samples=minpoints,
                        algorithm='ball_tree')
     return labels
-
-
 
 def segment_dbscan(pointcloud, epsilon, minpoints, rgb_weight=0):
     """Run the DBSCAN clustering+outlier detection algorithm on pointcloud.
@@ -46,8 +43,6 @@ def segment_dbscan(pointcloud, epsilon, minpoints, rgb_weight=0):
 def largest_dbscan_cluster(pointcloud, epsilon=0.1, minpoints=250):
     ''' returns the largest cluster found in the pointcloud'''
     labels = _dbscan_labels(pointcloud, epsilon, minpoints)
-
-    print np.unique(labels)
 
     # Labels start at -1, so increase all by 1.
     bins = np.bincount(np.asarray(labels) + 1)
