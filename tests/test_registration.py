@@ -1,6 +1,6 @@
 import unittest
 import pcl
-import os.path
+# import os.path
 from patty import conversions
 from patty.registration import registration
 from numpy.testing import assert_array_equal, assert_array_almost_equal

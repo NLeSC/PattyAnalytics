@@ -107,7 +107,6 @@ def register_from_footprint(pc, footprint):
     '''
     logging.info("Finding largest cluster")
     pc_main = dbscan.largest_dbscan_cluster(pc, .1, 250)
-    copy_registration(pc_main, pc)
     
     logging.info("Detecting boundary")
     boundary = get_pointcloud_boundaries(pc_main)
@@ -138,7 +137,6 @@ def register_from_reference(pc, pc_ref):
     '''
     logging.info("Finding largest cluster")
     pc_main = dbscan.largest_dbscan_cluster(pc, .1, 250)
-    copy_registration(pc_main, pc)
     
     logging.info("Finding rotation")
     pc_transform = principal_axes_rotation(np.asarray(pc_main))
