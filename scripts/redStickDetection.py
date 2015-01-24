@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import pcl
 import argparse
 from patty.segmentation.segRedStick import getReds
