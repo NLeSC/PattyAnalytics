@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import pcl
 import numpy as np
 import argparse
