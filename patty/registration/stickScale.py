@@ -1,6 +1,4 @@
-import pcl
 import numpy as np
-import argparse
 from sklearn.cluster import dbscan
 from patty.segmentation.pointCloudMeasurer import measureLength
 

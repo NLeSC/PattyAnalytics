@@ -10,7 +10,6 @@ import numpy as np
 import logging
 from patty import conversions
 from patty.conversions import copy_registration, extract_mask
-from sklearn.decomposition import PCA
 from patty.segmentation import dbscan
 from matplotlib import path
 from patty.utils import BoundingBox

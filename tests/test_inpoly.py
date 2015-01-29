@@ -1,9 +1,7 @@
 import unittest
 import logging
-import numpy as np
 from patty.conversions import loadLas, loadCsvPolygon, writeLas
 from patty.registration import registration
-from matplotlib import path
 
 logging.basicConfig(level=logging.INFO)
 

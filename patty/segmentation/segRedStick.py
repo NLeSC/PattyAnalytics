@@ -1,6 +1,3 @@
-import pcl
-import argparse
-    
 def getReds(inArray, minr = 0.5):
     """Returns new array with only red parts of the input array"""
     redIndices = []
