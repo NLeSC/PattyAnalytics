@@ -1,20 +1,29 @@
 import unittest
+import logging
 import numpy as np
-from patty.conversions.conversions import loadLas, loadCsvPolygon
+from patty.conversions import loadLas, loadCsvPolygon, writeLas
+from patty.registration import registration
 from matplotlib import path
+
+logging.basicConfig(level=logging.INFO)
 
 class TestInPoly(unittest.TestCase):
     def testInPoly(self):
+        '''
+        Test point cloud / footprint intersection functionality provided
+        by patty.registration.registration.intersect_polgyon2d()
+        '''
         fileLas = 'data/footprints/162.las'
+        fileLasOut = 'data/footprints/162_inFootprint.las'
         filePoly = 'data/footprints/162.las_footprint.csv'
         pc = loadLas(fileLas)
         footprint = loadCsvPolygon(filePoly)
-        points_in_poly(pc, footprint)
+        pcIn = registration.intersect_polgyon2d(pc, footprint)
+        assert len(pc)>=len(pcIn)
+        assert len(pcIn)>0
 
-def point_in_poly(point, polyPath):
-    return polyPath.contains_point(point[:2])
-
-def points_in_poly(pc, poly):
-    polyPath = path.Path(poly[:,:2])
-    points = np.asarray(pc)
-    return np.array([ point for point in points if point_in_poly(point+pc.offset, polyPath) ])
+        writeLas(fileLasOut, pcIn)
+        logging.info('Point cloud has been segmented to match footprint. You can view the results using CloudCompare.')
+        logging.info('  Original point cloud : ' + fileLas)
+        logging.info('  Footprint used       : ' + filePoly)
+        logging.info('  Segmented point cloud: ' + fileLasOut)

@@ -14,6 +14,7 @@ from sklearn.decomposition import PCA
 from patty.segmentation import dbscan
 from matplotlib import path
 from patty.utils import BoundingBox
+from patty.registration.principalComponents import principal_axes_rotation
 
 logging.basicConfig(level=logging.INFO)
 
@@ -81,22 +82,6 @@ def get_pointcloud_boundaries(pointcloud, angle_threshold=0.1, search_radius=0.0
     logging.info("len",len(boundary))
     return extract_mask(pointcloud, boundary)
 
-def principal_axes_rotation(data):
-    '''Find the 3 princial axis of the pointcloud, and the rotation to align it to the x,y, and z axis.
-
-    Arguments:
-        data    pointcloud
-    Returns:
-        transformation matrix
-    '''
-    pca = PCA(n_components=data.shape[1])
-    pca.fit(data)
-    transform = np.zeros((4,4))
-    transform[:3,:3] = np.array(pca.components_)
-    transform[3,3] = 1.0
-    
-    return np.matrix(transform)
-
 def register_from_footprint(pc, footprint):
     '''Register a pointcloud by placing it in footprint. Applies dbscan first.
     Arguments:
@@ -153,18 +138,6 @@ def register_from_reference(pc, pc_ref):
     pc.transform(transform)
     
     return pc
-
-def point_in_convex_polygon(points, polygon):
-    ''' WARNING: Only works for convex polygons '''
-    mask = np.ones(len(points),dtype=np.bool)
-    for i in xrange(len(polygon)):
-        v1 = polygon[i - 1] - polygon[i]
-        v2 = points - polygon[i - 1]
-        
-        is_left = v1[0]*v2[:,1] - v1[1]*v2[:,0] >= 0
-        mask = mask & is_left
-         
-    return mask
 
 def point_in_polygon2d(points, polygon):
     p = path.Path(np.asarray(polygon)[:,:2])

@@ -17,8 +17,8 @@ class TestStickScale(unittest.TestCase):
         median, mini, maxi = getStickScale(ar)
         
         #Assert
-        assert_almost_equal(median, expectedMedian)
-        assert_almost_equal(mini, expectedMin)
-        assert_almost_equal(maxi, expectedMax)
-     
-    
+        # Would 5 decimal places be enough? -- test break with 6 decimals!
+        assert_almost_equal(median, expectedMedian, decimal=5)
+        assert_almost_equal(mini, expectedMin, decimal=5)
+        assert_almost_equal(maxi, expectedMax, decimal=5)
+

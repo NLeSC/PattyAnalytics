@@ -7,7 +7,7 @@ import pcl.registration
 import time
 import os.path
 from patty.conversions import loadLas, writeLas, loadCsvPolygon, copy_registration, extract_mask
-from patty.registration import registration
+from patty.registration import registration, principalComponents
 from patty.segmentation import dbscan
 
 def log(*args, **kwargs):
@@ -81,11 +81,11 @@ if __name__ == '__main__':
     boundary = registration.get_pointcloud_boundaries(cluster)
     
     log("Finding rotation")
-    pc_transform = registration.principal_axes_rotation(np.asarray(boundary))
+    pc_transform = principalComponents.principal_axes_rotation(np.asarray(boundary))
     log(pc_transform)
     # Rotate over Z, seems to work in our case...
     pc_transform[2] *= -1.
-    fp_transform = registration.principal_axes_rotation(footprint)
+    fp_transform = principalComponents.principal_axes_rotation(footprint)
     log(fp_transform)
     transform = np.linalg.inv(fp_transform) * pc_transform
     boundary.transform(transform)

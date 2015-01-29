@@ -2,7 +2,6 @@ import pcl
 import numpy as np
 import argparse
 from sklearn.cluster import dbscan
-from sklearn.decomposition import PCA
 from patty.segmentation.pointCloudMeasurer import measureLength
 
 def getStickScale(array, eps = 0.1, minSamples = 20):

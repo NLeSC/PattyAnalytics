@@ -15,3 +15,7 @@ System packages:
 
 - liblas
 - pcl
+
+Testing:
+
+` $ nosetests `
