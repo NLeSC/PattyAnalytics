@@ -22,5 +22,5 @@ if __name__=='__main__':
     args = parser.parse_args()
 
     ar = getInputPoinCloudAsArray(args.inFile)
-    redsAr = getReds(ar)
+    redsAr = getReds(ar, args.minr)
     saveArrayAsPointCloud(redsAr)
