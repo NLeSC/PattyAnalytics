@@ -49,10 +49,10 @@ def register_offset_scale_from_ref(pc, ref_array, ref_offset=np.zeros(3)):
     pc_array = np.asarray(pc)
     pc_min = pc_array.min(axis=0)
     pc_max = pc_array.max(axis=0)
-    
+
     pc_size = pc_max - pc_min
     ref_size = ref_max - ref_min
-    
+
     # Take the footprint as the real offset, and correct the z-offset
     # The z-offset of the footprint will be ground level, the z-offset of the
     # pointcloud will include the monuments height
@@ -61,7 +61,7 @@ def register_offset_scale_from_ref(pc, ref_array, ref_offset=np.zeros(3)):
     pc_array *= pc_registration_scale
     pc_min *= pc_registration_scale
     pc_max *= pc_registration_scale
-    
+
     conversions.register(pc, offset=ref_center - (pc_min + pc_max) / 2.0, precision=pc.precision * pc_registration_scale)
 
     return pc.offset, pc_registration_scale
@@ -70,15 +70,15 @@ def get_pointcloud_boundaries(pointcloud, angle_threshold=0.1, search_radius=0.0
     '''Find the boundary of a pointcloud.
     Arguments:
         pointcloud            Input pointcloud
-        angle_threshold=0.1 
+        angle_threshold=0.1
         search_radius=0.02
         normal_radius=0.02
     Returns:
         a pointcloud
     '''
     boundary = estimate_boundaries(pointcloud, angle_threshold=angle_threshold, search_radius=search_radius, normal_search_radius=normal_search_radius)
-    logging.info("sum",np.sum(boundary))
-    logging.info("len",len(boundary))
+    logging.info("sum {}",np.sum(boundary))
+    logging.info("len {}",len(boundary))
     return extract_mask(pointcloud, boundary)
 
 def register_from_footprint(pc, footprint):
@@ -91,10 +91,10 @@ def register_from_footprint(pc, footprint):
     '''
     logging.info("Finding largest cluster")
     pc_main = dbscan.largest_dbscan_cluster(pc, .1, 250)
-    
+
     logging.info("Detecting boundary")
     boundary = get_pointcloud_boundaries(pc_main)
-    
+
     logging.info("Finding rotation")
     pc_transform = principal_axes_rotation(np.asarray(boundary))
     fp_transform = principal_axes_rotation(footprint)
@@ -104,11 +104,11 @@ def register_from_footprint(pc, footprint):
     logging.info("Registering pointcloud to footprint")
     registered_offset, registered_scale = register_offset_scale_from_ref(boundary, footprint)
     copy_registration(pc, boundary)
-    
+
     # rotate and scale up
     transform[:3,:3] *= registered_scale
     pc.transform(transform)
-    
+
     return pc
 
 def register_from_reference(pc, pc_ref):
@@ -121,7 +121,7 @@ def register_from_reference(pc, pc_ref):
     '''
     logging.info("Finding largest cluster")
     pc_main = dbscan.largest_dbscan_cluster(pc, .1, 250)
-    
+
     logging.info("Finding rotation")
     pc_transform = principal_axes_rotation(np.asarray(pc_main))
     ref_transform = principal_axes_rotation(np.asarray(pc_ref))
@@ -131,16 +131,16 @@ def register_from_reference(pc, pc_ref):
     logging.info("Registering pointcloud to footprint")
     registered_offset, registered_scale = register_offset_scale_from_ref(pc_main, np.asarray(pc_ref), pc_ref.offset)
     copy_registration(pc, pc_main)
-    
+
     # rotate and scale up
     transform[:3,:3] *= registered_scale
     pc.transform(transform)
-    
+
     return pc
 
 def point_in_polygon2d(points, polygon):
     p = path.Path(np.asarray(polygon)[:,:2])
-    return np.array( [p.contains_point(point[:2]) for point in points], dtype=np.bool )        
+    return np.array( [p.contains_point(point[:2]) for point in points], dtype=np.bool )
 
 def intersect_polgyon2d(pc, polygon):
     in_polygon = point_in_polygon2d(np.asarray(pc) + pc.offset, polygon)
