@@ -77,8 +77,8 @@ def get_pointcloud_boundaries(pointcloud, angle_threshold=0.1, search_radius=0.0
         a pointcloud
     '''
     boundary = estimate_boundaries(pointcloud, angle_threshold=angle_threshold, search_radius=search_radius, normal_search_radius=normal_search_radius)
-    logging.info("sum {}",np.sum(boundary))
-    logging.info("len {}",len(boundary))
+    logging.info("sum %d"%np.sum(boundary))
+    logging.info("len %d"%len(boundary))
     return extract_mask(pointcloud, boundary)
 
 def register_from_footprint(pc, footprint):

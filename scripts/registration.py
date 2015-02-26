@@ -8,8 +8,9 @@ import time
 import os.path
 from patty.conversions import loadLas, writeLas, loadCsvPolygon, copy_registration, extract_mask
 from patty.registration import registration, principalComponents
-from patty.segmentation import dbscan, segment_dbscan
+from patty.segmentation import segment_dbscan
 from patty.segmentation.segRedStick import getReds
+from patty.registration.stickScale import getStickScale
 
 def log(*args, **kwargs):
     print(time.strftime("[%H:%M:%S]"), *args, **kwargs)
@@ -55,6 +56,19 @@ def bounding_box(pointcloud):
     arr = np.asarray(pointcloud)
     log(arr.min(axis=0), "to", arr.max(axis=0))
 
+def getPreferredScale(pointcloud, origScale):
+    # Get reg_scale_2 from red stick
+    redsAr = getReds(pointcloud.to_array())
+    pcReds = pcl.PointCloudXYZRGB()
+    pcReds.from_array(redsAr)
+    redScale, redConf = getStickScale(pcReds) # eps and minSamples omitted -- default values
+
+    # Choose best registered scale
+    if redConf<0.5:
+        return origScale
+    else:
+        return 1.0 / redScale
+
 if __name__ == '__main__':
     args, pointcloud, drivemap, footprint, f_out, algo = process_args()
 
@@ -81,7 +95,6 @@ if __name__ == '__main__':
     cluster = clusters[np.argmax(clustSizes)]
     print(clustSizes)
 
-
     log(cluster.offset)
     bounding_box(cluster)
 
@@ -100,20 +113,12 @@ if __name__ == '__main__':
 
     bounding_box(boundary)
 
-    # FIXME: Correlate red sticks bounding box and scale to footprint found here
-
     log("Registering pointcloud boundary to footprint")
     registered_offset, registered_scale = registration.register_offset_scale_from_ref(boundary, footprint)
     copy_registration(pointcloud, boundary)
     copy_registration(cluster, boundary)
 
-    # Get reg_scale_2 from red stick
-    redsAr = getReds(np.asarray(pointcloud))
-    pcReds = pcl.PointCloudXYZRGB()
-    pcReds.from_array(redsAr)
-    getStickScale(pcReds) # eps and minSamples omitted -- default values
-
-    # Choose best registered scale
+    registered_scale = getPreferredScale(pointcloud, registered_scale)
 
     bounding_box(boundary)
     bounding_box(pointcloud)
