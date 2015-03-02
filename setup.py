@@ -7,5 +7,5 @@ setup(name='patty',
       author='NLeSC analytics',
       author_email='j.borgorff@esciencecenter.nl',
       license='BSD',
-      packages=["patty"],
+      packages=["patty", "patty.registration", "patty.segmentation"],
       )
