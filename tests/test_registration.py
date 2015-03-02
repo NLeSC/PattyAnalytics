@@ -6,7 +6,8 @@ from patty.registration import registration
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 import numpy as np
 from patty.utils import BoundingBox
-        
+from sklearn.utils.extmath import cartesian
+
 class TestPolygon(unittest.TestCase):
     def setUp(self):
         self.poly = [[0., 0.], [1., 0.], [0.4, 0.4], [1., 1.], [0., 1.]]
@@ -62,6 +63,39 @@ class TestCenter(unittest.TestCase):
         assert_array_equal(bb_new.center, np.zeros(3), err_msg="after centering, bounding box center is not in origin")
         assert_array_equal(self.pc.offset, bb.center, err_msg="offset of centering operation is not equal to original center")
         assert_array_equal(bb.size, bb_new.size, err_msg="bounding box size changed due to translation")
+
+class TestBoundary(unittest.TestCase):
+    def setUp(self):
+        self.num_rows = 50
+        self.max = 0.1
+        self.num_points = self.num_rows * self.num_rows
+        grid = np.zeros((self.num_points, 6))
+        row = np.linspace(start=0.0, stop=self.max, num=self.num_rows)
+        grid[:,0:2] = cartesian((row, row))
+        self.pc = pcl.PointCloudXYZRGB(grid.astype(np.float32))
+        conversions.register(self.pc)
+        self.footprint_boundary = np.array([[0.0, 0.0], [0.0, self.max], [self.max, self.max], [self.max, 0.0]])
+        
+    def testBoundaries(self):
+        boundary = registration.get_pointcloud_boundaries(self.pc)
+        self.assertEqual(self.pc.size, self.num_points)
+        self.assertLess(boundary.size, self.num_points)
+        self.assertGreater(boundary.size, 0)
+        
+        small_footprint = registration.scale_points(self.footprint_boundary, 0.9)
+        large_footprint = registration.scale_points(self.footprint_boundary, 1.1)
+        
+        self.assertEqual(np.sum(registration.point_in_polygon2d(boundary, small_footprint)), 0)
+        self.assertEqual(np.sum(registration.point_in_polygon2d(boundary, large_footprint)), boundary.size)
+        self.assertGreater(np.sum(registration.point_in_polygon2d(self.pc, small_footprint)), 0)
+        self.assertEqual(np.sum(registration.point_in_polygon2d(self.pc, large_footprint)), self.pc.size)
+    
+    def testBoundariesTooSmallRadius(self):
+        boundary = registration.get_pointcloud_boundaries(self.pc, search_radius=0.0001, normal_search_radius=0.0001)
+        self.assertEqual(boundary.size, 0)
+    
+if __name__ == "__main__":
+    unittest.main()
 
 # Commented out for slowness
 # class TestRegistrationSite20(unittest.TestCase):
