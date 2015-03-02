@@ -1,12 +1,7 @@
 import pcl
 import unittest
-import numpy as np
 from patty.registration.stickScale import getStickScale
-from numpy.testing import assert_almost_equal
-from nose.tools import assert_equal
-from nose.tools import nottest
 from nose_parameterized import parameterized
-import math
 
 class TestStickScale2(unittest.TestCase):
     """ The ground truths for these tests was defined by measuring stick

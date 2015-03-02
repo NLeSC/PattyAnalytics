@@ -9,8 +9,7 @@ import os.path
 from patty.conversions import loadLas, writeLas, loadCsvPolygon, copy_registration, extract_mask
 from patty.registration import registration, principalComponents
 from patty.segmentation import segment_dbscan
-from patty.segmentation.segRedStick import getReds
-from patty.registration.stickScale import getStickScale
+from patty.registration.stickScale import getPreferredScaleFactor
 
 def log(*args, **kwargs):
     print(time.strftime("[%H:%M:%S]"), *args, **kwargs)
@@ -55,19 +54,6 @@ def process_args():
 def bounding_box(pointcloud):
     arr = np.asarray(pointcloud)
     log(arr.min(axis=0), "to", arr.max(axis=0))
-
-def getPreferredScale(pointcloud, origScale):
-    # Get reg_scale_2 from red stick
-    redsAr = getReds(pointcloud.to_array())
-    pcReds = pcl.PointCloudXYZRGB()
-    pcReds.from_array(redsAr)
-    redScale, redConf = getStickScale(pcReds) # eps and minSamples omitted -- default values
-
-    # Choose best registered scale
-    if redConf<0.5:
-        return origScale
-    else:
-        return 1.0 / redScale
 
 if __name__ == '__main__':
     args, pointcloud, drivemap, footprint, f_out, algo = process_args()
@@ -118,7 +104,7 @@ if __name__ == '__main__':
     copy_registration(pointcloud, boundary)
     copy_registration(cluster, boundary)
 
-    registered_scale = getPreferredScale(pointcloud, registered_scale)
+    registered_scale = getPreferredScaleFactor(pointcloud, registered_scale)
 
     bounding_box(boundary)
     bounding_box(pointcloud)

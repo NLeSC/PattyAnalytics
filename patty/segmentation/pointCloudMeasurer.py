@@ -8,7 +8,6 @@ def measureLength(pointCloud):
         return 0
              
     pca = PCA(n_components = 1)
-    pca.fit(pointCloud)    
-    transformed = np.dot(pointCloud, np.transpose(pca.components_))
-    length = np.max(transformed, 0)[0] - np.min(transformed, 0)[0]
-    return length
+    pca.fit(np.asarray(pointCloud))
+    primary_axis = np.dot(pointCloud, np.transpose(pca.components_))[:,0]
+    return np.max(primary_axis) - np.min(primary_axis)

@@ -36,7 +36,7 @@ def _dbscan_labels(pointcloud, epsilon, minpoints, rgb_weight=0, algorithm='ball
                        algorithm=algorithm)
     return labels
 
-def segment_dbscan(pointcloud, epsilon, minpoints, rgb_weight=0):
+def segment_dbscan(pointcloud, epsilon, minpoints, **kwargs):
     """Run the DBSCAN clustering+outlier detection algorithm on pointcloud.
 
     Parameters
@@ -46,17 +46,14 @@ def segment_dbscan(pointcloud, epsilon, minpoints, rgb_weight=0):
         Neighborhood radius for DBSCAN.
     minpoints : integer
         Minimum neighborhood density for DBSCAN.
-    rgb_weight : float, optional
-        If non-zero, cluster on color information as well as location;
-        specifies the relative weight of the RGB components to spatial
-        coordinates in distance computations.
-        (RGB values have wildly different scales than spatial coordinates.)
+    **kwargs : keyword arguments, optional
+        arguments passed to _dbscan_labels
 
     Returns
     -------
     clusters : iterable over registered PointCloud
     """
-    labels = _dbscan_labels(pointcloud, epsilon, minpoints, rgb_weight=rgb_weight)
+    labels = _dbscan_labels(pointcloud, epsilon, minpoints, **kwargs)
 
     return (extract_mask(pointcloud, labels == label)
             for label in np.unique(labels[labels != -1]))
