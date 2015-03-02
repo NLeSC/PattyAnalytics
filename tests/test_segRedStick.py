@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 import pcl
-from patty.segmentation.segRedStick import getReds
+from patty.segmentation.segRedStick import getRedMask
 from numpy.testing import assert_almost_equal
 
 class TestSegRedStick(unittest.TestCase):
@@ -13,7 +13,7 @@ class TestSegRedStick(unittest.TestCase):
         expected = 1
 
         #Act
-        reds = getReds(pc)
+        reds = getRedMask(pc)
 
         #Assert
         assert_almost_equal(sum(reds), expected)

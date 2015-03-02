@@ -2,7 +2,7 @@ import numpy as np
 from patty.segmentation.pointCloudMeasurer import measureLength
 from patty.segmentation import segment_dbscan
 from patty.conversions import extract_mask
-from patty.segmentation.segRedStick import getReds
+from patty.segmentation.segRedStick import getRedMask
 
 # according to Rens, sticks are .8m and contain 4 segments:    
 segmentsPerMeter = 5.0
@@ -37,7 +37,7 @@ def getStickScale(pc, eps = 0.1, minSamples = 20):
 
 def getPreferredScaleFactor(pointcloud, origScaleFactor):
     # Get reg_scale_2 from red stick
-    pcReds = extract_mask(pointcloud, getReds(pointcloud))
+    pcReds = extract_mask(pointcloud, getRedMask(pointcloud))
     redScale, redConf = getStickScale(pcReds) # eps and minSamples omitted -- default values
 
     # Choose best registered scale
