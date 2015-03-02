@@ -3,3 +3,4 @@ docopt
 liblas
 scikit-learn>=0.15.2
 nose_parameterized
+matplotlib
