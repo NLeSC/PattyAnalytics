@@ -81,40 +81,37 @@ if __name__ == '__main__':
     log("Detecting boundary")
     search_radius = boundary_bb.diagonal / 100.0
     boundary = registration.get_pointcloud_boundaries(cluster, search_radius=search_radius, normal_search_radius=search_radius)
+    print(len(boundary))
     
     if len(boundary) == len(cluster) or len(boundary) == 0:
         # DISCARD BOUNDARY INFORMATION
         log("Boundary information could not be retrieved")
         sys.exit(1)
     else:
-        log("Finding rotation")
+        log("Finding rotation:")
         transform = registration.find_rotation(boundary, footprint_boundary)
         log(transform)
         
-        log("Rotating pointcloud")
+        log("Rotating pointcloud...")
         boundary.transform(transform)
         cluster.transform(transform)
         pointcloud.transform(transform)
 
-        log(BoundingBox(points=boundary))
-
-        log("Shifting pointcloud boundary to footprint")
+        log("Calculating scale and shift from pointcloud boundary to footprint")
         registered_offset, registered_scale = registration.register_offset_scale_from_ref(boundary, footprint)
-        copy_registration(pointcloud, boundary)
-        copy_registration(cluster, boundary)
-        log(pointcloud.offset)
-        
-        log("Scaling pointcloud")
         registered_scale = getPreferredScaleFactor(pointcloud, registered_scale)
 
+        log("Scaling pointcloud: %f" % registered_scale)
         pc_array = np.asarray(pointcloud)
         pc_array *= registered_scale
         cluster_array = np.asarray(cluster)
         cluster_array *= registered_scale
 
-        log(BoundingBox(points=pointcloud))
-        log(BoundingBox(points=cluster))
-
+        log("Adding offset:")
+        copy_registration(pointcloud, boundary)
+        copy_registration(cluster, boundary)
+        log(pointcloud.offset)
+        
     # set the right height
     # footprint_drivemap_array = np.asarray(footprint_drivemap)[2]
     # pc_array = np.asarray(cluster)[2]
