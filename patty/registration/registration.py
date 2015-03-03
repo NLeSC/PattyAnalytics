@@ -138,6 +138,11 @@ def register_from_reference(pc, pc_ref):
 
     return pc
 
+def find_rotation(pointcloud, ref):
+    pc_transform = principal_axes_rotation(pointcloud)
+    ref_transform = principal_axes_rotation(ref)
+    return np.linalg.inv(ref_transform) * pc_transform
+
 def point_in_polygon2d(points, polygon):
     p = path.Path(np.asarray(polygon)[:,:2])
     return np.array( [p.contains_point(point[:2]) for point in points], dtype=np.bool )

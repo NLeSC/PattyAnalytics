@@ -12,6 +12,6 @@ if __name__=='__main__':
     parser.add_argument('-o','--outFile',required=True, type=str, help='Output PLY/PCD file')
     args = parser.parse_args()
 
-    pc = pcl.load(sourcePath, loadRGB=True)
+    pc = pcl.load(args.inFile, loadRGB=True)
     redPc = extract_mask(pc, getRedMask(pc))
     pcl.save(redPc, args.outFile)

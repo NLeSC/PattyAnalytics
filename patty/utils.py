@@ -9,15 +9,19 @@ class BoundingBox(object):
     def __init__(self, points=None, min=None, max=None):
         ''' Either set points or a fixed min and max'''
         if min is not None and max is not None:
-            self._min = np.asarray(min,dtype=float)
-            self._max = np.asarray(max,dtype=float)
+            self._min = np.asarray(min,dtype=np.float64)
+            self._max = np.asarray(max,dtype=np.float64)
         elif points is not None:
-            self._min = np.min(points, axis=0)
-            self._max = np.max(points, axis=0)
+            points_array = np.asarray(points)
+            self._min = points_array.min(axis=0)
+            self._max = points_array.max(axis=0)
         else:
             raise ValueError("Need to give min and max or matrix")
 
         self._reset()
+
+    def __str__(self):
+        return 'BoundingBox <' + str(self.min) + ' - ' + str(self.max) + '>'
 
     def _reset(self):
         self._center = None

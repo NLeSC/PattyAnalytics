@@ -5,11 +5,13 @@ import numpy as np
 import argparse
 import pcl.registration
 import time
-import os.path
+import os
+import sys
 from patty.conversions import loadLas, writeLas, loadCsvPolygon, copy_registration, extract_mask
 from patty.registration import registration, principalComponents
-from patty.segmentation import segment_dbscan
+from patty.segmentation import largest_dbscan_cluster
 from patty.registration.stickScale import getPreferredScaleFactor
+from patty.utils import BoundingBox
 
 def log(*args, **kwargs):
     print(time.strftime("[%H:%M:%S]"), *args, **kwargs)
@@ -51,10 +53,6 @@ def process_args():
 
     return args, pointcloud, drivemap, footprint, args.output, algo
 
-def bounding_box(pointcloud):
-    arr = np.asarray(pointcloud)
-    log(arr.min(axis=0), "to", arr.max(axis=0))
-
 if __name__ == '__main__':
     args, pointcloud, drivemap, footprint, f_out, algo = process_args()
 
@@ -65,7 +63,7 @@ if __name__ == '__main__':
     drivemap_array = np.asarray(drivemap) + drivemap.offset
 
     # Get the pointcloud of the drivemap within the footprint
-    in_footprint  = registration.point_in_polygon2d(drivemap_array, footprint)
+    in_footprint = registration.point_in_polygon2d(drivemap_array, footprint)
     footprint_drivemap = extract_mask(drivemap, in_footprint)
 
     # Get a boundary around the drivemap footprint
@@ -74,49 +72,48 @@ if __name__ == '__main__':
     footprint_boundary = extract_mask(drivemap, in_large_footprint & np.invert(in_footprint))
 
     log("Finding largest cluster")
-    # cluster = dbscan.largest_dbscan_cluster(pointcloud, .15, 250)
-    clusters = segment_dbscan(pointcloud, .15, 250)
-    clusters = [ clust for clust in clusters ]    # Make into array
-    clustSizes = [ len(clust) for clust in clusters ]
-    cluster = clusters[np.argmax(clustSizes)]
-    print(clustSizes)
-
+    cluster = largest_dbscan_cluster(pointcloud, .15, 250)
+    
     log(cluster.offset)
-    bounding_box(cluster)
+    boundary_bb = BoundingBox(points=cluster)
+    log(boundary_bb)
 
     log("Detecting boundary")
-    boundary = registration.get_pointcloud_boundaries(cluster)
+    search_radius = boundary_bb.diagonal / 100.0
+    boundary = registration.get_pointcloud_boundaries(cluster, search_radius=search_radius, normal_search_radius=search_radius)
+    
+    if len(boundary) == len(cluster) or len(boundary) == 0:
+        # DISCARD BOUNDARY INFORMATION
+        log("Boundary information could not be retrieved")
+        sys.exit(1)
+    else:
+        log("Finding rotation")
+        transform = registration.find_rotation(boundary, footprint_boundary)
+        log(transform)
+        
+        log("Rotating pointcloud")
+        boundary.transform(transform)
+        cluster.transform(transform)
+        pointcloud.transform(transform)
 
-    log("Finding rotation")
-    pc_transform = principalComponents.principal_axes_rotation(np.asarray(boundary))
-    log(pc_transform)
-    # Rotate over Z, seems to work in our case...
-    # pc_transform[2] *= -1. # FIXME: WHY? Doesn't this mirror the cloud ?
-    fp_transform = principalComponents.principal_axes_rotation(footprint)
-    log(fp_transform)
-    transform = np.linalg.inv(fp_transform) * pc_transform
-    boundary.transform(transform)
+        log(BoundingBox(points=boundary))
 
-    bounding_box(boundary)
+        log("Shifting pointcloud boundary to footprint")
+        registered_offset, registered_scale = registration.register_offset_scale_from_ref(boundary, footprint)
+        copy_registration(pointcloud, boundary)
+        copy_registration(cluster, boundary)
+        log(pointcloud.offset)
+        
+        log("Scaling pointcloud")
+        registered_scale = getPreferredScaleFactor(pointcloud, registered_scale)
 
-    log("Registering pointcloud boundary to footprint")
-    registered_offset, registered_scale = registration.register_offset_scale_from_ref(boundary, footprint)
-    copy_registration(pointcloud, boundary)
-    copy_registration(cluster, boundary)
+        pc_array = np.asarray(pointcloud)
+        pc_array *= registered_scale
+        cluster_array = np.asarray(cluster)
+        cluster_array *= registered_scale
 
-    registered_scale = getPreferredScaleFactor(pointcloud, registered_scale)
-
-    bounding_box(boundary)
-    bounding_box(pointcloud)
-    log(pointcloud.offset)
-
-    # rotate and scale up
-    transform[:3,:3] *= registered_scale
-    pointcloud.transform(transform)
-    cluster.transform(transform)
-
-    bounding_box(pointcloud)
-    bounding_box(cluster)
+        log(BoundingBox(points=pointcloud))
+        log(BoundingBox(points=cluster))
 
     # set the right height
     # footprint_drivemap_array = np.asarray(footprint_drivemap)[2]
@@ -128,5 +125,3 @@ if __name__ == '__main__':
     writeLas(f_out, pointcloud)
     writeLas(f_out + ".cluster.las", cluster)
     writeLas(f_out + ".boundary.las", boundary)
-    for i,clust in enumerate(clusters):
-        writeLas(f_out + ".cluster_" + str(i) + "_" + str(len(clust)) + ".las", clust)

@@ -9,8 +9,8 @@ def principal_axes_rotation(data):
     Returns:
         transformation matrix
     '''
-    pca = PCA(n_components=data.shape[1])
-    pca.fit(data)
+    pca = PCA(n_components=3)
+    pca.fit(np.asarray(data))
     transform = np.zeros((4,4))
     transform[:3,:3] = np.array(pca.components_)
     transform[3,3] = 1.0

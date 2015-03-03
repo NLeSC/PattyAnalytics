@@ -28,10 +28,10 @@ def getStickScale(pc, eps = 0.1, minSamples = 20):
                       than .5, the estimate can be considered useable for 
                       further calculations.
     """
-    clusters = segment_dbscan(pc, eps, minSamples, algorithm='kd-tree')
-    for cluster in clusters:
-        cluster.meter = measureLength(cluster) * segmentsPerMeter
-    scale, votes, supportingClusterCount = ransac(clusters)
+    cluster_generator = segment_dbscan(pc, eps, minSamples, algorithm='kd_tree')
+
+    sizes = [{'len': len(cluster), 'meter': measureLength(cluster) * segmentsPerMeter} for cluster in cluster_generator]
+    scale, votes, supportingClusterCount = ransac(sizes)
     confidence = getConfidenceLevel(votes, supportingClusterCount)
     return scale, confidence
 
@@ -50,23 +50,24 @@ def ransac(meterClusters, relativeInlierMargin = 0.05):
     """Very simple RANSAC implementation for finding the value with most
     support in a list of scale estimates. I.e. only one parameter is searched 
     for. The number of points in the cluster on which the scale estimate was 
-    based is taken into account."""    
-    biggestClusterSize = max(meterClusters, key=len).meter
+    based is taken into account."""
+    biggestClusterSize = max(meterClusters, key=lambda x : x['len'])['meter']
     margin = relativeInlierMargin * biggestClusterSize
     #meterClusters = sorted(meterClusters, key= lambda meterCluster : meterCluster['meter']) # only for printing within loop, doesn't change outcome.
     
     bestVoteCount = 0
     bestSupport = []
     for meterCluster in meterClusters:
-        support = [supportCluster for supportCluster in meterClusters if abs(meterCluster.meter - supportCluster.meter) < margin]
-        voteCount = sum([len(supportCluster) for supportCluster in support])
+        support = [supportCluster for supportCluster in meterClusters
+                                  if abs(meterCluster['meter'] - supportCluster['meter']) < margin]
+        voteCount = sum([supportCluster['len'] for supportCluster in support])
         #print 'cluster with meter ' + `meter` + ' has ' + `len(meterCluster['cluster'])` + ' own votes and ' + `len(support)` + ' supporting clusters totalling ' + `voteCount` + ' votes.'
         
         if voteCount > bestVoteCount:
             bestVoteCount = voteCount
             bestSupport = support
 
-    estimate = np.mean([supportCluster.meter for supportCluster in bestSupport])
+    estimate = np.mean([supportCluster['meter'] for supportCluster in bestSupport])
     return estimate, bestVoteCount, len(bestSupport)
 
 def getConfidenceLevel(votes, supportingClusterCount):
