@@ -93,3 +93,47 @@ def largest_dbscan_cluster(pointcloud, epsilon=0.1, minpoints=250, rgb_weight=0)
     # Indexes are automatically moved one back by [1:]
     max_label = np.argmax(bins[1:])
     return extract_mask(pointcloud, labels == max_label)
+
+def get_largest_dbscan_clusters(pointcloud, min_return_fragment = 0.7, epsilon=0.1, minpoints=250, rgb_weight=0):
+    '''
+    Finds the largest clusters containing together at least min_return_fragment
+    of the complete point cloud. In case less points belong to clusters, all
+    clustered points are returned.
+
+    Parameters
+    ----------
+    pointcloud : pcl.PointCloud
+    min_return_fragment : float
+        Minimum desired fragment of pointcloud to be returned
+    epsilon : float
+        Neighborhood radius for DBSCAN.
+    minpoints : integer
+        Minimum neighborhood density for DBSCAN.
+    rgb_weight : float, optional
+        If non-zero, cluster on color information as well as location;
+        specifies the relative weight of the RGB components to spatial
+        coordinates in distance computations.
+        (RGB values have wildly different scales than spatial coordinates.)
+
+    Returns
+    -------
+    cluster: registered pointcloud of the largest cluster found by dbscan
+    '''
+    labels = [np.int64(i) for i in _dbscan_labels(pointcloud, epsilon, minpoints, rgb_weight=rgb_weight)]    
+    selected = get_top_labels(labels, min_return_fragment)
+    mask = [l in selected for l in labels]
+    return extract_mask(pointcloud, mask)
+    
+def get_top_labels(labels, min_return_fragment):
+    bins = np.bincount([i + 1 for i in labels])
+    labelbinpairs = [(label, bins[label +1]) for label in np.unique(labels)]
+    labelbinpairs.sort(key = lambda x : x[1], reverse=False)
+    total = len(labels)
+    minimum = min_return_fragment * total
+    selected = []
+    selectedcount = 0
+    while((selectedcount < minimum) & (len(labelbinpairs) > 0)):
+        label, count = labelbinpairs.pop()
+        selected.append(label)
+        selectedcount += count
+    return selected

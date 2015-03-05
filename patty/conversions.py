@@ -114,7 +114,8 @@ def loadCsvPolygon(csvFile, delimiter=','):
 
 def extract_mask(pointcloud, mask):
     pointcloud_new = pointcloud.extract(np.where(mask)[0])
-    copy_registration(pointcloud_new, pointcloud)
+    if(is_registered(pointcloud)):
+        copy_registration(pointcloud_new, pointcloud)
     return pointcloud_new
 
 def writeLas(lasFile, pc):
