@@ -9,7 +9,7 @@ import os
 import sys
 from patty.conversions import loadLas, writeLas, loadCsvPolygon, copy_registration, extract_mask
 from patty.registration import registration, principalComponents
-from patty.segmentation import largest_dbscan_cluster
+from patty.segmentation import get_largest_dbscan_clusters
 from patty.registration.stickScale import getPreferredScaleFactor
 from patty.utils import BoundingBox
 
@@ -72,7 +72,7 @@ if __name__ == '__main__':
     footprint_boundary = extract_mask(drivemap, in_large_footprint & np.invert(in_footprint))
 
     log("Finding largest cluster")
-    cluster = largest_dbscan_cluster(pointcloud, .15, 250)
+    cluster = get_largest_dbscan_clusters(pointcloud, 0.7, .15, 250)
     
     log(cluster.offset)
     boundary_bb = BoundingBox(points=cluster)
