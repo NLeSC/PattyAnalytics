@@ -32,17 +32,24 @@ class TestWriteLas(unittest.TestCase):
             "  UNIT[\"DMSH\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9108\"]],"
             "  AXIS[\"Lat\",NORTH],  AXIS[\"Long\",EAST],"
             "  AUTHORITY[\"EPSG\",\"4326\"]]")
-        conversions.register(self.pc, offset=[2., 1., 15.],crs_wkt=self.wkt)
+        conversions.register(self.pc, offset=[2., 1., 15.],crs_wkt=self.wkt, precision=[0.1, 0.1, 0.1])
         
     def testWriteRead(self):
         ''' Test writing a pointcloud to LAS and reading it in to yield the same data '''
         wfname = mktemp()
-        conversions.writeLas(wfname, self.pc)
+        header = conversions.makeLasHeader(self.pc)
+        assert_array_almost_equal(header.min, [1+2, 1+1, 1+15])
+        assert_array_almost_equal(np.asarray(self.pc).min(axis=0) + self.pc.offset, header.min)
+        assert_array_almost_equal(header.max, [3+2, 3+1, 3+15])
+        assert_array_almost_equal(np.asarray(self.pc).max(axis=0) + self.pc.offset, header.max)
+        conversions.writeLas(wfname, self.pc, header)
         
         assert os.path.exists(wfname), "temporary test file could not be written"
         pc_new = conversions.loadLas(wfname)
         os.remove(wfname)
         
+        assert_array_almost_equal(np.asarray(pc_new).min(axis=0) + pc_new.offset, header.min)
+        assert_array_almost_equal(np.asarray(pc_new).max(axis=0) + pc_new.offset, header.max)
         assert_array_almost_equal(np.asarray(self.pc) + self.pc.offset, np.asarray(pc_new) + pc_new.offset, err_msg='points differ')
         assert_array_equal(self.pc.to_array()[:,3:6], pc_new.to_array()[:,3:6], err_msg='colors differ')
         assert pc_new.crs_wkt == self.wkt, "Projections well-known text is not maintained"
@@ -55,10 +62,11 @@ class TestExtractMask(unittest.TestCase):
         conversions.register(self.pc, offset=self.offset)
     
     def testExtractMask(self):
+        assert_array_equal(self.pc[0], [1., 1., 1., 1., 120., 13.], err_msg="data not represented in pointcloud")
         pc_first = conversions.extract_mask(self.pc, [True, False])
         self.assertEquals(pc_first.size, 1)
-        assert_array_equal(pc_first[0], [1., 1., 1., 1., 120., 13.])
-        self.assertEquals(self.pc.size, 2)
+        assert_array_equal(pc_first[0], [1., 1., 1., 1., 120., 13.], err_msg="original point modified")
+        self.assertEquals(self.pc.size, 2, "original pointcloud modified")
         assert_array_equal(pc_first.offset, self.offset)
         
         pc_second = conversions.extract_mask(self.pc, [False, True])
