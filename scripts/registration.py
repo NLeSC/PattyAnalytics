@@ -67,7 +67,7 @@ def registrationPipeline(sourceLas, drivemapLas, footprintCsv, f_out):
 
     log("Finding largest cluster")
     cluster = get_largest_dbscan_clusters(pointcloud, 0.7, .15, 250)
-    
+
     log(cluster.offset)
     boundary_bb = BoundingBox(points=cluster)
     log(boundary_bb)
@@ -75,11 +75,12 @@ def registrationPipeline(sourceLas, drivemapLas, footprintCsv, f_out):
     log("Detecting boundary")
     search_radius = boundary_bb.diagonal / 100.0
     boundary = registration.get_pointcloud_boundaries(cluster, search_radius=search_radius, normal_search_radius=search_radius)
-    print(len(boundary))
 
     if len(boundary) == len(cluster) or len(boundary) == 0:
         # DISCARD BOUNDARY INFORMATION
         log("Boundary information could not be retrieved")
+        print('BoundaryLen:',len(boundary))
+        print('ClusterLen:',len(cluster))
         sys.exit(1)
     else:
         log("Finding rotation:")

@@ -4,28 +4,28 @@ from patty.segmentation import segment_dbscan
 from patty.conversions import extract_mask
 from patty.segmentation.segRedStick import getRedMask
 
-# according to Rens, sticks are .8m and contain 4 segments:    
+# according to Rens, sticks are .8m and contain 4 segments:
 segmentsPerMeter = 5.0
 
 def getStickScale(pc, eps = 0.1, minSamples = 20):
-    """Takes a point cloud, as a numpy array, containing only the red segments 
+    """Takes a point cloud, as a numpy array, containing only the red segments
     of scale sticks and returns the scale estimation with most support.
-    Method: 
+    Method:
     pointcloud --dbscan--> clusters --lengthEstimation--> lengths --ransac--> best length
-    
+
     Arguments:
         pc            Point cloud containing only measuring stick segments
                       (only the red, or only the white parts)
-        eps           DBSCAN parameter: Maximum distance between two samples 
+        eps           DBSCAN parameter: Maximum distance between two samples
                       for them to be considered as in the same neighborhood.
-        minSamples    DBSCAN parameter: The number of samples in a neighborhood 
+        minSamples    DBSCAN parameter: The number of samples in a neighborhood
                       for a point to be considered as a core point.
     Returns:
         scale         Estimate of the size of one actual meter in expressed
                       in units of the pointcloud's coordinates.
         confidence    A number expressing the reliability of the estimated
                       scale. Confidence is in [0, 1]. With a confidence greater
-                      than .5, the estimate can be considered useable for 
+                      than .5, the estimate can be considered useable for
                       further calculations.
     """
     cluster_generator = segment_dbscan(pc, eps, minSamples, algorithm='kd_tree')
@@ -38,6 +38,8 @@ def getStickScale(pc, eps = 0.1, minSamples = 20):
 def getPreferredScaleFactor(pointcloud, origScaleFactor):
     # Get reg_scale_2 from red stick
     pcReds = extract_mask(pointcloud, getRedMask(pointcloud))
+    if len(pcReds)==0:
+        return origScaleFactor
     redScale, redConf = getStickScale(pcReds) # eps and minSamples omitted -- default values
 
     # Choose best registered scale
@@ -48,13 +50,13 @@ def getPreferredScaleFactor(pointcloud, origScaleFactor):
 
 def ransac(meterClusters, relativeInlierMargin = 0.05):
     """Very simple RANSAC implementation for finding the value with most
-    support in a list of scale estimates. I.e. only one parameter is searched 
-    for. The number of points in the cluster on which the scale estimate was 
+    support in a list of scale estimates. I.e. only one parameter is searched
+    for. The number of points in the cluster on which the scale estimate was
     based is taken into account."""
     biggestClusterSize = max(meterClusters, key=lambda x : x['len'])['meter']
     margin = relativeInlierMargin * biggestClusterSize
     #meterClusters = sorted(meterClusters, key= lambda meterCluster : meterCluster['meter']) # only for printing within loop, doesn't change outcome.
-    
+
     bestVoteCount = 0
     bestSupport = []
     for meterCluster in meterClusters:
@@ -62,7 +64,7 @@ def ransac(meterClusters, relativeInlierMargin = 0.05):
                                   if abs(meterCluster['meter'] - supportCluster['meter']) < margin]
         voteCount = sum([supportCluster['len'] for supportCluster in support])
         #print 'cluster with meter ' + `meter` + ' has ' + `len(meterCluster['cluster'])` + ' own votes and ' + `len(support)` + ' supporting clusters totalling ' + `voteCount` + ' votes.'
-        
+
         if voteCount > bestVoteCount:
             bestVoteCount = voteCount
             bestSupport = support
@@ -78,13 +80,13 @@ def getConfidenceLevel(votes, supportingClusterCount):
     upperLimitVotes = 500.0
     lowerLimitVotes = 0.0
     voteBasedConfidence = getScoreInInterval(votes, lowerLimitVotes, upperLimitVotes)
-    
+
     # Higher number of supporting clusters tells us multiple independent sources gave this estimate
     upperLimitClusters = 3.0
     lowerLimitClusters = 0.0
     clusterBasedConfidence = getScoreInInterval(supportingClusterCount, lowerLimitClusters, upperLimitClusters)
-    
+
     return min(voteBasedConfidence, clusterBasedConfidence)
-    
+
 def getScoreInInterval(value, lowerLimit, upperLimit):
     return (min(value, upperLimit) -lowerLimit) / (upperLimit - lowerLimit)

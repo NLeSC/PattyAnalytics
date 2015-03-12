@@ -98,31 +98,88 @@ class TestBoundary(unittest.TestCase):
 
 class TestRegistrationPipeline(unittest.TestCase):
     def setUp(self):
-        self.sourceLas = 'testSource.las'
         self.drivemapLas = 'testDriveMap.las'
-        self.footprintCsv = 'testFootprint.las'
+        self.sourceLas = 'testSource.las'
+        self.footprintCsv = 'testFootprint.csv'
         self.foutLas = 'testOutput.las'
 
-        self.num_rows = 50
-        self.max = 0.1
-        self.num_points = self.num_rows * self.num_rows
-        grid = np.zeros((self.num_points, 6))
-        row = np.linspace(start=0.0, stop=self.max, num=self.num_rows)
-        grid[:,0:2] = cartesian((row, row))
-        pc = pcl.PointCloudXYZRGB(grid.astype(np.float32))
-        conversions.writeLas(self.drivemapLas, pc)
+        self.min = -10
+        self.max =  10
+        self.num_rows = 20
 
-        # conversions.register(self.pc)
-        # self.footprint_boundary = np.array([[0.0, 0.0], [0.0, self.max], [self.max, self.max], [self.max, 0.0]])
+        # Create plane with a box
+        cubePct = 0.5
+        cubeRows = np.round(self.num_rows * cubePct)
+        cubeMin = self.min * cubePct
+        cubeMax = self.max * cubePct
+        cubeOffset = [ 0, 0, (cubeMax-cubeMin)/2 ]
+        denseCubeOffset = [ 3, 2, 1 + (cubeMax-cubeMin)/2 ]
+
+        plane_row = np.linspace(start=self.min, stop=self.max, num=self.num_rows)
+        planePoints = cartesian((plane_row, plane_row, 0))
+
+        cubePoints = self.buildCube(cubeMin, cubeMax, cubeRows, cubeOffset)
+
+        allPoints = np.vstack([ planePoints, cubePoints ])
+
+        plane_grid = np.zeros((allPoints.shape[0], 6))
+        plane_grid[:,0:3] = allPoints
+
+        self.drivemap_pc = pcl.PointCloudXYZRGB(plane_grid.astype(np.float32))
+        conversions.register(self.drivemap_pc)
+        conversions.writeLas(self.drivemapLas, self.drivemap_pc)
+
+        # Create a simple box
+        denseCubePoints = self.buildCube(cubeMin, cubeMax, cubeRows * 4, denseCubeOffset)
+
+        denseGrid = np.zeros((denseCubePoints.shape[0], 6))
+        denseGrid[:,0:3] = denseCubePoints
+
+        self.source_pc = pcl.PointCloudXYZRGB(denseGrid.astype(np.float32))
+        conversions.register(self.source_pc)
+        conversions.writeLas(self.sourceLas, self.source_pc)
+
+        # Create footprint of the box
+        footprint = [
+            [ cubeMin, cubeMin, 0 ],
+            [ cubeMin, cubeMax, 0 ],
+            [ cubeMax, cubeMax, 0 ],
+            [ cubeMax, cubeMin, 0 ],
+            [ cubeMin, cubeMin, 0 ],
+        ]
+        np.savetxt(self.footprintCsv, footprint, fmt='%.3f', delimiter=',')
+
+    def buildCube(self, cubeMin, cubeMax, cubeRows, cubeOffset):
+        cube_row = np.linspace(start=cubeMin, stop=cubeMax, num=cubeRows)
+        #cubePoints = cartesian((cube_row, cube_row, cube_row))
+        cubeWall0 = cartesian((cube_row, cube_row, cubeMin))
+        cubeWall1 = cartesian((cube_row, cube_row, cubeMax))
+        cubeWall2 = cartesian((cube_row, cubeMin, cube_row))
+        cubeWall3 = cartesian((cube_row, cubeMax, cube_row))
+        cubeWall4 = cartesian((cubeMin, cube_row, cube_row))
+        cubeWall5 = cartesian((cubeMax, cube_row, cube_row))
+
+        cubePoints = np.vstack([ cubeWall0, cubeWall1, cubeWall2,
+                                cubeWall3, cubeWall4, cubeWall5 ])
+        cubePoints += np.random.rand(cubePoints.shape[0], cubePoints.shape[1])*0.1
+
+        for i,offset in enumerate(cubeOffset):
+            cubePoints[:,i] += offset
+        return cubePoints
 
     def testPipeline(self):
-        # Create a simple box
-        # Create plane
-        # Create footprint of the box
         # Register box on surface
+        registrationPipeline(self.sourceLas,self.drivemapLas,
+                             self.footprintCsv,self.foutLas)
+        registered_pc = conversions.loadLas(self.foutLas)
 
-        # registrationPipeline(sourceLas, drivemapLas, footprintCsv, foutLas)
-        pass
+        target = np.asarray(self.source_pc)
+        actual = np.asarray(registered_pc)
+
+        # Assert
+        assert_array_almost_equal(target.min(axis=0), actual.min(axis=0), err_msg="Lower bound of registered cloud does not match expectation")
+        assert_array_almost_equal(target.max(axis=0), actual.max(axis=0), err_msg="Upper bound of registered cloud does not match expectation")
+        assert_array_almost_equal(target.mean(axis=0), actual.mean(axis=0), err_msg="Middle point of registered cloud does not match expectation")
 
 if __name__ == "__main__":
     unittest.main()
