@@ -25,8 +25,10 @@ def loadLas(lasFile):
     The offset is the offset of the center point of the pointcloud
     The scale is the scale of the pointcloud."""
 
+    print "--READING--", lasFile, "---------"
+
+    las = None
     try:
-        print "--READING--", lasFile, "---------"
         las = liblas.file.File(lasFile)
         nPoints = las.header.get_count()
         data = np.zeros((nPoints, 6), dtype=np.float64)
@@ -44,7 +46,8 @@ def loadLas(lasFile):
 
         return pc
     finally:
-        las.close()
+        if las is not None:
+            las.close()
 
 def is_registered(pointcloud):
     """Returns True when a pointcleoud is registerd"""
@@ -114,7 +117,7 @@ def loadCsvPolygon(csvFile, delimiter=','):
 
 def extract_mask(pointcloud, mask):
     pointcloud_new = pointcloud.extract(np.where(mask)[0])
-    if(is_registered(pointcloud)):
+    if is_registered(pointcloud):
         copy_registration(pointcloud_new, pointcloud)
     return pointcloud_new
 
