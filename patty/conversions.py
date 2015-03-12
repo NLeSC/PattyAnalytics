@@ -118,44 +118,52 @@ def extract_mask(pointcloud, mask):
         copy_registration(pointcloud_new, pointcloud)
     return pointcloud_new
 
-def writeLas(lasFile, pc):
+def makeLasHeader(pc):
+    f = liblas.schema.Schema()
+    f.time = False
+    f.color = True
+
+    h = liblas.header.Header()
+    h.schema = f
+    h.dataformat_id = 3
+    h.major_version = 1
+    h.minor_version = 2
+
+    register(pc)
+    # FIXME: need extra precision to reduce floating point errors. We don't
+    # know exactly why this works. It might reduce precision on the top of
+    # the float, but reduces an error of one bit for the last digit.
+    h.scale = np.asarray(pc.precision)*0.5
+    h.offset = pc.offset
+
+    if pc.crs_wkt != '':
+        h.srs.set_wkt(pc.crs_wkt)
+    if pc.crs_proj4 != '':
+        h.srs.set_proj4(pc.crs_proj4)
+    if pc.crs_verticalcs != '':
+        h.srs.set_verticalcs(pc.crs_verticalcs)
+
+    pc_array = np.asarray(pc)
+    h.min = pc_array.min(axis=0) + h.offset
+    h.max = pc_array.max(axis=0) + h.offset
+    return h
+
+def writeLas(lasFile, pc, header=None):
     """Write a pointcloud to a LAS file
     Arguments:
         lasFile  filename
         pc       Pointclout to write
     """
+    print "--WRITING--", lasFile, "--------"
+    if header is None:
+        header = makeLasHeader(pc)
 
+    precise_points = np.array(pc, dtype=np.float64)
+    precise_points /= header.scale
+    
+    las = None
     try:
-        print "--WRITING--", lasFile, "--------"
-        f = liblas.schema.Schema()
-        f.time = False
-        f.color = True
-
-        h = liblas.header.Header()
-        h.schema = f
-        h.dataformat_id = 3
-        h.major_version = 1
-        h.minor_version = 2
-
-        register(pc)
-        # FIXME: need extra precision to reduce floating point errors. We don't
-        # know exactly why this works. It might reduce precision on the top of
-        # the float, but reduces an error of one bit for the last digit.
-        h.scale = np.asarray(pc.precision)*0.5
-        h.offset = pc.offset
-
-        if pc.crs_wkt != '':
-            h.srs.set_wkt(pc.crs_wkt)
-        if pc.crs_proj4 != '':
-            h.srs.set_proj4(pc.crs_proj4)
-        if pc.crs_verticalcs != '':
-            h.srs.set_verticalcs(pc.crs_verticalcs)
-
-        precise_points = np.array(pc, dtype=np.float64)
-        h.min = precise_points.min(axis=0) + h.offset
-        h.max = precise_points.max(axis=0) + h.offset
-        precise_points /= h.scale
-        las = liblas.file.File(lasFile, mode="w", header=h)
+        las = liblas.file.File(lasFile, mode="w", header=header)
 
         for i in xrange(pc.size):
             pt = liblas.point.Point()
@@ -164,4 +172,5 @@ def writeLas(lasFile, pc):
             pt.color = liblas.color.Color( red = int(r) * 256, green = int(g) * 256, blue = int(b) * 256 )
             las.write(pt)
     finally:
-        las.close()
+        if las is not None:
+            las.close()
