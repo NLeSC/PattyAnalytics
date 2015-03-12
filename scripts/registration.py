@@ -9,7 +9,7 @@ import os
 import sys
 from patty.conversions import loadLas, writeLas, loadCsvPolygon, copy_registration, extract_mask
 from patty.registration import registration, principalComponents
-from patty.segmentation import get_largest_dbscan_clusters
+from patty.segmentation.dbscan import get_largest_dbscan_clusters
 from patty.registration.stickScale import getPreferredScaleFactor
 from patty.utils import BoundingBox
 
