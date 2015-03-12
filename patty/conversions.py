@@ -152,9 +152,9 @@ def writeLas(lasFile, pc):
             h.srs.set_verticalcs(pc.crs_verticalcs)
 
         precise_points = np.array(pc, dtype=np.float64)
-        precise_points /= h.scale
         h.min = precise_points.min(axis=0) + h.offset
         h.max = precise_points.max(axis=0) + h.offset
+        precise_points /= h.scale
         las = liblas.file.File(lasFile, mode="w", header=h)
 
         for i in xrange(pc.size):
