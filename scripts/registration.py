@@ -1,6 +1,17 @@
 #!/usr/bin/env python2.7
+"""Registration script.
 
+Usage: registration.py [-h] <SOURCE> <DRIVEMAP> <FOOTPRINT> <OUTPUT>
+
+Options:
+  SOURCE     Source LAS file
+  DRIVEMAP   Target LAS file to map source to
+  FOOTPRINT  Footprint for the source LAS file
+  OUTPUT     File to write output LAS to
+"""
 from __future__ import print_function
+from docopt import docopt
+
 import numpy as np
 import argparse
 import pcl.registration
@@ -18,43 +29,26 @@ def log(*args, **kwargs):
 
 def process_args():
     """ Parse arguments from the command-line using argparse """
+    args = docopt(__doc__)
 
-    # Implemented registration functions
-    funcs = {
-        'icp': pcl.registration.icp,
-        'gicp': pcl.registration.gicp,
-        'icp_nl': pcl.registration.icp_nl,
-        'ia_ransac': pcl.registration.ia_ransac
-    }
+    sourceLas    = args['<SOURCE>']
+    drivemapLas  = args['<DRIVEMAP>']
+    footprintCsv = args['<FOOTPRINT>']
+    foutLas      = args['<OUTPUT>']
 
-    parser = argparse.ArgumentParser(description='Registration for a LAS point clouds to another')
-    parser.add_argument('-f','--function', choices=funcs.keys(), help='Advanced registration algorithm to run. Choose between gicp, icp, icp_nl, and ia_ransac.')
-    parser.add_argument('source', metavar="SOURCE", help="Source LAS file")
-    parser.add_argument('drivemap', metavar="DRIVEMAP", help="Target LAS file to map source to")
-    parser.add_argument('footprint', metavar="FOOTPRINT", help="Footprint for the source LAS file")
-    parser.add_argument('output', metavar="OUTPUT", help="File to write output LAS to")
+    return sourceLas, drivemapLas, footprintCsv, foutLas
 
-    args = parser.parse_args()
+def registrationPipeline(sourceLas, drivemapLas, footprintCsv, f_out):
+    """Single function wrapping whole script, so it can be unit tested"""
+    assert os.path.exists(sourceLas),sourceLas + ' does not exist'
+    assert os.path.exists(drivemapLas),drivemapLas + ' does not exist'
+    assert os.path.exists(footprintCsv),footprintCsv + ' does not exist'
 
-    assert os.path.exists(args.source)
-    assert os.path.exists(args.drivemap)
-    assert os.path.exists(args.footprint)
-
-    log("reading source", args.source)
-    pointcloud = loadLas(args.source)
-    log("reading drivemap ", args.drivemap)
-    drivemap = loadLas(args.drivemap)
-    footprint = loadCsvPolygon(args.footprint)
-
-    if args.function is None:
-        algo = None
-    else:
-        algo = funcs[args.function]
-
-    return args, pointcloud, drivemap, footprint, args.output, algo
-
-if __name__ == '__main__':
-    args, pointcloud, drivemap, footprint, f_out, algo = process_args()
+    log("reading source", sourceLas)
+    pointcloud = loadLas(sourceLas)
+    log("reading drivemap ", drivemapLas)
+    drivemap = loadLas(drivemapLas)
+    footprint = loadCsvPolygon(footprintCsv)
 
     # Footprint is off by some meters
     footprint[:,0] += -1.579381346780
@@ -73,7 +67,7 @@ if __name__ == '__main__':
 
     log("Finding largest cluster")
     cluster = largest_dbscan_cluster(pointcloud, .15, 250)
-    
+
     log(cluster.offset)
     boundary_bb = BoundingBox(points=cluster)
     log(boundary_bb)
@@ -82,7 +76,7 @@ if __name__ == '__main__':
     search_radius = boundary_bb.diagonal / 100.0
     boundary = registration.get_pointcloud_boundaries(cluster, search_radius=search_radius, normal_search_radius=search_radius)
     print(len(boundary))
-    
+
     if len(boundary) == len(cluster) or len(boundary) == 0:
         # DISCARD BOUNDARY INFORMATION
         log("Boundary information could not be retrieved")
@@ -91,7 +85,7 @@ if __name__ == '__main__':
         log("Finding rotation:")
         transform = registration.find_rotation(boundary, footprint_boundary)
         log(transform)
-        
+
         log("Rotating pointcloud...")
         boundary.transform(transform)
         cluster.transform(transform)
@@ -111,7 +105,7 @@ if __name__ == '__main__':
         copy_registration(pointcloud, boundary)
         copy_registration(cluster, boundary)
         log(pointcloud.offset)
-        
+
     # set the right height
     # footprint_drivemap_array = np.asarray(footprint_drivemap)[2]
     # pc_array = np.asarray(cluster)[2]
@@ -122,3 +116,7 @@ if __name__ == '__main__':
     writeLas(f_out, pointcloud)
     writeLas(f_out + ".cluster.las", cluster)
     writeLas(f_out + ".boundary.las", boundary)
+
+if __name__ == '__main__':
+    sourceLas, drivemapLas, footprintCsv, foutLas = process_args()
+    registrationPipeline(sourceLas, drivemapLas, footprintCsv, foutLas)
