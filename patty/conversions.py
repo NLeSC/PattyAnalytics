@@ -52,8 +52,11 @@ def save(cloud, path, format=None, binary=False):
         binary: whether PLY and PCD files are saved in binary format.
     """
     if format == 'las' or file.endswith('.las'):
-        writeLas(cloud, path)
+        writeLas(path, cloud)
     else:
+        if is_registered(cloud) and cloud.offset != np.zeros(3):
+            cloud_array = np.asarray(cloud)
+            cloud_array += cloud.offset
         pcl.save(cloud, path, format=format, binary=binary)
 
 
