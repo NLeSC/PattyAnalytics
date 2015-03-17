@@ -1,6 +1,7 @@
 Cython>=0.21.2
 docopt
 liblas
-scikit-learn>=0.15.2
 nose_parameterized
 matplotlib
+git+https://github.com/larsmans/python-pcl.git@scrum
+scikit-learn>=0.15.2
