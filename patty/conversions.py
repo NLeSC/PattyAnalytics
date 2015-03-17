@@ -16,15 +16,51 @@ import pcl
 import numpy as np
 from patty.utils import BoundingBox
 
+def load(file, format=None, loadRGB=False):
+    """ Read a pointcloud file.
+    
+    Supports LAS files, and lets PCD and PLY files be read by python-pcl.
+
+    Arguments:
+        file: file to load
+        format: "PLY", "PCD", "LAS" or None. With none, it detects the filetype
+             from the file extension.
+        loadRGB: whether RGB is loaded for PLY and PCD files. For LAS files RGB
+            is always read.
+    Returns:
+        registered pointcloud"""
+    if format == 'las' or file.endswith('.las'):
+        return loadLas(file)
+    else:
+        pc = pcl.load(file, format=format, loadRGB=loadRGB)
+        register(pc)
+        return pc
+    
+def save(cloud, path, format=None, binary=False):
+    """ Save a pointcloud to file.
+    
+    Supports LAS files, and lets PCD and PLY files be saved by python-pcl.
+
+    Arguments:
+        cloud: pcl.PointCloud/PointCloudXYZRGB
+        file: file to save
+        format: "PLY", "PCD", "LAS" or None. With none, it detects the filetype
+             from the file extension.
+        binary: whether PLY and PCD files are saved in binary format.
+    """
+    if format == 'las' or file.endswith('.las'):
+        writeLas(cloud, path)
+    else:
+        pcl.save(cloud, path, format=format, binary=binary)
+
 def loadLas(lasFile):
     """ Read a LAS file
     Returns:
-        pointcloudxyzrgb, offset, scale)
+        registered pointcloudxyzrgb
 
-    The pointcloud has color and XYZ coordinates
-    The offset is the offset of the center point of the pointcloud
-    The scale is the scale of the pointcloud."""
-
+    The pointcloud has color and XYZ coordinates, and the offset and precision
+    set."""
+    
     print "--READING--", lasFile, "---------"
 
     las = None
