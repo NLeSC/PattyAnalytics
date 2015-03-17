@@ -3,6 +3,7 @@ import pcl
 
 from patty import conversions
 from patty.registration import registration
+from patty.registration.registration import point_in_polygon2d
 from patty.utils import BoundingBox
 from scripts.registration import registrationPipeline
 
@@ -21,7 +22,7 @@ class TestPolygon(unittest.TestCase):
 
     def testInPolygon(self):
         ''' Test whether the point_in_polygon2d behaves as expected. '''
-        in_polygon = registration.point_in_polygon2d(self.points, self.poly)
+        in_polygon = point_in_polygon2d(self.points, self.poly)
         assert_array_equal(in_polygon, [False, True, False, False],
                            "points expected in polygon not matched")
 
@@ -29,15 +30,14 @@ class TestPolygon(unittest.TestCase):
         ''' Test whether scaling up the polygon works '''
         newpoly = registration.scale_points(self.poly, 1.3)
         self.assertEqual(len(newpoly), len(self.poly),
-                         "number of polygon points is altered when scaling")
+                           "number of polygon points is altered when scaling")
         assert_array_equal(self.poly[0], [.0, .0],
-                           "original polygon is altered when scaling")
+                   err_msg="original polygon is altered when scaling")
         assert_array_less(newpoly[0], self.poly[0],
-                          "small polygon points do not shrink when scaling up")
-        assert_array_less(newpoly[3], self.poly[3],
-                          "large polygon points do not grow when scaling up")
-        in_scaled_polygon = registration.point_in_polygon2d(
-            self.points, newpoly)
+                   err_msg="small polygon points do not shrink when scaling up")
+        assert_array_less(self.poly[3], newpoly[3],
+                   err_msg="large polygon points do not grow when scaling up")
+        in_scaled_polygon = point_in_polygon2d(self.points, newpoly)
         assert_true(np.all(in_scaled_polygon),
                     "not all points are in polygon when scaling up")
 
@@ -59,9 +59,9 @@ class TestCutoutPointCloud(unittest.TestCase):
         self.assertEqual(pc_fp.size, 1,
                          "number of points expected in polygon not matched")
         assert_array_almost_equal(pc_fp[0], [0.5, 0.2, 0., 0., 0., 0.],
-                                  "point that should be matched was modified")
+                      err_msg="point that should be matched was modified")
         assert_array_equal(pc_fp.offset, self.offset,
-                           "offset changed by intersection with polygon")
+                      err_msg="offset changed by intersection with polygon")
 
 
 class TestCenter(unittest.TestCase):
@@ -83,12 +83,12 @@ class TestCenter(unittest.TestCase):
         registration.center_boundingbox(self.pc)
         bb_new = BoundingBox(points=np.asarray(self.pc))
         assert_array_equal(bb_new.center, np.zeros(3),
-                           "after centering, BoundingBox center not in origin")
+                    err_msg="after centering, BoundingBox center not in origin")
         assert_array_equal(self.pc.offset, bb.center,
-                           "offset of centering operation not equal to"
-                           " original center")
+                    err_msg="offset of centering operation not equal to"
+                            " original center")
         assert_array_equal(bb.size, bb_new.size,
-                           "bounding box size changed due to translation")
+                    err_msg="bounding box size changed due to translation")
 
 
 class TestBoundary(unittest.TestCase):
@@ -221,11 +221,11 @@ class TestRegistrationPipeline(unittest.TestCase):
         actual = np.asarray(registered_pc)
 
         assert_array_almost_equal(target.min(axis=0), actual.min(axis=0),
-                                  "Lower bound of registered cloud does not"
+                          err_msg="Lower bound of registered cloud does not"
                                   " match expectation")
         assert_array_almost_equal(target.max(axis=0), actual.max(axis=0),
-                                  "Upper bound of registered cloud does not"
+                          err_msg="Upper bound of registered cloud does not"
                                   " match expectation")
         assert_array_almost_equal(target.mean(axis=0), actual.mean(axis=0),
-                                  "Middle point of registered cloud does not"
+                          err_msg="Middle point of registered cloud does not"
                                   " match expectation")
