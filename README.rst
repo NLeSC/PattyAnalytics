@@ -1,7 +1,13 @@
-|Travis|_
+|Travis|_ |Quality-score|_ |Coverage|_
 
 .. |Travis| image:: https://api.travis-ci.org/NLeSC/PattyAnalytics.png?branch=master
 .. _Travis: https://travis-ci.org/NLeSC/PattyAnalytics
+
+.. |Quality-score| image:: https://scrutinizer-ci.com/g/NLeSC/PattyAnalytics/badges/quality-score.png?b=master
+.. _Quality-score: https://scrutinizer-ci.com/g/NLeSC/PattyAnalytics/
+
+.. |Coverage| image:: https://scrutinizer-ci.com/g/NLeSC/PattyAnalytics/badges/coverage.png?b=master
+.. _Coverage: https://scrutinizer-ci.com/g/NLeSC/PattyAnalytics/
 
 Patty Analytics
 ===============
