@@ -23,6 +23,7 @@ class TestPrincipalComponentRotation(unittest.TestCase):
 
         writeLas(fileOut, pc)
         logging.info(
-            'Point cloud has been rotated to match PCA alignment. You can view the results using CloudCompare.')
+            'Point cloud has been rotated to match PCA alignment.\n'
+            'You can view the results using CloudCompare.')
         logging.info('  Original point cloud : ' + fileIn)
         logging.info('  Segmented point cloud: ' + fileOut)

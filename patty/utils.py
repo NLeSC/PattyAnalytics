@@ -6,11 +6,13 @@ class BoundingBox(object):
 
     Center, size and diagonal are updated when the minimum or maximum are
     updated.
+
+    Constructor usage: either set points (any object that is converted to an
+    NxD array by np.asarray, with D the number of dimensions) or a fixed min
+    and max.
     '''
 
     def __init__(self, points=None, min=None, max=None):
-        ''' Either set points (any object that is converted to an NxD array by
-            np.asarray, with D the number of dimensions) or a fixed min and max'''
         if min is not None and max is not None:
             self._min = np.asarray(min, dtype=np.float64)
             self._max = np.asarray(max, dtype=np.float64)
@@ -24,7 +26,7 @@ class BoundingBox(object):
         self._reset()
 
     def __str__(self):
-        return 'BoundingBox <' + str(self.min) + ' - ' + str(self.max) + '>'
+        return 'BoundingBox <%s - %s>' % (self.min, self.max)
 
     def _reset(self):
         self._center = None

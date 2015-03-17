@@ -15,7 +15,7 @@ Options:
 from patty.conversions import load, save
 from docopt import docopt
 
-if __name__=='__main__':
+if __name__ == '__main__':
     args = docopt(__doc__)
 
     pc = load(args['<INFILE>'], loadRGB=True)
