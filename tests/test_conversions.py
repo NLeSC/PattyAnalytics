@@ -19,7 +19,7 @@ def testRead20():
     xyz_array = np.asarray(pc)
     minimum = xyz_array.min(axis=0)
     assert_array_almost_equal(minimum, 0,
-                              "bounding box not centered around zero")
+                              err_msg="bounding box not centered around zero")
 
     rgb_array = pc.to_array()[:, 3:6]
     assert_true(np.all(rgb_array.min(axis=0) >= 0),
@@ -74,10 +74,10 @@ class TestWriteLas(unittest.TestCase):
             np.asarray(pc_new).max(axis=0) + pc_new.offset, header.max)
         assert_array_almost_equal(np.asarray(self.pc) + self.pc.offset,
                                   np.asarray(pc_new) + pc_new.offset,
-                                  'points differ')
+                                  err_msg='points differ')
         assert_array_equal(self.pc.to_array()[:, 3:6],
                            pc_new.to_array()[:, 3:6],
-                           'colors differ')
+                           err_msg='colors differ')
         assert_equal(pc_new.crs_wkt, WKT,
                      "Projections well-known text is not maintained")
 
@@ -93,11 +93,11 @@ class TestExtractMask(unittest.TestCase):
 
     def testExtractMask(self):
         assert_array_equal(self.pc[0], [1., 1., 1., 1., 120., 13.],
-                           "data not represented in pointcloud")
+                           err_msg="data not represented in pointcloud")
         pc_first = conversions.extract_mask(self.pc, [True, False])
         self.assertEquals(pc_first.size, 1)
         assert_array_equal(pc_first[0], [1., 1., 1., 1., 120., 13.],
-                           "original point modified")
+                           err_msg="original point modified")
         self.assertEquals(self.pc.size, 2, "original pointcloud modified")
         assert_array_equal(pc_first.offset, self.offset)
 
