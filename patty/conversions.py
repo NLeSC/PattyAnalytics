@@ -18,13 +18,13 @@ import numpy as np
 from patty.utils import BoundingBox
 
 
-def load(file, format=None, loadRGB=True):
+def load(path, format=None, loadRGB=True):
     """ Read a pointcloud file.
 
     Supports LAS files, and lets PCD and PLY files be read by python-pcl.
 
     Arguments:
-        file: file to load
+        path: file to load
         format: "PLY", "PCD", "LAS" or None. With none, it detects the filetype
              from the file extension.
         loadRGB: whether RGB is loaded for PLY and PCD files. For LAS files RGB
@@ -32,11 +32,11 @@ def load(file, format=None, loadRGB=True):
     Returns:
         registered pointcloud"""
     # Test that file exists and is readable
-    with open(file) as _:
-        if format == 'las' or file.endswith('.las'):
-            return loadLas(file)
+    with open(path) as _:
+        if format == 'las' or str(path).endswith('.las'):
+            return loadLas(path)
         else:
-            pc = pcl.load(file, format=format, loadRGB=loadRGB)
+            pc = pcl.load(path, format=format, loadRGB=loadRGB)
             register(pc)
             return pc
 
