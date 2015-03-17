@@ -1,6 +1,8 @@
-import unittest
 import logging
 from patty.conversions import loadLas, writeLas
+
+from nose.tools import SkipTest, assert_greater
+import unittest
 
 logging.basicConfig(level=logging.INFO)
 
@@ -31,9 +33,9 @@ class TestVoxelFilter(unittest.TestCase):
         vgf.set_leaf_size(10, 10, 10)
         pc4 = vgf.filter()
 
-        assert len(pc) > len(pc2)
-        assert len(pc2) < len(pc3)
-        assert len(pc2) > len(pc4)  # Bigger voxels mean less points per voxel
+        assert_greater(len(pc), len(pc2))
+        assert_greater(len(pc3), len(pc2))
+        assert_greater(len(pc), len(pc4))
 
         pc2.offset = pc.offset
         writeLas(fileLasOut, pc2)
