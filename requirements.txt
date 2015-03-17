@@ -5,3 +5,4 @@ nose_parameterized
 matplotlib
 git+https://github.com/NLeSC/python-pcl.git
 scikit-learn>=0.15.2
+scrutinizer-ocular
