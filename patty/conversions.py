@@ -31,12 +31,14 @@ def load(file, format=None, loadRGB=False):
             is always read.
     Returns:
         registered pointcloud"""
-    if format == 'las' or file.endswith('.las'):
-        return loadLas(file)
-    else:
-        pc = pcl.load(file, format=format, loadRGB=loadRGB)
-        register(pc)
-        return pc
+    # Test that file exists and is readable
+    with open(file) as _:
+        if format == 'las' or file.endswith('.las'):
+            return loadLas(file)
+        else:
+            pc = pcl.load(file, format=format, loadRGB=loadRGB)
+            register(pc)
+            return pc
 
 
 def save(cloud, path, format=None, binary=False):
