@@ -1,17 +1,22 @@
 #!/usr/bin/env python
+"""Segment points by colour from a pointcloud file and saves all reddish points
+target pointcloud file. Autodectects ply, pcd and las.
 
-import pcl
-import argparse
+Usage: las_set_srs.py  [-h] <INFILE> <SRS> <OUTFILE>
+
+Options:
+  INFILE     Source pointcloud file
+  SRS        EPSG number
+  OUTFILE    Target pointcloud file
+"""
+
+from docopt import docopt
 from patty.segmentation.segRedStick import getRedMask
-from patty.conversions import extract_mask
+from patty.conversions import extract_mask, load, save
 
 if __name__=='__main__':
-    """Segment points by colour from a pcd file and saves all reddish points into a pcd of ply file."""
-    parser = argparse.ArgumentParser(description='Segment points by colour from a ply or pcd file and saves all reddish points into a pcd of ply file.')
-    parser.add_argument('-i','--inFile', required=True, type=str, help='Input PLY/PCD file')
-    parser.add_argument('-o','--outFile',required=True, type=str, help='Output PLY/PCD file')
-    args = parser.parse_args()
+    args = docopt(__doc__)
 
-    pc = pcl.load(args.inFile, loadRGB=True)
+    pc = load(args['<INFILE>'], loadRGB=True)
     redPc = extract_mask(pc, getRedMask(pc))
-    pcl.save(redPc, args.outFile)
+    save(redPc, args['<OUTFILE>'])

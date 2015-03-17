@@ -1,15 +1,22 @@
+#!/usr/bin/env python
+"""Convert a PLY file to a LAS file.
+
+This procedure looses any information about the point normals, and the
+geographic projection used. It keeps color information.
+
+Usage: plytolas.py  [-h] <INFILE> <OUTFILE>
+
+Options:
+  INFILE     Source PLY file
+  OUTFILE    Target LAS file to write to
+"""
+
 from patty.conversions import writeLas
 import pcl
-import argparse
+from docopt import docopt
 
-parser = argparse.ArgumentParser(description='Convert PLY file to LAS file')
-parser.add_argument('inFile' , metavar="INFILE" , help="Input PLY file")
-parser.add_argument('outFile', metavar="OUTFILE", help="Output LASls  file")
+if __name__=='__main__':
+    args = docopt(__doc__)
 
-args = parser.parse_args()
-
-inFile = args.inFile
-outFile = args.outFile
-
-pc = pcl.load(inFile, loadRGB=True)
-writeLas(outFile, pc)
+    pc = pcl.load(args['<INFILE>'], loadRGB=True)
+    writeLas(args['<OUTFILE>'], pc)

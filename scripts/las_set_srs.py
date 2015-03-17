@@ -1,35 +1,38 @@
 #!/usr/bin/env python
+"""Set the spatial reference system (SRS/CRS) of a LAS file with the EPSG number.
+
+This script completely reads a pointcloud, sets the SRS of the original header
+and writes the entire pointcloud out.
+
+Usage: las_set_srs.py  [-h] <INFILE> <SRS> <OUTFILE>
+
+Options:
+  INFILE     Source LAS file
+  SRS        EPSG number
+  OUTFILE    Target LAS file to write to
+"""
 
 import liblas
 import osgeo.osr as osr
-import argparse
+from docopt import docopt
 
-
-def main():
-    parser = argparse.ArgumentParser(description="Add spatial reference system (SRS) metadata to a las file using the EPSG number")
-    parser.add_argument("-o", "--outfile", type=str, help="The output namelist", required=True )
-    parser.add_argument("-i", "--infile",  type=str, help="The input filename", required=True )
-    parser.add_argument("-s", "--srs",     type=int, help="Spatial reference system, default=4326 (latlon)", default=4326 )
-    args = parser.parse_args()
+if __name__ == "__main__":
+    args = docopt(__doc__)
 
     osrs = osr.SpatialReference()
-    osrs.SetFromUserInput( "EPSG:{}".format( args.srs ) )
+    osrs.SetFromUserInput( "EPSG:{}".format( args['<SRS>'] ) )
 
     lsrs = liblas.srs.SRS()
     lsrs.set_wkt( osrs.ExportToWkt() )
 
-    f1 = liblas.file.File( args.infile )
+    f1 = liblas.file.File( args['<INFILE>'] )
     header = f1.header
     header.set_srs( lsrs )
 
-    f2 = liblas.file.File( args.outfile, header=header, mode="w" )
+    f2 = liblas.file.File( args['<OUTFILE>', header=header, mode="w" )
     for p in f1:
         f2.write(p)
 
     f1.close()
     f2.close()
-
-
-if __name__ == "__main__":
-    main()
 
