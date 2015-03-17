@@ -1,7 +1,8 @@
 import logging
 from patty.conversions import loadLas, writeLas
 
-from nose.tools import SkipTest, assert_greater
+from nose import SkipTest
+from nose.tools import assert_greater
 import unittest
 
 logging.basicConfig(level=logging.INFO)

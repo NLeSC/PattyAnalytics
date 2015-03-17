@@ -3,7 +3,7 @@ import numpy as np
 from patty.conversions import loadLas, writeLas
 from patty.registration.principalComponents import principal_axes_rotation
 
-from nose.tools import SkipTest
+from nose import SkipTest
 import unittest
 
 logging.basicConfig(level=logging.INFO)
