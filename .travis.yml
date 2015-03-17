@@ -1,0 +1,17 @@
+language: python
+python:
+- "2.7" 
+
+before_install:
+- "sudo add-apt-repository ppa:v-launchpad-jochen-sprickerhof-de/pcl -y"
+- "sudo apt-get update"
+- "pip install cython -q"
+- "export DEBIAN_FRONTEND=noninteractive"
+- "sudo apt-get -q -y install libpcl-all"
+- "pip install python-coveralls"
+
+install:
+- "echo done"
+
+# command to run tests, e.g. python setup.py test
+script: nosetests
