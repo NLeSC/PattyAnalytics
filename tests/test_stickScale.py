@@ -1,5 +1,5 @@
-import pcl
 from patty.registration.stickScale import getStickScale
+from patty.conversions import load
 from nose_parameterized import parameterized
 
 from nose.tools import assert_greater, assert_less
@@ -33,7 +33,7 @@ from nose.tools import assert_greater, assert_less
 ])
 def test_actualData_correctLength(name, fileName, expectedMeter):
     # Arrange
-    pc = pcl.load('tests/testdata/' + fileName)
+    pc = load('tests/testdata/' + fileName)
 
     # Act
     meter, confidence = getStickScale(pc)
@@ -64,7 +64,7 @@ def test_actualData_correctLength(name, fileName, expectedMeter):
 def test_actualData_correctConfidence(name, fileName, expectedMeter,
                                       expectConfident):
     # Arrange
-    pc = pcl.load('tests/testdata/' + fileName)
+    pc = load('tests/testdata/' + fileName)
 
     # Act
     meter, confidence = getStickScale(pc)
