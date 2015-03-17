@@ -3,12 +3,13 @@ python:
 - "2.7" 
 
 before_install:
-- "sudo add-apt-repository ppa:v-launchpad-jochen-sprickerhof-de/pcl -y"
-- "sudo apt-get update"
-- "pip install cython -q"
+- "sudo add-apt-repository -qq ppa:v-launchpad-jochen-sprickerhof-de/pcl"
+- "sudo apt-get -qq update"
+- "pip install -U -q cython"
 - "export DEBIAN_FRONTEND=noninteractive"
-- "sudo apt-get -q -y install libpcl-all"
+- "sudo apt-get -qq install libpcl-all"
 - "pip install python-coveralls"
+- "pip install -r requirements.txt"
 
 install:
 - "echo done"
