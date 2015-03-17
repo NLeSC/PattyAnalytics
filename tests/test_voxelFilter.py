@@ -13,6 +13,7 @@ class TestVoxelFilter(unittest.TestCase):
         '''
         Test Voxel Grid Filter functionality
         '''
+        raise SkipTest
         fileLas = 'data/footprints/162.las'
         fileLasOut = 'data/footprints/162_sparse.las'
 
