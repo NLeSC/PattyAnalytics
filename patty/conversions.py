@@ -14,8 +14,26 @@ Created on Oct 22, 2014
 
 import liblas
 import pcl
+import os
 import numpy as np
 from patty.utils import BoundingBox
+
+
+def _checkReadable(filepath):
+    """ Test whether filepath is readable, raises IOError otherwise """
+    with open(filepath):
+        pass
+
+
+def _checkWritable(filepath):
+    """ Test whether filepath is writable, raises IOError otherwise """
+    # either the path exists but is not writable, or the path does not exist
+    # and the parent is not writable.
+    if (os.path.exists(filepath) and (
+            not os.path.isfile(filepath) or
+            not os.access(filepath, os.W_OK)
+            )) or not os.access(os.path.dirname(filepath), os.W_OK | os.X_OK):
+        raise IOError("Cannot write to " + filepath)
 
 
 def load(path, format=None, loadRGB=True):
@@ -31,14 +49,13 @@ def load(path, format=None, loadRGB=True):
             is always read.
     Returns:
         registered pointcloud"""
-    # Test that file exists and is readable
-    with open(path) as _:
-        if format == 'las' or str(path).endswith('.las'):
-            return loadLas(path)
-        else:
-            pc = pcl.load(path, format=format, loadRGB=loadRGB)
-            register(pc)
-            return pc
+    if format == 'las' or str(path).endswith('.las'):
+        return loadLas(path)
+    else:
+        _checkReadable(path)
+        pc = pcl.load(path, format=format, loadRGB=loadRGB)
+        register(pc)
+        return pc
 
 
 def save(cloud, path, format=None, binary=False):
@@ -56,6 +73,7 @@ def save(cloud, path, format=None, binary=False):
     if format == 'las' or path.endswith('.las'):
         writeLas(path, cloud)
     else:
+        _checkWritable(path)
         if is_registered(cloud) and cloud.offset != np.zeros(3):
             cloud_array = np.asarray(cloud)
             cloud_array += cloud.offset
@@ -69,6 +87,7 @@ def loadLas(lasFile):
 
     The pointcloud has color and XYZ coordinates, and the offset and precision
     set."""
+    _checkReadable(lasFile)
 
     print "--READING--", lasFile, "---------"
 
@@ -216,6 +235,8 @@ def writeLas(lasFile, pc, header=None):
         lasFile  filename
         pc       Pointclout to write
     """
+    _checkWritable(lasFile)
+
     print "--WRITING--", lasFile, "--------"
     if header is None:
         header = makeLasHeader(pc)
