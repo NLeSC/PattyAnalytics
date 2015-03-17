@@ -15,8 +15,9 @@ install:
 - "echo done"
 
 # command to run tests, e.g. python setup.py test
-script: nosetests
+script: nosetests --coverage
 
 after_script:
 - "pip install scrutinizer-ocular"
+- "pip install coverage"
 - "ocular"
