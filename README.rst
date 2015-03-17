@@ -1,3 +1,8 @@
+|Travis|_
+
+.. |Travis| image:: https://api.travis-ci.org/NLeSC/PattyAnalytics.png?branch=master
+.. _Travis: https://travis-ci.org/NLeSC/PattyAnalytics
+
 Patty Analytics
 ===============
 
