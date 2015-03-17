@@ -53,7 +53,7 @@ def save(cloud, path, format=None, binary=False):
              from the file extension.
         binary: whether PLY and PCD files are saved in binary format.
     """
-    if format == 'las' or file.endswith('.las'):
+    if format == 'las' or str(path).endswith('.las'):
         writeLas(path, cloud)
     else:
         if is_registered(cloud) and cloud.offset != np.zeros(3):
