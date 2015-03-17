@@ -1,12 +1,8 @@
 #!/usr/bin/env python
 """Segment points by colour from a pointcloud file and saves all reddish points
-target pointcloud file. Autodectects ply, pcd and las.
+target pointcloud file. Autodectects ply, pcd and las files.
 
-Usage: redStickDetection.py  [-h] <INFILE> <OUTFILE>
-
-Options:
-  INFILE     Source pointcloud file
-  OUTFILE    Target pointcloud file
+Usage: redStickDetection.py  [-h] <infile> <outfile>
 """
 
 from docopt import docopt
@@ -16,6 +12,6 @@ from patty.conversions import extract_mask, load, save
 if __name__ == '__main__':
     args = docopt(__doc__)
 
-    pc = load(args['<INFILE>'], loadRGB=True)
+    pc = load(args['<infile>'], loadRGB=True)
     redPc = extract_mask(pc, getRedMask(pc))
-    save(redPc, args['<OUTFILE>'])
+    save(redPc, args['<outfile>'])

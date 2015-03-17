@@ -1,7 +1,17 @@
 #!/usr/bin/env python
+"""Apply a statistical outlier filter to a pointcloud.
 
-import pcl
-import argparse
+Usage:
+    statfilter.py [-k <kmeans>] [-s <stddev>] <infile> <outfile>
+
+Description:
+    -k <kmeans>, --kmeans <kmeans>      K means value [default: 1000].
+    -s <stddev>, --stddev <stddev>      Standard deviation cut-off
+                                        [default: 2.0].
+"""
+
+from docopt import docopt
+from patty.conversions import load, save
 
 
 def statfilter(pc, k, s):
@@ -12,22 +22,9 @@ def statfilter(pc, k, s):
     return fil.filter()
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="Apply a statistical outlier filter to a pointcloud")
-    parser.add_argument("-o", "--outfile", type=str,
-                        help="The output namelist", required=True)
-    parser.add_argument("-i", "--infile",  type=str,
-                        help="The input filename", required=True)
-    parser.add_argument("-k", "--kmean",  type=int,
-                        help="k mean value (1000)", default=1000)
-    parser.add_argument("-s", "--stdev",  type=float,
-                        help="standard deviation cut-off (2.)", default=2.0)
-    args = parser.parse_args()
-
-    pcl.save(statfilter(pcl.load(args.infile), args.kmean, args.stdev),
-             args.outfile)
-
-
 if __name__ == "__main__":
-    main()
+    args = docopt(__doc__)
+
+    pc = load(args['<infile>'], loadRGB=True)
+    filter = statfilter(pc, int(args['--kmeans']), float(args['--stddev']))
+    save(filter, args['<outfile>'])

@@ -17,7 +17,7 @@ import numpy as np
 import time
 import os
 import sys
-from patty.conversions import (loadLas, writeLas, loadCsvPolygon,
+from patty.conversions import (load, save, loadCsvPolygon,
                                copy_registration, extract_mask)
 from patty.registration import registration
 from patty.segmentation.dbscan import get_largest_dbscan_clusters
@@ -32,24 +32,24 @@ def log(*args, **kwargs):
 def process_args():
     args = docopt(__doc__)
 
-    sourceLas = args['<SOURCE>']
-    drivemapLas = args['<DRIVEMAP>']
+    sourceFile = args['<SOURCE>']
+    drivemapFile = args['<DRIVEMAP>']
     footprintCsv = args['<FOOTPRINT>']
     foutLas = args['<OUTPUT>']
 
-    return sourceLas, drivemapLas, footprintCsv, foutLas
+    return sourceFile, drivemapFile, footprintCsv, foutLas
 
 
-def registrationPipeline(sourceLas, drivemapLas, footprintCsv, f_out):
+def registrationPipeline(sourceFile, drivemapFile, footprintCsv, f_out):
     """Single function wrapping whole script, so it can be unit tested"""
-    assert os.path.exists(sourceLas), sourceLas + ' does not exist'
-    assert os.path.exists(drivemapLas), drivemapLas + ' does not exist'
+    assert os.path.exists(sourceFile), sourceFile + ' does not exist'
+    assert os.path.exists(drivemapFile), drivemapFile + ' does not exist'
     assert os.path.exists(footprintCsv), footprintCsv + ' does not exist'
 
-    log("reading source", sourceLas)
-    pointcloud = loadLas(sourceLas)
-    log("reading drivemap ", drivemapLas)
-    drivemap = loadLas(drivemapLas)
+    log("reading source", sourceFile)
+    pointcloud = load(sourceFile, loadRGB=True)
+    log("reading drivemap ", drivemapFile)
+    drivemap = load(drivemapFile, loadRGB=True)
     footprint = loadCsvPolygon(footprintCsv)
 
     # Footprint is off by some meters
@@ -60,7 +60,6 @@ def registrationPipeline(sourceLas, drivemapLas, footprintCsv, f_out):
 
     # Get the pointcloud of the drivemap within the footprint
     in_footprint = registration.point_in_polygon2d(drivemap_array, footprint)
-    #footprint_drivemap = extract_mask(drivemap, in_footprint)
 
     # Get a boundary around the drivemap footprint
     large_footprint = registration.scale_points(footprint, 2)
@@ -115,20 +114,21 @@ def registrationPipeline(sourceLas, drivemapLas, footprintCsv, f_out):
         copy_registration(cluster, boundary)
         log(pointcloud.offset)
 
-    # set the right height
-    # footprint_drivemap_array = np.asarray(footprint_drivemap)[2]
-    # pc_array = np.asarray(cluster)[2]
-    # ref_boundary_height = ((footprint_drivemap_array.min()
-    #                         + footprint_drivemap_array.max()) / 2.0
-    #                        + footprint_drivemap.offset[2])
-    # register(pointcloud, offset=[pointcloud.offset[0], pointcloud.offset[1],
-    #          ref_boundary_height])
+# TODO: set the right height
+# footprint_drivemap_array = np.asarray(footprint_drivemap)[2]
+# pc_array = np.asarray(cluster)[2]
+# ref_boundary_height = ((footprint_drivemap_array.min()
+#                         + footprint_drivemap_array.max()) / 2.0
+#                        + footprint_drivemap.offset[2])
+# register(pointcloud, offset=[pointcloud.offset[0], pointcloud.offset[1],
+#          ref_boundary_height])
 
     log("Writing output")
-    writeLas(f_out, pointcloud)
-    writeLas(f_out + ".cluster.las", cluster)
-    writeLas(f_out + ".boundary.las", boundary)
+    save(pointcloud, f_out)
+    save(cluster, f_out + ".cluster.las")
+    save(boundary, f_out + ".boundary.las")
+
 
 if __name__ == '__main__':
-    sourceLas, drivemapLas, footprintCsv, foutLas = process_args()
-    registrationPipeline(sourceLas, drivemapLas, footprintCsv, foutLas)
+    sourceFile, drivemapFile, footprintCsv, foutLas = process_args()
+    registrationPipeline(sourceFile, drivemapFile, footprintCsv, foutLas)
