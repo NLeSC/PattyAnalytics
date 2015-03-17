@@ -3,5 +3,5 @@ docopt
 liblas
 nose_parameterized
 matplotlib
-git+https://github.com/larsmans/python-pcl.git@scrum
+git+https://github.com/NLeSC/python-pcl.git
 scikit-learn>=0.15.2
