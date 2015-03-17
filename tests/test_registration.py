@@ -146,21 +146,21 @@ class TestRegistrationPipeline(unittest.TestCase):
 
         self.min = -10
         self.max = 10
-        self.num_rows = 20
+        self.num_rows = 50
 
         # Create plane with a box
         cubePct = 0.5
         cubeRows = np.round(self.num_rows * cubePct)
         cubeMin = self.min * cubePct
         cubeMax = self.max * cubePct
-        cubeOffset = [0, 0, (cubeMax - cubeMin) / 2]
+        cubeOffset = [0, 0, 0]
         denseCubeOffset = [3, 2, 1 + (cubeMax - cubeMin) / 2]
 
         plane_row = np.linspace(
             start=self.min, stop=self.max, num=self.num_rows)
         planePoints = cartesian((plane_row, plane_row, 0))
 
-        cubePoints = self.buildCube(cubeMin, cubeMax, cubeRows, cubeOffset)
+        cubePoints, footprint = self.buildCube(cubeMin, cubeMax, cubeRows, cubeOffset)
 
         allPoints = np.vstack([planePoints, cubePoints])
 
@@ -172,8 +172,8 @@ class TestRegistrationPipeline(unittest.TestCase):
         conversions.save(self.drivemap_pc, self.drivemapLas)
 
         # Create a simple box
-        denseCubePoints = self.buildCube(
-            cubeMin, cubeMax, cubeRows * 4, denseCubeOffset)
+        denseCubePoints, _ = self.buildCube(
+            cubeMin, cubeMax, cubeRows * 20, denseCubeOffset)
 
         denseGrid = np.zeros((denseCubePoints.shape[0], 6))
         denseGrid[:, 0:3] = denseCubePoints
@@ -182,34 +182,50 @@ class TestRegistrationPipeline(unittest.TestCase):
         conversions.register(self.source_pc)
         conversions.save(self.source_pc, self.sourceLas)
 
-        # Create footprint of the box
-        footprint = [
-            [cubeMin, cubeMin, 0],
-            [cubeMin, cubeMax, 0],
-            [cubeMax, cubeMax, 0],
-            [cubeMax, cubeMin, 0],
-            [cubeMin, cubeMin, 0],
-        ]
         np.savetxt(self.footprintCsv, footprint, fmt='%.3f', delimiter=',')
 
     def buildCube(self, cubeMin, cubeMax, cubeRows, cubeOffset):
-        cube_row = np.linspace(start=cubeMin, stop=cubeMax, num=cubeRows)
-        # cubePoints = cartesian((cube_row, cube_row, cube_row))
-        cubeWall0 = cartesian((cube_row, cube_row, cubeMin))
-        cubeWall1 = cartesian((cube_row, cube_row, cubeMax))
-        cubeWall2 = cartesian((cube_row, cubeMin, cube_row))
-        cubeWall3 = cartesian((cube_row, cubeMax, cube_row))
-        cubeWall4 = cartesian((cubeMin, cube_row, cube_row))
-        cubeWall5 = cartesian((cubeMax, cube_row, cube_row))
+        cubePoints = []
+        side = (cubeMax-cubeMin)
+        a = side/2
+        b = side
+        c = side/4
+        delta = cubeMax/cubeRows
+        for z in np.arange(0,c,delta):
+            ai = a - z * a/c
+            bi = b - z * b/c
+            xs,ys = self.makeTriangle(ai,bi,delta)
+            cubePoints.append((xs,ys,z * np.ones(xs.shape)))
+        xs = np.hstack([x for x,y,z in cubePoints]) - side/2 + cubeOffset[0]
+        ys = np.hstack([y for x,y,z in cubePoints]) - side/2 + cubeOffset[1]
+        zs = np.hstack([z for x,y,z in cubePoints]) + cubeOffset[2]
+        cubePoints = np.vstack([xs,ys,zs]).T
+        cubePoints += np.random.rand(cubePoints.shape[0], cubePoints.shape[1]) * 0.1
 
-        cubePoints = np.vstack([cubeWall0, cubeWall1, cubeWall2,
-                                cubeWall3, cubeWall4, cubeWall5])
-        cubePoints += np.random.rand(
-            cubePoints.shape[0], cubePoints.shape[1]) * 0.1
+        # Create footprint of the box
+        footprint = np.array([
+            [0, 0, 0],
+            [0, b, 0],
+            [a, 0, 0],
+            [0, 0, 0],
+        ])
+        footprint[:,0] -= side/2 - cubeOffset[0]
+        footprint[:,1] -= side/2 - cubeOffset[1]
+        return cubePoints, footprint
 
-        for i, offset in enumerate(cubeOffset):
-            cubePoints[:, i] += offset
-        return cubePoints
+    def makeTriangle(self,a,b,delta):
+        x1 = np.arange(0,a,delta)
+        y1 = np.zeros(x1.shape)
+
+        y2 = np.arange(0,b,delta)
+        x2 = np.zeros(y2.shape)
+
+        x3 = np.arange(0,a, delta)
+        y3 = b - x3 * b/a
+
+        xs = np.hstack([x1,x2,x3])
+        ys = np.hstack([y1,y2,y3])
+        return xs,ys
 
     def testPipeline(self):
         # Register box on surface
@@ -220,12 +236,12 @@ class TestRegistrationPipeline(unittest.TestCase):
         target = np.asarray(self.source_pc)
         actual = np.asarray(registered_pc)
 
-        assert_array_almost_equal(target.min(axis=0), actual.min(axis=0),
-                          err_msg="Lower bound of registered cloud does not"
+        assert_array_almost_equal(target.min(axis=0), actual.min(axis=0), 6,
+                                  "Lower bound of registered cloud does not"
                                   " match expectation")
-        assert_array_almost_equal(target.max(axis=0), actual.max(axis=0),
-                          err_msg="Upper bound of registered cloud does not"
+        assert_array_almost_equal(target.max(axis=0), actual.max(axis=0), 6,
+                                  "Upper bound of registered cloud does not"
                                   " match expectation")
-        assert_array_almost_equal(target.mean(axis=0), actual.mean(axis=0),
-                          err_msg="Middle point of registered cloud does not"
+        assert_array_almost_equal(target.mean(axis=0), actual.mean(axis=0), 6,
+                                  "Middle point of registered cloud does not"
                                   " match expectation")
