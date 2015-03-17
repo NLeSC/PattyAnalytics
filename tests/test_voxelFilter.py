@@ -4,7 +4,9 @@ from patty.conversions import loadLas, writeLas
 
 logging.basicConfig(level=logging.INFO)
 
+
 class TestVoxelFilter(unittest.TestCase):
+
     def testFilter162(self):
         '''
         Test Voxel Grid Filter functionality
@@ -29,14 +31,14 @@ class TestVoxelFilter(unittest.TestCase):
         vgf.set_leaf_size(10, 10, 10)
         pc4 = vgf.filter()
 
-        assert len(pc)>len(pc2)
-        assert len(pc2)<len(pc3)
-        assert len(pc2)>len(pc4) # Bigger voxels mean less points per voxel
+        assert len(pc) > len(pc2)
+        assert len(pc2) < len(pc3)
+        assert len(pc2) > len(pc4)  # Bigger voxels mean less points per voxel
 
         pc2.offset = pc.offset
         writeLas(fileLasOut, pc2)
 
-        logging.info('Voxel grid filter has been applied to point cloud (making it sparse). You can view the results using CloudCompare.')
+        logging.info(
+            'Voxel grid filter has been applied to point cloud (making it sparse). You can view the results using CloudCompare.')
         logging.info('  Original point cloud: ' + fileLas)
         logging.info('  Sparse point cloud  : ' + fileLasOut)
-
