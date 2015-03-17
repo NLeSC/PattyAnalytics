@@ -15,7 +15,7 @@ def testInPoly():
     fileLas = 'data/footprints/162.las'
     fileLasOut = 'data/footprints/162_inFootprint.las'
     filePoly = 'data/footprints/162.las_footprint.csv'
-    pc = loadLas(fileLas)
+    pc = load(fileLas)
     footprint = loadCsvPolygon(filePoly)
     pcIn = registration.intersect_polgyon2d(pc, footprint)
     assert_true(len(pc) >= len(pcIn))

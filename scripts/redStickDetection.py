@@ -12,6 +12,6 @@ from patty.conversions import extract_mask, load, save
 if __name__ == '__main__':
     args = docopt(__doc__)
 
-    pc = load(args['<infile>'], loadRGB=True)
+    pc = load(args['<infile>'])
     redPc = extract_mask(pc, getRedMask(pc))
     save(redPc, args['<outfile>'])

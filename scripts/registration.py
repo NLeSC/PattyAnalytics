@@ -47,9 +47,9 @@ def registrationPipeline(sourceFile, drivemapFile, footprintCsv, f_out):
     assert os.path.exists(footprintCsv), footprintCsv + ' does not exist'
 
     log("reading source", sourceFile)
-    pointcloud = load(sourceFile, loadRGB=True)
+    pointcloud = load(sourceFile)
     log("reading drivemap ", drivemapFile)
-    drivemap = load(drivemapFile, loadRGB=True)
+    drivemap = load(drivemapFile)
     footprint = loadCsvPolygon(footprintCsv)
 
     # Footprint is off by some meters

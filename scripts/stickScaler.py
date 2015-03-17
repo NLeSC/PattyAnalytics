@@ -23,6 +23,6 @@ from patty.registration.stickScale import getStickScale
 
 if __name__ == '__main__':
     args = docopt(__doc__)
-    pc = load(args['<infile>'], loadRGB=True)
+    pc = load(args['<infile>'])
 
     print(getStickScale(pc, float(args['--eps']), int(args['--minSamples'])))

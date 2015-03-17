@@ -31,7 +31,7 @@ if __name__ == '__main__':
     # Kludge to get a proper exception for file not found
     # (PCL will report "problem parsing header!").
     with open(args['<file>']) as _:
-        pc = load(args['<file>'], loadRGB=True)
+        pc = load(args['<file>'])
     print("%d points" % len(pc))
 
     clusters = segment_dbscan(pc, epsilon=eps, minpoints=minpoints,

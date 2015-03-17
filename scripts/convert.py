@@ -15,5 +15,5 @@ from docopt import docopt
 if __name__ == '__main__':
     args = docopt(__doc__)
 
-    pc = load(args['<infile>'], loadRGB=True)
+    pc = load(args['<infile>'])
     save(args['<outfile>'], pc)

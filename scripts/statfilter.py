@@ -25,6 +25,6 @@ def statfilter(pc, k, s):
 if __name__ == "__main__":
     args = docopt(__doc__)
 
-    pc = load(args['<infile>'], loadRGB=True)
+    pc = load(args['<infile>'])
     filter = statfilter(pc, int(args['--kmeans']), float(args['--stddev']))
     save(filter, args['<outfile>'])

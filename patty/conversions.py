@@ -18,7 +18,7 @@ import numpy as np
 from patty.utils import BoundingBox
 
 
-def load(file, format=None, loadRGB=False):
+def load(file, format=None, loadRGB=True):
     """ Read a pointcloud file.
 
     Supports LAS files, and lets PCD and PLY files be read by python-pcl.
