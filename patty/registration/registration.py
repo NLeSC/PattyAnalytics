@@ -17,9 +17,11 @@ from patty.registration.principalComponents import principal_axes_rotation
 
 logging.basicConfig(level=logging.INFO)
 
+
 def length_3d(pointcloud):
     xyz_array = np.asarray(pointcloud)
     return xyz_array.max(axis=0) - xyz_array.min(axis=0)
+
 
 def downsample_voxel(pointcloud, voxel_size=0.01):
     ''' Downsample a pointcloud using a voxel grid filter.
@@ -34,9 +36,11 @@ def downsample_voxel(pointcloud, voxel_size=0.01):
     pc_filter.set_leaf_size(voxel_size, voxel_size, voxel_size)
     filtered_pointcloud = pc_filter.filter()
     new_len = len(filtered_pointcloud)
-    decrease_percent = (old_len - new_len)*100 / old_len
-    logging.info("number of points reduced from", old_len, "to", new_len, "(", decrease_percent, "pct. decrease)")
+    decrease_percent = (old_len - new_len) * 100 / old_len
+    logging.info("number of points reduced from", old_len,
+                 "to", new_len, "(", decrease_percent, "pct. decrease)")
     return filtered_pointcloud
+
 
 def register_offset_scale_from_ref(pc, ref_array, ref_offset=np.zeros(3)):
     ''' Returns a 3d-offset and uniform scale value from footprint.
@@ -56,17 +60,20 @@ def register_offset_scale_from_ref(pc, ref_array, ref_offset=np.zeros(3)):
     # Take the footprint as the real offset, and correct the z-offset
     # The z-offset of the footprint will be ground level, the z-offset of the
     # pointcloud will include the monuments height
-    pc_registration_scale = np.mean(ref_size[0:1]/pc_size[0:1])
+    pc_registration_scale = np.mean(ref_size[0:1] / pc_size[0:1])
 
     pc_array *= pc_registration_scale
     pc_min *= pc_registration_scale
     pc_max *= pc_registration_scale
 
-    conversions.register(pc, offset=ref_center - (pc_min + pc_max) / 2.0, precision=pc.precision * pc_registration_scale)
+    conversions.register(pc, offset=ref_center - (pc_min + pc_max)
+                         / 2.0, precision=pc.precision * pc_registration_scale)
 
     return pc.offset, pc_registration_scale
 
-def get_pointcloud_boundaries(pointcloud, angle_threshold=0.1, search_radius=0.02, normal_search_radius=0.02):
+
+def get_pointcloud_boundaries(pointcloud, angle_threshold=0.1,
+                              search_radius=0.02, normal_search_radius=0.02):
     '''Find the boundary of a pointcloud.
     Arguments:
         pointcloud            Input pointcloud
@@ -76,11 +83,14 @@ def get_pointcloud_boundaries(pointcloud, angle_threshold=0.1, search_radius=0.0
     Returns:
         a pointcloud
     '''
-    boundary = estimate_boundaries(pointcloud, angle_threshold=angle_threshold, search_radius=search_radius, normal_search_radius=normal_search_radius)
-    logging.info("sum %d"%np.sum(boundary))
-    logging.info("len %d"%len(boundary))
+    boundary = estimate_boundaries(pointcloud, angle_threshold=angle_threshold,
+                                   search_radius=search_radius,
+                                   normal_search_radius=normal_search_radius)
+    logging.info("sum %d" % np.sum(boundary))
+    logging.info("len %d" % len(boundary))
     print(boundary)
     return extract_mask(pointcloud, boundary)
+
 
 def register_from_footprint(pc, footprint):
     '''Register a pointcloud by placing it in footprint. Applies dbscan first.
@@ -103,17 +113,21 @@ def register_from_footprint(pc, footprint):
     boundary.transform(transform)
 
     logging.info("Registering pointcloud to footprint")
-    registered_offset, registered_scale = register_offset_scale_from_ref(boundary, footprint)
+    registered_offset, registered_scale = register_offset_scale_from_ref(
+        boundary, footprint)
     copy_registration(pc, boundary)
 
     # rotate and scale up
-    transform[:3,:3] *= registered_scale
+    transform[:3, :3] *= registered_scale
     pc.transform(transform)
 
     return pc
 
+
 def register_from_reference(pc, pc_ref):
-    '''Register a pointcloud by aligning it with a reference pointcloud. Applies dbscan first.
+    '''Register a pointcloud by aligning it with a reference pointcloud.
+
+    Applies dbscan first.
     Arguments:
         pc         pointcloud
         footprint  array of [x,y,z] describing the footprint
@@ -130,32 +144,39 @@ def register_from_reference(pc, pc_ref):
     pc_main.transform(transform)
 
     logging.info("Registering pointcloud to footprint")
-    registered_offset, registered_scale = register_offset_scale_from_ref(pc_main, np.asarray(pc_ref), pc_ref.offset)
+    registered_offset, registered_scale = register_offset_scale_from_ref(
+        pc_main, np.asarray(pc_ref), pc_ref.offset)
     copy_registration(pc, pc_main)
 
     # rotate and scale up
-    transform[:3,:3] *= registered_scale
+    transform[:3, :3] *= registered_scale
     pc.transform(transform)
 
     return pc
+
 
 def find_rotation(pointcloud, ref):
     pc_transform = principal_axes_rotation(pointcloud)
     ref_transform = principal_axes_rotation(ref)
     return np.linalg.inv(ref_transform) * pc_transform
 
+
 def point_in_polygon2d(points, polygon):
-    p = path.Path(np.asarray(polygon)[:,:2])
-    return np.array( [p.contains_point(point[:2]) for point in points], dtype=np.bool )
+    p = path.Path(np.asarray(polygon)[:, :2])
+    return np.array([p.contains_point(point[:2]) for point in points],
+                    dtype=np.bool)
+
 
 def intersect_polgyon2d(pc, polygon):
     in_polygon = point_in_polygon2d(np.asarray(pc) + pc.offset, polygon)
     return extract_mask(pc, in_polygon)
 
+
 def scale_points(polygon, factor):
-    polygon = np.asarray(polygon,dtype=np.float64)
+    polygon = np.asarray(polygon, dtype=np.float64)
     offset = (polygon.max(axis=0) + polygon.min(axis=0)) / 2.0
     return ((polygon - offset) * factor) + offset
+
 
 def center_boundingbox(pointcloud):
     conversions.register(pointcloud)

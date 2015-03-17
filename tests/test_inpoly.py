@@ -5,7 +5,9 @@ from patty.registration import registration
 
 logging.basicConfig(level=logging.INFO)
 
+
 class TestInPoly(unittest.TestCase):
+
     def testInPoly(self):
         '''
         Test point cloud / footprint intersection functionality provided
@@ -17,11 +19,12 @@ class TestInPoly(unittest.TestCase):
         pc = loadLas(fileLas)
         footprint = loadCsvPolygon(filePoly)
         pcIn = registration.intersect_polgyon2d(pc, footprint)
-        assert len(pc)>=len(pcIn)
-        assert len(pcIn)>0
+        assert len(pc) >= len(pcIn)
+        assert len(pcIn) > 0
 
         writeLas(fileLasOut, pcIn)
-        logging.info('Point cloud has been segmented to match footprint. You can view the results using CloudCompare.')
+        logging.info(
+            'Point cloud has been segmented to match footprint. You can view the results using CloudCompare.')
         logging.info('  Original point cloud : ' + fileLas)
         logging.info('  Footprint used       : ' + filePoly)
         logging.info('  Segmented point cloud: ' + fileLasOut)

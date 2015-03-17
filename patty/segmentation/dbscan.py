@@ -2,7 +2,9 @@ import numpy as np
 from sklearn.cluster import dbscan
 from patty.conversions import extract_mask
 
-def _dbscan_labels(pointcloud, epsilon, minpoints, rgb_weight=0, algorithm='ball_tree'):
+
+def _dbscan_labels(pointcloud, epsilon, minpoints, rgb_weight=0,
+                   algorithm='ball_tree'):
     '''
     Find an array of point-labels of clusters found by the DBSCAN algorithm
 
@@ -36,6 +38,7 @@ def _dbscan_labels(pointcloud, epsilon, minpoints, rgb_weight=0, algorithm='ball
                        algorithm=algorithm)
     return labels
 
+
 def segment_dbscan(pointcloud, epsilon, minpoints, **kwargs):
     """Run the DBSCAN clustering+outlier detection algorithm on pointcloud.
 
@@ -59,7 +62,8 @@ def segment_dbscan(pointcloud, epsilon, minpoints, **kwargs):
             for label in np.unique(labels[labels != -1]))
 
 
-def largest_dbscan_cluster(pointcloud, epsilon=0.1, minpoints=250, rgb_weight=0):
+def largest_dbscan_cluster(pointcloud, epsilon=0.1, minpoints=250,
+                           rgb_weight=0):
     '''
     Finds the largest cluster found in the pointcloud
 
@@ -80,11 +84,12 @@ def largest_dbscan_cluster(pointcloud, epsilon=0.1, minpoints=250, rgb_weight=0)
     -------
     cluster: registered pointcloud of the largest cluster found by dbscan
     '''
-    labels = _dbscan_labels(pointcloud, epsilon, minpoints, rgb_weight=rgb_weight)
+    labels = _dbscan_labels(
+        pointcloud, epsilon, minpoints, rgb_weight=rgb_weight)
 
     # Labels start at -1, so increase all by 1.
     bins = np.bincount(np.asarray(labels) + 1)
-    print 'DBSCAN bins: ',bins
+    print 'DBSCAN bins: ', bins
 
     # Pointcloud is the only cluster
     if len(bins) < 2:
@@ -94,7 +99,9 @@ def largest_dbscan_cluster(pointcloud, epsilon=0.1, minpoints=250, rgb_weight=0)
     max_label = np.argmax(bins[1:])
     return extract_mask(pointcloud, labels == max_label)
 
-def get_largest_dbscan_clusters(pointcloud, min_return_fragment = 0.7, epsilon=0.1, minpoints=250, rgb_weight=0):
+
+def get_largest_dbscan_clusters(pointcloud, min_return_fragment=0.7,
+                                epsilon=0.1, minpoints=250, rgb_weight=0):
     '''
     Finds the largest clusters containing together at least min_return_fragment
     of the complete point cloud. In case less points belong to clusters, all
@@ -119,15 +126,18 @@ def get_largest_dbscan_clusters(pointcloud, min_return_fragment = 0.7, epsilon=0
     -------
     cluster: registered pointcloud of the largest cluster found by dbscan
     '''
-    labels = [np.int64(i) for i in _dbscan_labels(pointcloud, epsilon, minpoints, rgb_weight=rgb_weight)]    
+    labels = [np.int64(i)
+              for i in _dbscan_labels(pointcloud, epsilon, minpoints,
+                                      rgb_weight=rgb_weight)]
     selected = get_top_labels(labels, min_return_fragment)
     mask = [l in selected for l in labels]
     return extract_mask(pointcloud, mask)
-    
+
+
 def get_top_labels(labels, min_return_fragment):
     bins = np.bincount([i + 1 for i in labels])
-    labelbinpairs = [(label, bins[label +1]) for label in np.unique(labels)]
-    labelbinpairs.sort(key = lambda x : x[1], reverse=False)
+    labelbinpairs = [(label, bins[label + 1]) for label in np.unique(labels)]
+    labelbinpairs.sort(key=lambda x: x[1], reverse=False)
     total = len(labels)
     minimum = min_return_fragment * total
     selected = []
