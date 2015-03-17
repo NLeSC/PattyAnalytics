@@ -1,5 +1,5 @@
 import logging
-from patty.conversions import loadLas, loadCsvPolygon, writeLas
+from patty.conversions import load, save, loadCsvPolygon
 from patty.registration import registration
 
 from nose.tools import assert_true
@@ -21,7 +21,7 @@ def testInPoly():
     assert_true(len(pc) >= len(pcIn))
     assert_true(len(pcIn) > 0)
 
-    writeLas(fileLasOut, pcIn)
+    save(pcIn, fileLasOut)
     logging.info(
         'Point cloud has been segmented to match footprint.'
         ' You can view the results using CloudCompare.')

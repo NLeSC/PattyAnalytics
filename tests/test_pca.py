@@ -1,6 +1,6 @@
 import logging
 import numpy as np
-from patty.conversions import loadLas, writeLas
+from patty.conversions import load, save
 from patty.registration.principalComponents import principal_axes_rotation
 
 from nose import SkipTest
@@ -12,13 +12,13 @@ def testPCARotation():
     raise SkipTest
     fileIn = 'data/footprints/162_inFootprint.las'
     fileOut = 'data/footprints/162_pca.las'
-    pc = loadLas(fileIn)
+    pc = load(fileIn)
     transform = principal_axes_rotation(np.asarray(pc))
     pc.transform(transform)
 
     # TODO: How to test? assert what?
 
-    writeLas(fileOut, pc)
+    save(pc, fileOut)
     logging.info(
         'Point cloud has been rotated to match PCA alignment.\n'
         'You can view the results using CloudCompare.')

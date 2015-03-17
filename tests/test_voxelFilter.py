@@ -1,5 +1,5 @@
 import logging
-from patty.conversions import loadLas, writeLas
+from patty.conversions import load, save
 
 from nose import SkipTest
 from nose.tools import assert_greater
@@ -16,7 +16,7 @@ def testFilter162():
     fileLasOut = 'data/footprints/162_sparse.las'
 
     # Load point cloud
-    pc = loadLas(fileLas)
+    pc = load(fileLas)
     # Build Voxel Grid Filter
     vgf = pc.make_voxel_grid_filter()
 
@@ -37,7 +37,7 @@ def testFilter162():
     assert_greater(len(pc), len(pc4))
 
     pc2.offset = pc.offset
-    writeLas(fileLasOut, pc2)
+    save(pc2, fileLasOut)
 
     logging.info(
         'Voxel grid filter has been applied to point cloud (making it sparse).'

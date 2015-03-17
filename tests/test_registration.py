@@ -169,7 +169,7 @@ class TestRegistrationPipeline(unittest.TestCase):
 
         self.drivemap_pc = pcl.PointCloudXYZRGB(plane_grid.astype(np.float32))
         conversions.register(self.drivemap_pc)
-        conversions.writeLas(self.drivemapLas, self.drivemap_pc)
+        conversions.save(self.drivemap_pc, self.drivemapLas)
 
         # Create a simple box
         denseCubePoints = self.buildCube(
@@ -180,7 +180,7 @@ class TestRegistrationPipeline(unittest.TestCase):
 
         self.source_pc = pcl.PointCloudXYZRGB(denseGrid.astype(np.float32))
         conversions.register(self.source_pc)
-        conversions.writeLas(self.sourceLas, self.source_pc)
+        conversions.save(self.source_pc, self.sourceLas)
 
         # Create footprint of the box
         footprint = [
@@ -215,7 +215,7 @@ class TestRegistrationPipeline(unittest.TestCase):
         # Register box on surface
         registrationPipeline(self.sourceLas, self.drivemapLas,
                              self.footprintCsv, self.foutLas)
-        registered_pc = conversions.loadLas(self.foutLas)
+        registered_pc = conversions.load(self.foutLas)
 
         target = np.asarray(self.source_pc)
         actual = np.asarray(registered_pc)
@@ -229,25 +229,3 @@ class TestRegistrationPipeline(unittest.TestCase):
         assert_array_almost_equal(target.mean(axis=0), actual.mean(axis=0),
                                   "Middle point of registered cloud does not"
                                   " match expectation")
-
-if __name__ == "__main__":
-    unittest.main()
-
-# Commented out for slowness
-# class TestRegistrationSite20(unittest.TestCase):
-#     def testRegistrationFromFootprint(self):
-#         fname = 'data/footprints/site20.pcd'
-#         frefname = 'data/footprints/20.las'
-#         fp_name = 'data/footprints/20.las_footprint.csv'
-#         assert os.path.exists(fname)
-#         assert os.path.exists(fp_name)
-#         assert os.path.exists(frefname)
-#         drivemap = conversions.loadLas(frefname)
-#         footprint = conversions.loadCsvPolygon(fp_name)
-# Shift footprint by (-1.579, 0.525) -- value estimated manually
-#         footprint[:,0] += -1.579381346780
-#         footprint[:,1] += 0.52519696509
-#         pointcloud = pcl.load(fname,loadRGB=True)
-#         conversions.register(pointcloud)
-#         registration.register_from_footprint(pointcloud, footprint)
-#         conversions.writeLas(pointcloud, 'tests/20.testscale.las')

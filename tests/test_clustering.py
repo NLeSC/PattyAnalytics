@@ -6,7 +6,8 @@ import numpy as np
 
 class TestClustering(unittest.TestCase):
 
-    def test_largestDbscanCluster_returnCorrectNumberOfPoints(self):
+    def test_largestDbscanCluster(self):
+        """largest_dbscan_clusters returns the correct number of points"""
         # Arrange
         ar = self.get_one_big_and_10_small_clusters()
         desired_fragment = 0.7
