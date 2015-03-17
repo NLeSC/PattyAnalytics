@@ -16,3 +16,7 @@ install:
 
 # command to run tests, e.g. python setup.py test
 script: nosetests
+
+after_script:
+- "pip install scrutinizer-ocular"
+- "ocular"
