@@ -11,8 +11,7 @@ from nose.tools import assert_equal, assert_true
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
 
-def testRead20():
-    raise SkipTest
+def testReadLas():
     fname = 'data/footprints/20.las'
     pc = conversions.loadLas(fname)
 
@@ -52,26 +51,32 @@ class TestWriteLas(unittest.TestCase):
         conversions.register(self.pc, offset=[2., 1., 15.], crs_wkt=WKT,
                              precision=[0.1, 0.1, 0.1])
 
-    def testWriteRead(self):
-        """Read-then-write should be idempotent."""
-        wfname = mktemp()
-        header = conversions.makeLasHeader(self.pc)
-        assert_array_almost_equal(header.min, [1 + 2, 1 + 1, 1 + 15])
-        assert_array_almost_equal(
-            np.asarray(self.pc).min(axis=0) + self.pc.offset, header.min)
+    def getHeader(self):
+        return conversions.makeLasHeader(self.pc)
+
+    def testHeader(self):
+        header = self.getHeader()
         assert_array_almost_equal(header.max, [3 + 2, 3 + 1, 3 + 15])
+        assert_array_almost_equal(header.min, [1 + 2, 1 + 1, 1 + 15])
+        self.pointCloudHeader(self.pc, header)
+
+    def pointCloudHeader(self, cloud, header):
         assert_array_almost_equal(
-            np.asarray(self.pc).max(axis=0) + self.pc.offset, header.max)
-        conversions.writeLas(wfname, self.pc, header)
+            np.asarray(cloud).min(axis=0) + cloud.offset, header.min)
+        assert_array_almost_equal(
+            np.asarray(cloud).max(axis=0) + cloud.offset, header.max)
+
+    def testWriteRead(self):
+        """Write-then-read should be idempotent."""
+        wfname = mktemp()
+        header = self.getHeader()
+        conversions.writeLas(wfname, self.pc, header=header)
 
         assert_true(os.path.exists(wfname), "temporary test file not written")
         pc_new = conversions.loadLas(wfname)
         os.remove(wfname)
-
-        assert_array_almost_equal(
-            np.asarray(pc_new).min(axis=0) + pc_new.offset, header.min)
-        assert_array_almost_equal(
-            np.asarray(pc_new).max(axis=0) + pc_new.offset, header.max)
+        
+        self.pointCloudHeader(pc_new, header)
         assert_array_almost_equal(np.asarray(self.pc) + self.pc.offset,
                                   np.asarray(pc_new) + pc_new.offset,
                                   err_msg='points differ')

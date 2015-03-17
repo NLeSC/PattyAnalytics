@@ -7,11 +7,10 @@ from nose.tools import assert_greater
 logging.basicConfig(level=logging.INFO)
 
 
-def testFilter162():
+def testFilter():
     '''
     Test Voxel Grid Filter functionality
     '''
-    raise SkipTest
     fileLas = 'data/footprints/162.las'
     fileLasOut = 'data/footprints/162_sparse.las'
 
