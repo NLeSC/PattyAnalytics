@@ -1,3 +1,13 @@
+"""
+Point cloud segmentation using the DBSCAN clustering algorithm.
+
+DBSCAN - Density-Based Spatial Clustering of Applications with Noise.
+Finds core samples of high density and expands clusters from them.
+Good for data which contains clusters of similar density.
+
+See the scikit-learn documentation for reference:
+http://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html.
+"""
 import numpy as np
 from sklearn.cluster import dbscan
 from patty.conversions import extract_mask
@@ -7,13 +17,6 @@ def _dbscan_labels(pointcloud, epsilon, minpoints, rgb_weight=0,
                    algorithm='ball_tree'):
     '''
     Find an array of point-labels of clusters found by the DBSCAN algorithm.
-
-    DBSCAN - Density-Based Spatial Clustering of Applications with Noise.
-    Finds core samples of high density and expands clusters from them.
-    Good for data which contains clusters of similar density.
-
-    See the scikit-learn documentation for references:
-    http://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html
 
     Parameters
     ----------
