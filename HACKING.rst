@@ -14,3 +14,6 @@ Coding style
 
 * Please don't use ``assert`` in tests. Use the ``numpy.testing`` and
   ``nose.tools`` assertions.
+
+* Put docstrings on classes, not initializers (``__init__``). Python tools
+  expect docstrings on classes.

@@ -20,7 +20,7 @@ class TestClustering(unittest.TestCase):
 
         # Assert
         actual = segmented.shape[0]
-        message = '\nexpected: ' + `expected` + '\nactual: ' + `actual`
+        message = 'expected: %r, actual: %r' % (expected, actual)
         assert actual == expected, message
 
     def get_one_big_and_10_small_clusters(self):
