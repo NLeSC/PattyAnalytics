@@ -17,4 +17,4 @@ def principal_axes_rotation(data):
     transform[:3, :3] = np.array(pca.components_)
     transform[3, 3] = 1.0
 
-    return np.matrix(transform)
+    return transform

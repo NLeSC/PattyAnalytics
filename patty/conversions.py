@@ -353,32 +353,17 @@ class BoundingBox(object):
         return np.all((pos >= self.min) & (pos <= self.max))
 
 
-def downsample(pc, fraction, random_seed=None):
-    """Randomly downsample pointcloud to a fraction of its size.
+def center_boundingbox(pointcloud):
+    """ Center the pointcloud on origin using the center of its bounding box.
+    The offset compared to the original location is added to the
+    pointcloud.offset. The pointcloud is registered after use.
 
-    Returns a pointcloud of size fraction * len(pc), rounded to the nearest
-    integer.
-
-    Use random_seed=k for some integer k to get reproducible results.
     Arguments:
-        pc: pcl.PointCloud
+        pointcloud: pcl.PointCloud
             input pointcloud
-        fraction: double
-            fraction of points to include
-        random_seed: int
-            seed to use in random number generator
-
-    Returns:
-        pcl.Pointcloud
     """
-    if not 0 < fraction <= 1:
-        raise ValueError("Expected fraction in (0,1], got %r" % fraction)
-
-    rng = np.random.RandomState(random_seed)
-
-    k = max(int(round(fraction * len(pc))), 1)
-    sample = rng.choice(len(pc), k, replace=False)
-    new_pc = pc.extract(sample)
-    if is_registered(pc):
-        copy_registration(new_pc, pc)
-    return new_pc
+    register(pointcloud)
+    pc_array = np.asarray(pointcloud)
+    bb = BoundingBox(points=pc_array)
+    pc_array -= bb.center
+    pointcloud.offset += bb.center

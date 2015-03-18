@@ -8,19 +8,12 @@ from __future__ import print_function
 from pcl.boundaries import estimate_boundaries
 import numpy as np
 import logging
-from patty import conversions
-from patty.conversions import copy_registration, extract_mask
+from patty import copy_registration, is_registered, extract_mask, register
 from patty.segmentation import dbscan
 from matplotlib import path
-from patty.utils import BoundingBox
 from patty.registration.principalComponents import principal_axes_rotation
 
 logging.basicConfig(level=logging.INFO)
-
-
-def length_3d(pointcloud):
-    xyz_array = np.asarray(pointcloud)
-    return xyz_array.max(axis=0) - xyz_array.min(axis=0)
 
 
 def downsample_voxel(pointcloud, voxel_size=0.01):
@@ -31,15 +24,40 @@ def downsample_voxel(pointcloud, voxel_size=0.01):
     Returns:
         filtered_pointcloud
     '''
-    old_len = len(pointcloud)
     pc_filter = pointcloud.make_voxel_grid_filter()
     pc_filter.set_leaf_size(voxel_size, voxel_size, voxel_size)
-    filtered_pointcloud = pc_filter.filter()
-    new_len = len(filtered_pointcloud)
-    decrease_percent = (old_len - new_len) * 100 / old_len
-    #logging.info("number of points reduced from", old_len,
-    #             "to", new_len, "(", decrease_percent, "pct. decrease)")
-    return filtered_pointcloud
+    return pc_filter.filter()
+
+
+def downsample(pc, fraction, random_seed=None):
+    """Randomly downsample pointcloud to a fraction of its size.
+
+    Returns a pointcloud of size fraction * len(pc), rounded to the nearest
+    integer.
+
+    Use random_seed=k for some integer k to get reproducible results.
+    Arguments:
+        pc: pcl.PointCloud
+            input pointcloud
+        fraction: double
+            fraction of points to include
+        random_seed: int
+            seed to use in random number generator
+
+    Returns:
+        pcl.Pointcloud
+    """
+    if not 0 < fraction <= 1:
+        raise ValueError("Expected fraction in (0,1], got %r" % fraction)
+
+    rng = np.random.RandomState(random_seed)
+
+    k = max(int(round(fraction * len(pc))), 1)
+    sample = rng.choice(len(pc), k, replace=False)
+    new_pc = pc.extract(sample)
+    if is_registered(pc):
+        copy_registration(new_pc, pc)
+    return new_pc
 
 
 def register_offset_scale_from_ref(pc, ref_array, ref_offset=np.zeros(3)):
@@ -66,8 +84,8 @@ def register_offset_scale_from_ref(pc, ref_array, ref_offset=np.zeros(3)):
     pc_min *= pc_registration_scale
     pc_max *= pc_registration_scale
 
-    conversions.register(pc, offset=ref_center - (pc_min + pc_max)
-                         / 2.0, precision=pc.precision * pc_registration_scale)
+    register(pc, offset=ref_center - (pc_min + pc_max) / 2.0,
+             precision=pc.precision * pc_registration_scale)
 
     return pc.offset, pc_registration_scale
 
@@ -173,14 +191,6 @@ def intersect_polgyon2d(pc, polygon):
 
 
 def scale_points(polygon, factor):
-    polygon = np.asarray(polygon, dtype=np.float64)
+    polygon = np.asarray(polygon)
     offset = (polygon.max(axis=0) + polygon.min(axis=0)) / 2.0
     return ((polygon - offset) * factor) + offset
-
-
-def center_boundingbox(pointcloud):
-    conversions.register(pointcloud)
-    pc_array = np.asarray(pointcloud)
-    bb = BoundingBox(points=pc_array)
-    pc_array -= bb.center
-    pointcloud.offset += bb.center
