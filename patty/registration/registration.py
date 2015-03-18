@@ -8,10 +8,10 @@ from __future__ import print_function
 from pcl.boundaries import estimate_boundaries
 import numpy as np
 import logging
-from patty import copy_registration, is_registered, extract_mask, register
-from patty.segmentation import dbscan
+from .. import copy_registration, is_registered, extract_mask, register
+from ..segmentation import dbscan
 from matplotlib import path
-from patty.registration.principalComponents import find_principal_axes_rotation
+from .pca import find_principal_axes_rotation
 
 logging.basicConfig(level=logging.INFO)
 
