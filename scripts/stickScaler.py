@@ -16,7 +16,7 @@ Options:
 from __future__ import print_function
 from docopt import docopt
 from patty.conversions import load
-from patty.registration.stickScale import getStickScale
+from patty.registration.stickScale import get_stick_scale
 
 # Takes a point cloud containing only the red segments of scale sticks and
 # returns the scale estimation and a confidence indication.
@@ -25,4 +25,4 @@ if __name__ == '__main__':
     args = docopt(__doc__)
     pc = load(args['<infile>'])
 
-    print(getStickScale(pc, float(args['--eps']), int(args['--minSamples'])))
+    print(get_stick_scale(pc, float(args['--eps']), int(args['--minSamples'])))

@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.decomposition import PCA
 
 
-def principal_axes_rotation(data):
+def find_principal_axes_rotation(data):
     '''Find the 3 principal axes of the XYZ array, and the rotation to align
     it to the x,y, and z axis.
 

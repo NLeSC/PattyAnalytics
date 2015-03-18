@@ -1,4 +1,4 @@
-from patty.registration.stickScale import getStickScale
+from patty.registration.stickScale import get_stick_scale
 from patty.conversions import load
 from nose_parameterized import parameterized
 
@@ -31,15 +31,10 @@ from nose.tools import assert_greater, assert_less
     # ("SITE20", 'redstick_SITE_20.ply', 5.55),
     # ("SITE21", 'redstick_SITE_21.ply', 5.4)
 ])
-def test_actualData_correctLength(name, fileName, expectedMeter):
-    # Arrange
-    pc = load('tests/testdata/' + fileName)
-
-    # Act
-    meter, confidence = getStickScale(pc)
-
-    # Assert
-    assertWithError(meter, expectedMeter)
+def test_actual_data_length(name, filename, expected_meter):
+    pc = load('tests/testdata/' + filename)
+    meter, confidence = get_stick_scale(pc)
+    assert_with_error(meter, expected_meter)
 
 
 # The ground truths for these tests was defined by measuring stick segments,
@@ -61,26 +56,20 @@ def test_actualData_correctLength(name, fileName, expectedMeter):
     # ("SITE20", 'redstick_SITE_20.ply', 5.55, True),
     # ("SITE21", 'redstick_SITE_21.ply', 5.4, True)
 ])
-def test_actualData_correctConfidence(name, fileName, expectedMeter,
-                                      expectConfident):
-    # Arrange
-    pc = load('tests/testdata/' + fileName)
-
-    # Act
-    meter, confidence = getStickScale(pc)
-
-    # Assert
-    if expectConfident:
+def test_actual_data_confidence(name, filename, expected_meter,
+                                expect_confident):
+    pc = load('tests/testdata/' + filename)
+    meter, confidence = get_stick_scale(pc)
+    if expect_confident:
         assert_greater(confidence, .5, "confidence too low")
     else:
         assert_less(confidence, .5, "confidence too high")
 
 
-def assertWithError(estimated, expected):
-    errorRatio = 0.05
-    errorMargin = errorRatio * expected
+def assert_with_error(estimated, expected):
+    error_ratio = 0.05
+    margin = error_ratio * expected
     message = ('Value does not match expected value with %f%% (%f) margin.'
-               '\nEstimated: %f\nExpected: %f' % (100 * errorRatio,
-                                                  errorMargin,
-                                                  estimated, expected))
-    assert_less(abs(estimated - expected), errorMargin, message)
+               '\nEstimated: %f\nExpected: %f' % (100 * error_ratio,
+                                                  margin, estimated, expected))
+    assert_less(abs(estimated - expected), margin, message)

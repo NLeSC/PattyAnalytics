@@ -8,19 +8,20 @@ with the spatial reference system.
 # http://laspy.readthedocs.org/en/latest/
 # https://github.com/grantbrown/laspy.git
 
+from __future__ import print_function
 import liblas
 import pcl
 import os
 import numpy as np
 
 
-def _checkReadable(filepath):
+def _check_readable(filepath):
     """ Test whether filepath is readable, raises IOError otherwise """
     with open(filepath):
         pass
 
 
-def _checkWritable(filepath):
+def _check_writable(filepath):
     """ Test whether filepath is writable, raises IOError otherwise """
     # either the path exists but is not writable, or the path does not exist
     # and the parent is not writable.
@@ -45,9 +46,9 @@ def load(path, format=None, loadRGB=True):
     Returns:
         registered pointcloud"""
     if format == 'las' or str(path).endswith('.las'):
-        return loadLas(path)
+        return load_las(path)
     else:
-        _checkReadable(path)
+        _check_readable(path)
         pc = pcl.load(path, format=format, loadRGB=loadRGB)
         register(pc)
         return pc
@@ -66,31 +67,31 @@ def save(cloud, path, format=None, binary=False):
         binary: whether PLY and PCD files are saved in binary format.
     """
     if format == 'las' or path.endswith('.las'):
-        writeLas(path, cloud)
+        write_las(path, cloud)
     else:
-        _checkWritable(path)
+        _check_writable(path)
         if is_registered(cloud) and cloud.offset != np.zeros(3):
             cloud_array = np.asarray(cloud)
             cloud_array += cloud.offset
         pcl.save(cloud, path, format=format, binary=binary)
 
 
-def loadLas(lasFile):
+def load_las(lasfile):
     """ Read a LAS file
     Returns:
         registered pointcloudxyzrgb
 
     The pointcloud has color and XYZ coordinates, and the offset and precision
     set."""
-    _checkReadable(lasFile)
+    _check_readable(lasfile)
 
-    print "--READING--", lasFile, "---------"
+    print("--READING--", lasfile, "---------")
 
     las = None
     try:
-        las = liblas.file.File(lasFile)
-        nPoints = las.header.get_count()
-        data = np.zeros((nPoints, 6), dtype=np.float64)
+        las = liblas.file.File(lasfile)
+        n_points = las.header.get_count()
+        data = np.zeros((n_points, 6), dtype=np.float64)
 
         for i, point in enumerate(las):
             data[i] = (point.x, point.y, point.z, point.color.red /
@@ -181,13 +182,13 @@ def copy_registration(target, src):
     target.crs_verticalcs = src.crs_verticalcs
 
 
-def loadCsvPolygon(csvFile, delimiter=','):
+def load_csv_polygon(csvfile, delimiter=','):
     """Load a polygon from a simple CSV file
 
     Returns:
         numpy array containing the CSV file
     """
-    return np.genfromtxt(csvFile, delimiter=delimiter)
+    return np.genfromtxt(csvfile, delimiter=delimiter)
 
 
 def extract_mask(pointcloud, mask):
@@ -206,7 +207,7 @@ def extract_mask(pointcloud, mask):
     return pointcloud_new
 
 
-def makeLasHeader(pc):
+def make_las_header(pc):
     """ Make a LAS header for given pointcloud.
     If the pointcloud is registered, this is taken into account for the
     header metadata. Has the side-effect of registering the given pointcloud.
@@ -247,26 +248,26 @@ def makeLasHeader(pc):
     return h
 
 
-def writeLas(lasFile, pc, header=None):
+def write_las(lasfile, pc, header=None):
     """Write a pointcloud to a LAS file
 
     Arguments:
-        lasFile : filename
+        lasfile : filename
 
         pc      : Pointclout to write
     """
-    _checkWritable(lasFile)
+    _check_writable(lasfile)
 
-    print "--WRITING--", lasFile, "--------"
+    print("--WRITING--", lasfile, "--------")
     if header is None:
-        header = makeLasHeader(pc)
+        header = make_las_header(pc)
 
     precise_points = np.array(pc, dtype=np.float64)
     precise_points /= header.scale
 
     las = None
     try:
-        las = liblas.file.File(lasFile, mode="w", header=header)
+        las = liblas.file.File(lasfile, mode="w", header=header)
 
         for i in xrange(pc.size):
             pt = liblas.point.Point()

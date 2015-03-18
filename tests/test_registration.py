@@ -1,14 +1,13 @@
 import numpy as np
 import pcl
 
-from patty import center_boundingbox
+from patty import center_boundingbox, conversions
 from patty.registration import (point_in_polygon2d, downsample_voxel,
                                 scale_points, intersect_polgyon2d,
                                 get_pointcloud_boundaries)
 from patty.utils import BoundingBox
-from scripts.registration import registrationPipeline
 
-from helpers import (makeTriangle, makeTriPyramid, makeTriPyramidFootprint)
+from helpers import make_triangle, make_tri_pyramid, make_tri_pyramid_footprint
 from nose.tools import assert_true
 from numpy.testing import (assert_array_equal, assert_array_almost_equal,
                            assert_array_less)
@@ -17,18 +16,17 @@ import unittest
 
 
 class TestPolygon(unittest.TestCase):
-
     def setUp(self):
         self.poly = [[0., 0.], [1., 0.], [0.4, 0.4], [1., 1.], [0., 1.]]
         self.points = [[0., 0.], [0.5, 0.2], [1.1, 1.1], [0.2, 1.1]]
 
-    def testInPolygon(self):
+    def test_in_polygon(self):
         ''' Test whether the point_in_polygon2d behaves as expected. '''
         in_polygon = point_in_polygon2d(self.points, self.poly)
         assert_array_equal(in_polygon, [False, True, False, False],
                            "points expected in polygon not matched")
 
-    def testScalePolygon(self):
+    def test_scale_polygon(self):
         ''' Test whether scaling up the polygon works '''
         newpoly = scale_points(self.poly, 1.3)
         self.assertEqual(len(newpoly), len(self.poly),
@@ -45,7 +43,6 @@ class TestPolygon(unittest.TestCase):
 
 
 class TestCutoutPointCloud(unittest.TestCase):
-
     def setUp(self):
         self.footprint = [[0., 0.], [1., 0.], [0.4, 0.4], [1., 1.], [0., 1.]]
         self.offset = [-0.01, -0.01, -0.01]
@@ -55,7 +52,7 @@ class TestCutoutPointCloud(unittest.TestCase):
         self.pc = pcl.PointCloudXYZRGB(data)
         conversions.register(self.pc, offset=self.offset)
 
-    def testCutOutFromFootprint(self):
+    def test_cutout_from_footprint(self):
         ''' Test whether a cutout from a pointcloud gets the right points '''
         pc_fp = intersect_polgyon2d(self.pc, self.footprint)
         self.assertEqual(pc_fp.size, 1,
@@ -67,14 +64,13 @@ class TestCutoutPointCloud(unittest.TestCase):
 
 
 class TestCenter(unittest.TestCase):
-
     def setUp(self):
         data = np.array(
             [[1, 1, 1, 1, 1, 1], [3, 3, 3, 1, 1, 1]], dtype=np.float32)
         self.pc = pcl.PointCloudXYZRGB(data)
 
-    def testCenter(self):
-        ''' test whether pointcloud can be centered around zero '''
+    def test_center(self):
+        '''test whether pointcloud can be centered around zero'''
         # Baseline: original center
         bb = BoundingBox(points=np.asarray(self.pc))
         assert_array_equal(bb.center, [2., 2., 2.],
@@ -94,7 +90,6 @@ class TestCenter(unittest.TestCase):
 
 
 class TestBoundary(unittest.TestCase):
-
     def setUp(self):
         self.num_rows = 50
         self.max = 0.1
@@ -108,7 +103,7 @@ class TestBoundary(unittest.TestCase):
             [[0.0, 0.0], [0.0, self.max],
              [self.max, self.max], [self.max, 0.0]])
 
-    def testBoundaries(self):
+    def test_boundaries(self):
         boundary = get_pointcloud_boundaries(self.pc)
         self.assertEqual(self.pc.size, self.num_points)
         self.assertLess(boundary.size, self.num_points)
@@ -126,14 +121,13 @@ class TestBoundary(unittest.TestCase):
         self.assertEqual(np.sum(point_in_polygon2d(self.pc, large_footprint)),
                          self.pc.size)
 
-    def testBoundariesTooSmallRadius(self):
+    def test_boundaries_too_small_radius(self):
         boundary = get_pointcloud_boundaries(
             self.pc, search_radius=0.0001, normal_search_radius=0.0001)
         self.assertEqual(boundary.size, 0)
 
 
 class TestRegistrationPipeline(unittest.TestCase):
-
     def setUp(self):
         self.drivemapLas = 'testDriveMap.las'
         self.sourceLas = 'testSource.las'
@@ -182,7 +176,8 @@ class TestRegistrationPipeline(unittest.TestCase):
 
         np.savetxt(self.footprintCsv, footprint, fmt='%.3f', delimiter=',')
 
-    def buildShape(self, cubeMin, cubeMax, cubeRows, cubeOffset):
+    @staticmethod
+    def build_shape(cubeMin, cubeMax, cubeRows, cubeOffset):
         side = (cubeMax-cubeMin)
         sX = side/2
         sY = side
@@ -194,21 +189,20 @@ class TestRegistrationPipeline(unittest.TestCase):
 
         delta = cubeMax/cubeRows
 
-        cubePoints = makeTriPyramid(sX,sY,sZ,dX,dY,dZ,delta)
+        cubePoints = make_tri_pyramid(sX,sY,sZ,dX,dY,dZ,delta)
         cubePoints += np.random.rand(cubePoints.shape[0], cubePoints.shape[1]) * 0.1
 
         dS = np.arange(0, side * 0.05, delta)
         for s in dS:
-            xs,ys = makeTriangle(sX*(1+s),sY*(1+s),dX + s,dY + s,delta)
+            xs,ys = make_triangle(sX*(1+s),sY*(1+s),dX + s,dY + s,delta)
             zs = np.zeros(xs.shape) - dZ
             tmp = np.vstack([xs,ys,zs]).T
             cubePoints = np.vstack([cubePoints, tmp])
 
-        footprint = makeTriPyramidFootprint(sX,sY,sZ,dX,dY,0)
+        footprint = make_tri_pyramid_footprint(sX,sY,sZ,dX,dY,0)
         return cubePoints, footprint
 
-
-    def testPipeline(self):
+    def test_pipeline(self):
         '''
         # Register box on surface
         registrationPipeline(self.sourceLas, self.drivemapLas,
@@ -228,4 +222,3 @@ class TestRegistrationPipeline(unittest.TestCase):
                                   "Middle point of registered cloud does not"
                                   " match expectation")
         '''
-        print('Hello cloud!')
