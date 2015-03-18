@@ -25,10 +25,11 @@ def test_rectangle_in_y_z_plane():
 
 
 def test_single_point():
-    line = np.array([[0, -1., 0]])
-    expected = 0
-    length = measure_length(line)
-    assert_almost_equal(expected, length)
+    with np.errstate(all='raise'):
+        line = np.array([[0, -1., 0]])
+        expected = 0
+        length = measure_length(line)
+        assert_almost_equal(expected, length)
 
 
 def test_no_points():

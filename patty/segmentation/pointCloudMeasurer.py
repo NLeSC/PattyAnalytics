@@ -4,7 +4,7 @@ from sklearn.decomposition import PCA
 
 def measure_length(pointcloud):
     """Returns the length of a point cloud in its longest direction."""
-    if len(pointcloud) == 0:
+    if len(pointcloud) < 2:
         return 0
 
     pca = PCA(n_components=1)
