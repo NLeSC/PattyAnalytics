@@ -5,7 +5,7 @@ from patty import center_boundingbox, conversions
 from patty.registration import (point_in_polygon2d, downsample_voxel,
                                 scale_points, intersect_polygon2d,
                                 get_pointcloud_boundaries)
-from patty.utils import BoundingBox
+from patty.conversions import BoundingBox
 from scripts.registration import registration_pipeline
 
 from helpers import make_tri_pyramid_with_base
