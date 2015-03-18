@@ -1,7 +1,7 @@
 import logging
 import numpy as np
 from patty.conversions import load, save
-from patty.registration import principal_axes_rotation
+from patty.registration import find_principal_axes_rotation
 
 from nose import SkipTest
 

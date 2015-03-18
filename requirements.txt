@@ -1,6 +1,5 @@
 Cython>=0.21.2
 docopt
-liblas
 nose_parameterized
 matplotlib
 git+https://github.com/NLeSC/python-pcl.git

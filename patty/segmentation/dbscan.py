@@ -140,7 +140,7 @@ def get_largest_dbscan_clusters(pointcloud, min_return_fragment=0.7,
     cluster: registered pointcloud of the largest cluster found by dbscan
     '''
     labels = dbscan_labels(pointcloud, epsilon, minpoints,
-                           rgb_weight=rgb_weight)
+                           rgb_weight=rgb_weight).astype(np.int64)
     selection, selected_count = _get_top_labels(labels, min_return_fragment)
 
     # No clusters were found
@@ -152,9 +152,13 @@ def get_largest_dbscan_clusters(pointcloud, min_return_fragment=0.7,
 
 
 def _get_top_labels(labels, min_return_fragment):
-    bins = np.bincount(labels + 1)
-    labelbinpairs = [(i, v) for (i, v) in enumerate(bins[1:])]
-    labelbinpairs.sort(key=lambda x: x[1], reverse=False)
+    """Return labels of the smallest set of clusters that contain at least
+    min_return_fragment of the points (or everything)."""
+
+    # +1 to make bincount happy, [1:] to get rid of outliers.
+    bins = np.bincount(labels + 1)[1:]
+    labelbinpairs = sorted(enumerate(bins), key=lambda x: x[1])
+
     total = len(labels)
     minimum = min_return_fragment * total
     selected = []

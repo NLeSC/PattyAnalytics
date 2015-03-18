@@ -6,9 +6,10 @@ from patty.registration import (point_in_polygon2d, downsample_voxel,
                                 scale_points, intersect_polygon2d,
                                 get_pointcloud_boundaries)
 from patty.utils import BoundingBox
+from scripts.registration import registration_pipeline
 
-from helpers import make_triangle, make_tri_pyramid, make_tri_pyramid_footprint
-from nose.tools import assert_true
+from helpers import make_tri_pyramid_with_base
+from nose.tools import assert_equal, assert_greater, assert_less, assert_true
 from numpy.testing import (assert_array_equal, assert_array_almost_equal,
                            assert_array_less)
 from sklearn.utils.extmath import cartesian
@@ -29,14 +30,14 @@ class TestPolygon(unittest.TestCase):
     def test_scale_polygon(self):
         ''' Test whether scaling up the polygon works '''
         newpoly = scale_points(self.poly, 1.3)
-        self.assertEqual(len(newpoly), len(self.poly),
-                           "number of polygon points is altered when scaling")
+        assert_equal(len(newpoly), len(self.poly),
+                     "number of polygon points is altered when scaling")
         assert_array_equal(self.poly[0], [.0, .0],
-                   err_msg="original polygon is altered when scaling")
+                           "original polygon is altered when scaling")
         assert_array_less(newpoly[0], self.poly[0],
-                   err_msg="small polygon points do not shrink when scaling up")
+                          "small polygon points do not shrink when scaling up")
         assert_array_less(self.poly[3], newpoly[3],
-                   err_msg="large polygon points do not grow when scaling up")
+                          "large polygon points do not grow when scaling up")
         in_scaled_polygon = point_in_polygon2d(self.points, newpoly)
         assert_true(np.all(in_scaled_polygon),
                     "not all points are in polygon when scaling up")
@@ -55,12 +56,13 @@ class TestCutoutPointCloud(unittest.TestCase):
     def test_cutout_from_footprint(self):
         ''' Test whether a cutout from a pointcloud gets the right points '''
         pc_fp = intersect_polygon2d(self.pc, self.footprint)
-        self.assertEqual(pc_fp.size, 1,
-                         "number of points expected in polygon not matched")
+        assert_equal(pc_fp.size, 1,
+                     "number of points expected in polygon not matched")
+        err_msg = "point that should be matched was modified"
         assert_array_almost_equal(pc_fp[0], [0.5, 0.2, 0., 0., 0., 0.],
-                      err_msg="point that should be matched was modified")
-        assert_array_equal(pc_fp.offset, self.offset,
-                      err_msg="offset changed by intersection with polygon")
+                                  err_msg=err_msg)
+        err_msg = "offset changed by intersection with polygon"
+        assert_array_equal(pc_fp.offset, self.offset, err_msg=err_msg)
 
 
 class TestCenter(unittest.TestCase):
@@ -81,12 +83,12 @@ class TestCenter(unittest.TestCase):
         center_boundingbox(self.pc)
         bb_new = BoundingBox(points=np.asarray(self.pc))
         assert_array_equal(bb_new.center, np.zeros(3),
-                    err_msg="after centering, BoundingBox center not in origin")
+                           "after centering, BoundingBox center not in origin")
         assert_array_equal(self.pc.offset, bb.center,
-                    err_msg="offset of centering operation not equal to"
-                            " original center")
+                           "offset of centering operation not equal to"
+                           " original center")
         assert_array_equal(bb.size, bb_new.size,
-                    err_msg="bounding box size changed due to translation")
+                           "bounding box size changed due to translation")
 
 
 class TestBoundary(unittest.TestCase):
@@ -105,109 +107,84 @@ class TestBoundary(unittest.TestCase):
 
     def test_boundaries(self):
         boundary = get_pointcloud_boundaries(self.pc)
-        self.assertEqual(self.pc.size, self.num_points)
-        self.assertLess(boundary.size, self.num_points)
-        self.assertGreater(boundary.size, 0)
+        assert_equal(self.pc.size, self.num_points)
+        assert_less(boundary.size, self.num_points)
+        assert_greater(boundary.size, 0)
 
         small_footprint = scale_points(self.footprint_boundary, 0.9)
         large_footprint = scale_points(self.footprint_boundary, 1.1)
 
-        self.assertEqual(np.sum(point_in_polygon2d(boundary, small_footprint)),
-                         0)
-        self.assertEqual(np.sum(point_in_polygon2d(boundary, large_footprint)),
-                         boundary.size)
-        self.assertGreater(np.sum(point_in_polygon2d(self.pc, small_footprint)),
-                           0)
-        self.assertEqual(np.sum(point_in_polygon2d(self.pc, large_footprint)),
-                         self.pc.size)
+        assert_equal(np.sum(point_in_polygon2d(boundary, small_footprint)), 0)
+        assert_equal(np.sum(point_in_polygon2d(boundary, large_footprint)),
+                     boundary.size)
+        assert_greater(np.sum(point_in_polygon2d(self.pc, small_footprint)), 0)
+        assert_equal(np.sum(point_in_polygon2d(self.pc, large_footprint)),
+                     self.pc.size)
 
     def test_boundaries_too_small_radius(self):
         boundary = get_pointcloud_boundaries(
             self.pc, search_radius=0.0001, normal_search_radius=0.0001)
-        self.assertEqual(boundary.size, 0)
+        assert_equal(boundary.size, 0)
 
 
 class TestRegistrationPipeline(unittest.TestCase):
     def setUp(self):
-        self.drivemapLas = 'testDriveMap.las'
-        self.sourceLas = 'testSource.las'
-        self.footprintCsv = 'testFootprint.csv'
-        self.foutLas = 'testOutput.las'
+        self.drivemapLas = './testDriveMap.las'
+        self.sourcelas = './testSource.las'
+        self.footprint_csv = './testFootprint.csv'
+        self.foutlas = './testOutput.las'
 
         self.min = -10
         self.max = 10
         self.num_rows = 50
 
         # Create plane with a pyramid
-        cubePct = 0.5
-        cubeRows = np.round(self.num_rows * cubePct)
-        cubeMin = self.min * cubePct
-        cubeMax = self.max * cubePct
-        cubeOffset = [0, 0, 0]
-        denseCubeOffset = [3, 2, 1 + (cubeMax - cubeMin) / 2]
+        dm_pct = 0.5
+        dm_rows = np.round(self.num_rows * dm_pct)
+        dm_min = self.min * dm_pct
+        dm_max = self.max * dm_pct
+
+        delta = dm_max / dm_rows
+        shape_side = dm_max - dm_min
+
+        dm_offset = [0, 0, 0]
+        dense_obj_offset = [3, 2, -(1 + shape_side / 2)]
 
         plane_row = np.linspace(
             start=self.min, stop=self.max, num=self.num_rows)
-        planePoints = cartesian((plane_row, plane_row, 0))
+        plane_points = cartesian((plane_row, plane_row, 0))
 
-        cubePoints, footprint = self.buildShape(cubeMin, cubeMax, cubeRows, cubeOffset)
+        shape_points, footprint = make_tri_pyramid_with_base(
+            shape_side, delta, dm_offset)
+        all_points = np.vstack([plane_points, shape_points])
 
-        allPoints = np.vstack([planePoints, cubePoints])
-
-        plane_grid = np.zeros((allPoints.shape[0], 6))
-        plane_grid[:, 0:3] = allPoints
+        plane_grid = np.zeros((all_points.shape[0], 6))
+        plane_grid[:, 0:3] = all_points
 
         self.drivemap_pc = pcl.PointCloudXYZRGB(plane_grid.astype(np.float32))
-        self.drivemap_pc = downsample_voxel(self.drivemap_pc, voxel_size=0.01)
+        self.drivemap_pc = downsample_voxel(self.drivemap_pc, voxel_size=delta)
         conversions.register(self.drivemap_pc)
         conversions.save(self.drivemap_pc, self.drivemapLas)
 
-        # Create a simple box
-        denseCubePoints, _ = self.buildShape(
-            cubeMin, cubeMax, cubeRows * 20, denseCubeOffset)
+        # Create a simple pyramid
+        dense_obj_points, _ = make_tri_pyramid_with_base(
+            shape_side, delta / 20, dense_obj_offset)
+        dense_grid = np.zeros((dense_obj_points.shape[0], 6))
+        dense_grid[:, 0:3] = dense_obj_points
 
-        denseGrid = np.zeros((denseCubePoints.shape[0], 6))
-        denseGrid[:, 0:3] = denseCubePoints
-
-        self.source_pc = pcl.PointCloudXYZRGB(denseGrid.astype(np.float32))
-        self.source_pc = downsample_voxel(self.source_pc, voxel_size=0.01)
+        print delta
+        self.source_pc = pcl.PointCloudXYZRGB(dense_grid.astype(np.float32))
+        self.source_pc = downsample_voxel(self.source_pc, voxel_size=delta/4)
         conversions.register(self.source_pc)
-        conversions.save(self.source_pc, self.sourceLas)
+        conversions.save(self.source_pc, self.sourcelas)
 
-        np.savetxt(self.footprintCsv, footprint, fmt='%.3f', delimiter=',')
-
-    @staticmethod
-    def build_shape(cubeMin, cubeMax, cubeRows, cubeOffset):
-        side = (cubeMax-cubeMin)
-        sX = side/2
-        sY = side
-        sZ = side/4
-
-        dX = cubeOffset[0] + side/2
-        dY = cubeOffset[1] + side/2
-        dZ = cubeOffset[2]
-
-        delta = cubeMax/cubeRows
-
-        cubePoints = make_tri_pyramid(sX,sY,sZ,dX,dY,dZ,delta)
-        cubePoints += np.random.rand(cubePoints.shape[0], cubePoints.shape[1]) * 0.1
-
-        dS = np.arange(0, side * 0.05, delta)
-        for s in dS:
-            xs,ys = make_triangle(sX*(1+s),sY*(1+s),dX + s,dY + s,delta)
-            zs = np.zeros(xs.shape) - dZ
-            tmp = np.vstack([xs,ys,zs]).T
-            cubePoints = np.vstack([cubePoints, tmp])
-
-        footprint = make_tri_pyramid_footprint(sX,sY,sZ,dX,dY,0)
-        return cubePoints, footprint
+        np.savetxt(self.footprint_csv, footprint, fmt='%.3f', delimiter=',')
 
     def test_pipeline(self):
-        '''
         # Register box on surface
-        registrationPipeline(self.sourceLas, self.drivemapLas,
-                             self.footprintCsv, self.foutLas)
-        registered_pc = conversions.load(self.foutLas)
+        registration_pipeline(self.sourcelas, self.drivemapLas,
+                              self.footprint_csv, self.foutlas)
+        registered_pc = conversions.load(self.foutlas)
 
         target = np.asarray(self.source_pc)
         actual = np.asarray(registered_pc)
@@ -221,4 +198,3 @@ class TestRegistrationPipeline(unittest.TestCase):
         assert_array_almost_equal(target.mean(axis=0), actual.mean(axis=0), 6,
                                   "Middle point of registered cloud does not"
                                   " match expectation")
-        '''

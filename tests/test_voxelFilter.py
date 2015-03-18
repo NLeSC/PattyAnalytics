@@ -1,7 +1,9 @@
 import logging
-from patty.conversions import load, save
+import pcl
+import numpy as np
+import patty
+from helpers import make_tri_pyramid_with_base
 
-from nose import SkipTest
 from nose.tools import assert_greater
 
 logging.basicConfig(level=logging.INFO)
@@ -11,11 +13,14 @@ def test_filter():
     '''
     Test Voxel Grid Filter functionality
     '''
-    fileLas = 'data/footprints/162.las'
-    fileLasOut = 'data/footprints/162_sparse.las'
+    side = 10
+    delta = 0.05
+    offset = [-5, -5, 0]
+    points, footprint = make_tri_pyramid_with_base(side, delta, offset)
 
-    # Load point cloud
-    pc = load(fileLas)
+    pc = pcl.PointCloudXYZRGB(points.astype(np.float32))
+    patty.register(pc)
+
     # Build Voxel Grid Filter
     vgf = pc.make_voxel_grid_filter()
 
@@ -34,12 +39,3 @@ def test_filter():
     assert_greater(len(pc), len(pc2))
     assert_greater(len(pc3), len(pc2))
     assert_greater(len(pc), len(pc4))
-
-    pc2.offset = pc.offset
-    save(pc2, fileLasOut)
-
-    logging.info(
-        'Voxel grid filter has been applied to point cloud (making it sparse).'
-        ' You can view the results using CloudCompare.')
-    logging.info('  Original point cloud: ' + fileLas)
-    logging.info('  Sparse point cloud  : ' + fileLasOut)

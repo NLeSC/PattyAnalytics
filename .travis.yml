@@ -3,13 +3,15 @@ python:
 - "2.7" 
 
 before_install:
+- "sudo add-apt-repository -y ppa:ubuntugis/ubuntugis-unstable"
 - "sudo add-apt-repository -y ppa:v-launchpad-jochen-sprickerhof-de/pcl"
-- "sudo apt-get -qq update"
+- "sudo apt-get update"
 - "pip install -U -q cython"
 - "export DEBIAN_FRONTEND=noninteractive"
-- "sudo apt-get -qq install libpcl-all python-matplotlib liblas"
+- "sudo apt-get -qq install libpcl-all python-matplotlib liblas-c2 python-liblas"
 - "pip install coverage"
 - "pip install -r requirements.txt"
+- "export PYTHONPATH=/usr/share/pyshared:$PYTHONPATH"
 
 install:
 - "echo done"

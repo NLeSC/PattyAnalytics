@@ -2,7 +2,7 @@
 """Takes a point cloud containing only the red segments of scale sticks and
 returns the scale estimation and a confidence indication.
 
-Usage: stickScaler.py [-e <eps>] [-s <minsamples>] <infile>
+Usage: stickscaler.py [-e <eps>] [-s <minsamples>] <infile>
 
 Options:
     -e <eps>, --eps <eps>   The maximum distance between two samples for them
@@ -16,7 +16,7 @@ Options:
 from __future__ import print_function
 from docopt import docopt
 from patty.conversions import load
-from patty.registration.stickScale import get_stick_scale
+from patty.registration.stickscale import get_stick_scale
 
 # Takes a point cloud containing only the red segments of scale sticks and
 # returns the scale estimation and a confidence indication.
