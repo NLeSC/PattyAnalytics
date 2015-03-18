@@ -1,8 +1,12 @@
 from patty.registration.stickscale import get_stick_scale
-from patty.conversions import load
+from patty import load, save
 from nose_parameterized import parameterized
 
 from nose.tools import assert_greater, assert_less
+
+from helpers import make_red_stick
+import pcl
+import numpy as np
 
 
 # The ground truths for these tests was defined by measuring stick segments,
@@ -10,6 +14,7 @@ from nose.tools import assert_greater, assert_less
 # Note: failing instances commented out. Uncomment them for testing out
 # new methods.
 @parameterized.expand([
+    (1.0,),
     # ("SITE9", 'redstick_SITE_9.ply', 11.45),
     # ("SITE11", 'redstick_SITE_11.ply', 2.925),
     # ("SITE12", 'redstick_SITE_12.ply', 10.85),
@@ -29,10 +34,15 @@ from nose.tools import assert_greater, assert_less
     # ("SITE19", 'redstick_SITE_19.ply', 3.15),
 
     # ("SITE20", 'redstick_SITE_20.ply', 5.55),
-    # ("SITE21", 'redstick_SITE_21.ply', 5.4)
+    # ("SITE21", 'redstick_SITE_21.ply', 5.4),
 ])
-def test_actual_data_length(name, filename, expected_meter):
-    pc = load('tests/testdata/' + filename)
+def test_actual_data_length(expected_meter):
+    s1 = make_red_stick([0,0,0], [0,1,0])
+    s2 = make_red_stick([1,2,0], [1,1,0])
+    s3 = make_red_stick([3,3,0], [3,4,0])
+    data = np.array(np.concatenate((s1, s2, s3), axis=0), dtype=np.float32)
+    print(len(data))
+    pc = pcl.PointCloudXYZRGB(data)
     meter, confidence = get_stick_scale(pc)
     assert_with_error(meter, expected_meter)
 
