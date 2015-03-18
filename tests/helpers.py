@@ -95,18 +95,14 @@ def rotation_around_axis(axis, theta):
                      [2*(bd+ac), 2*(cd-ab), aa+dd-bb-cc]])
 
 
-def make_half_red_stick(point_from, point_to, width = 0.04, num_pts_per_line = 250, num_lines_per_stick = 100):
+def make_half_red_stick(point_from, point_to, width = 0.04, num_pts_per_line = 50, num_lines_per_stick = 25):
     ''' Make a hollow red-white-red-white stick '''
-    point_from = np.asarray(point_from)[:3]
-    point_to = np.asarray(point_to)[:3]
+    point_from = np.asarray(point_from, dtype=float)[:3]
+    point_to = np.asarray(point_to, dtype=float)[:3]
     length = np.linalg.norm(point_to - point_from)
     width = length * 0.04
     axis = (point_to - point_from) * 1.0 / length
-    print(length)
     origin = perpendicular_2d(axis)*width
-    
-    num_pts_per_line = 500
-    num_lines_per_stick = 100
     
     points = np.zeros((num_pts_per_line*num_lines_per_stick,6))
     points[:,3:6] = 255
@@ -126,8 +122,8 @@ def make_half_red_stick(point_from, point_to, width = 0.04, num_pts_per_line = 2
 
 def make_red_stick(point_from, point_to, **kwargs):
     ''' Make a hollow red-white-red-white stick '''
-    point_from = np.asarray(point_from)[:3]
-    point_to = np.asarray(point_to)[:3]
+    point_from = np.asarray(point_from, dtype=float)[:3]
+    point_to = np.asarray(point_to, dtype=float)[:3]
     halfway = (point_to + point_from)/2
     half1 = make_half_red_stick(point_from, halfway, **kwargs)
     half2 = make_half_red_stick(halfway, point_to, **kwargs)

@@ -37,7 +37,7 @@ def get_stick_scale(pc, eps=0.1, min_samples=20):
               'meter': measure_length(cluster) * segmentsPerMeter}
              for cluster in cluster_generator]
     scale, votes, supportingClusterCount = ransac(sizes)
-    confidence = getConfidenceLevel(votes, supportingClusterCount)
+    confidence = get_confidence_level(votes, supportingClusterCount)
     return scale, confidence
 
 

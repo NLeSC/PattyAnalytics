@@ -41,7 +41,6 @@ def test_actual_data_length(expected_meter):
     s2 = make_red_stick([1,2,0], [1,1,0])
     s3 = make_red_stick([3,3,0], [3,4,0])
     data = np.array(np.concatenate((s1, s2, s3), axis=0), dtype=np.float32)
-    print(len(data))
     pc = pcl.PointCloudXYZRGB(data)
     meter, confidence = get_stick_scale(pc)
     assert_with_error(meter, expected_meter)
