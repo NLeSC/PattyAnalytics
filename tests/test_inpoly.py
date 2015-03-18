@@ -1,6 +1,6 @@
 import logging
 from patty.conversions import load, save, loadCsvPolygon
-from patty.registration import registration
+from patty.registration import intersect_polgyon2d
 
 from nose.tools import assert_true
 
@@ -10,14 +10,14 @@ logging.basicConfig(level=logging.INFO)
 def testInPoly():
     '''
     Test point cloud / footprint intersection functionality provided
-    by patty.registration.registration.intersect_polgyon2d()
+    by patty.registration.intersect_polgyon2d()
     '''
     fileLas = 'data/footprints/162.las'
     fileLasOut = 'data/footprints/162_inFootprint.las'
     filePoly = 'data/footprints/162.las_footprint.csv'
     pc = load(fileLas)
     footprint = loadCsvPolygon(filePoly)
-    pcIn = registration.intersect_polgyon2d(pc, footprint)
+    pcIn = intersect_polgyon2d(pc, footprint)
     assert_true(len(pc) >= len(pcIn))
     assert_true(len(pcIn) > 0)
 

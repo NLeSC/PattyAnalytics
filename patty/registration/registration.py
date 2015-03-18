@@ -11,7 +11,7 @@ import logging
 from patty import copy_registration, is_registered, extract_mask, register
 from patty.segmentation import dbscan
 from matplotlib import path
-from patty.registration.principalComponents import principal_axes_rotation
+from patty.registration import principal_axes_rotation
 
 logging.basicConfig(level=logging.INFO)
 

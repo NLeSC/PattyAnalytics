@@ -19,7 +19,9 @@ import os
 import sys
 from patty.conversions import (load, save, loadCsvPolygon,
                                copy_registration, extract_mask)
-from patty.registration import registration
+from patty.registration import (get_pointcloud_boundaries, find_rotation
+                                register_offset_scale_from_ref,
+                                point_in_polygon2d)
 from patty.segmentation.dbscan import get_largest_dbscan_clusters
 from patty.registration.stickScale import getPreferredScaleFactor
 from patty.utils import BoundingBox
@@ -59,12 +61,11 @@ def registrationPipeline(sourceFile, drivemapFile, footprintCsv, f_out):
     drivemap_array = np.asarray(drivemap) + drivemap.offset
 
     # Get the pointcloud of the drivemap within the footprint
-    in_footprint = registration.point_in_polygon2d(drivemap_array, footprint)
+    in_footprint = point_in_polygon2d(drivemap_array, footprint)
 
     # Get a boundary around the drivemap footprint
-    large_footprint = registration.scale_points(footprint, 2)
-    in_large_footprint = registration.point_in_polygon2d(
-        drivemap_array, large_footprint)
+    large_footprint = scale_points(footprint, 2)
+    in_large_footprint = point_in_polygon2d(drivemap_array, large_footprint)
     footprint_boundary = extract_mask(
         drivemap, in_large_footprint & np.invert(in_footprint))
 
@@ -77,7 +78,7 @@ def registrationPipeline(sourceFile, drivemapFile, footprintCsv, f_out):
 
     log("Detecting boundary")
     search_radius = boundary_bb.diagonal / 100.0
-    boundary = registration.get_pointcloud_boundaries(
+    boundary = get_pointcloud_boundaries(
         cluster, search_radius=search_radius,
         normal_search_radius=search_radius)
 
@@ -89,7 +90,7 @@ def registrationPipeline(sourceFile, drivemapFile, footprintCsv, f_out):
         sys.exit(1)
     else:
         log("Finding rotation:")
-        transform = registration.find_rotation(boundary, footprint_boundary)
+        transform = find_rotation(boundary, footprint_boundary)
         log(transform)
 
         log("Rotating pointcloud...")
@@ -99,7 +100,7 @@ def registrationPipeline(sourceFile, drivemapFile, footprintCsv, f_out):
 
         log("Calculating scale and shift from boundary to footprint")
         registered_offset, registered_scale = \
-            registration.register_offset_scale_from_ref(boundary, footprint)
+            register_offset_scale_from_ref(boundary, footprint)
         registered_scale = getPreferredScaleFactor(pointcloud,
                                                    registered_scale)
 

@@ -153,7 +153,7 @@ def get_largest_dbscan_clusters(pointcloud, min_return_fragment=0.7,
 
 def _get_top_labels(labels, min_return_fragment):
     bins = np.bincount(labels + 1)
-    labelbinpairs = [enumerate(bins[1:])]
+    labelbinpairs = [(i, v) for (i, v) in enumerate(bins[1:])]
     labelbinpairs.sort(key=lambda x: x[1], reverse=False)
     total = len(labels)
     minimum = min_return_fragment * total

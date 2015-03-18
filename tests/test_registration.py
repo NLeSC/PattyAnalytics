@@ -1,9 +1,10 @@
 import numpy as np
 import pcl
 
-from patty import conversions
-from patty.registration import registration
-from patty.registration.registration import (point_in_polygon2d, downsample_voxel)
+from patty import center_boundingbox
+from patty.registration import (point_in_polygon2d, downsample_voxel,
+                                scale_points, intersect_polgyon2d,
+                                get_pointcloud_boundaries)
 from patty.utils import BoundingBox
 from scripts.registration import registrationPipeline
 
@@ -29,7 +30,7 @@ class TestPolygon(unittest.TestCase):
 
     def testScalePolygon(self):
         ''' Test whether scaling up the polygon works '''
-        newpoly = registration.scale_points(self.poly, 1.3)
+        newpoly = scale_points(self.poly, 1.3)
         self.assertEqual(len(newpoly), len(self.poly),
                            "number of polygon points is altered when scaling")
         assert_array_equal(self.poly[0], [.0, .0],
@@ -56,7 +57,7 @@ class TestCutoutPointCloud(unittest.TestCase):
 
     def testCutOutFromFootprint(self):
         ''' Test whether a cutout from a pointcloud gets the right points '''
-        pc_fp = registration.intersect_polgyon2d(self.pc, self.footprint)
+        pc_fp = intersect_polgyon2d(self.pc, self.footprint)
         self.assertEqual(pc_fp.size, 1,
                          "number of points expected in polygon not matched")
         assert_array_almost_equal(pc_fp[0], [0.5, 0.2, 0., 0., 0., 0.],
@@ -81,7 +82,7 @@ class TestCenter(unittest.TestCase):
                            " is not center of input")
 
         # New center
-        registration.center_boundingbox(self.pc)
+        center_boundingbox(self.pc)
         bb_new = BoundingBox(points=np.asarray(self.pc))
         assert_array_equal(bb_new.center, np.zeros(3),
                     err_msg="after centering, BoundingBox center not in origin")
@@ -108,31 +109,25 @@ class TestBoundary(unittest.TestCase):
              [self.max, self.max], [self.max, 0.0]])
 
     def testBoundaries(self):
-        boundary = registration.get_pointcloud_boundaries(self.pc)
+        boundary = get_pointcloud_boundaries(self.pc)
         self.assertEqual(self.pc.size, self.num_points)
         self.assertLess(boundary.size, self.num_points)
         self.assertGreater(boundary.size, 0)
 
-        small_footprint = registration.scale_points(
-            self.footprint_boundary, 0.9)
-        large_footprint = registration.scale_points(
-            self.footprint_boundary, 1.1)
+        small_footprint = scale_points(self.footprint_boundary, 0.9)
+        large_footprint = scale_points(self.footprint_boundary, 1.1)
 
-        self.assertEqual(
-            np.sum(registration.point_in_polygon2d(boundary, small_footprint)),
-            0)
-        self.assertEqual(
-            np.sum(registration.point_in_polygon2d(boundary, large_footprint)),
-            boundary.size)
-        self.assertGreater(
-            np.sum(registration.point_in_polygon2d(self.pc, small_footprint)),
-            0)
-        self.assertEqual(
-            np.sum(registration.point_in_polygon2d(self.pc, large_footprint)),
-            self.pc.size)
+        self.assertEqual(np.sum(point_in_polygon2d(boundary, small_footprint)),
+                         0)
+        self.assertEqual(np.sum(point_in_polygon2d(boundary, large_footprint)),
+                         boundary.size)
+        self.assertGreater(np.sum(point_in_polygon2d(self.pc, small_footprint)),
+                           0)
+        self.assertEqual(np.sum(point_in_polygon2d(self.pc, large_footprint)),
+                         self.pc.size)
 
     def testBoundariesTooSmallRadius(self):
-        boundary = registration.get_pointcloud_boundaries(
+        boundary = get_pointcloud_boundaries(
             self.pc, search_radius=0.0001, normal_search_radius=0.0001)
         self.assertEqual(boundary.size, 0)
 
