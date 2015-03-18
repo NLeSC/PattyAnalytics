@@ -156,7 +156,7 @@ def get_top_labels(labels, min_return_fragment):
     minimum = min_return_fragment * total
     selected = []
     selectedcount = 0
-    while((selectedcount < minimum) & (len(labelbinpairs) > 0)):
+    while selectedcount < minimum and len(labelbinpairs) > 0:
         label, count = labelbinpairs.pop()
         selected.append(label)
         selectedcount += count
