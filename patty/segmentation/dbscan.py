@@ -95,7 +95,8 @@ def largest_dbscan_cluster(pointcloud, epsilon=0.1, minpoints=250,
 
     Returns
     -------
-    cluster: registered pointcloud of the largest cluster found by dbscan
+    cluster: PointCloud
+        Registered pointcloud of the largest cluster found by dbscan
     '''
     labels = _dbscan_labels(
         pointcloud, epsilon, minpoints, rgb_weight=rgb_weight)
