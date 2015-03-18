@@ -75,7 +75,7 @@ class TestWriteLas(unittest.TestCase):
         assert_true(os.path.exists(wfname), "temporary test file not written")
         pc_new = conversions.loadLas(wfname)
         os.remove(wfname)
-        
+
         self.pointCloudHeader(pc_new, header)
         assert_array_almost_equal(np.asarray(self.pc) + self.pc.offset,
                                   np.asarray(pc_new) + pc_new.offset,
