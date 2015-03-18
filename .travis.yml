@@ -12,7 +12,7 @@ before_install:
 - "pip install coverage"
 - "pip install -r requirements.txt"
 - "export PYTHONPATH=$PYTHONPATH:/usr/share/pyshared"
-- "sudo ln -s /usr/lib/liblas_c.so /usr/lib/liblas_c.so.2.2.0"
+- "sudo ln -s /usr/lib/liblas_c.so.2.2.0 /usr/lib/liblas_c.so"
 
 install:
 - "echo done"
