@@ -140,7 +140,7 @@ def get_largest_dbscan_clusters(pointcloud, min_return_fragment=0.7,
     cluster: registered pointcloud of the largest cluster found by dbscan
     '''
     labels = dbscan_labels(pointcloud, epsilon, minpoints,
-                           rgb_weight=rgb_weight)
+                           rgb_weight=rgb_weight).astype(np.int64)
     selection, selected_count = _get_top_labels(labels, min_return_fragment)
 
     # No clusters were found

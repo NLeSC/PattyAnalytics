@@ -6,12 +6,12 @@ Usage: redStickDetection.py  [-h] <infile> <outfile>
 """
 
 from docopt import docopt
-from patty.segmentation.segRedStick import getRedMask
+from patty.segmentation.segRedStick import get_red_mask
 from patty.conversions import extract_mask, load, save
 
 if __name__ == '__main__':
     args = docopt(__doc__)
 
     pc = load(args['<infile>'])
-    redPc = extract_mask(pc, getRedMask(pc))
-    save(redPc, args['<outfile>'])
+    red_pc = extract_mask(pc, get_red_mask(pc))
+    save(red_pc, args['<outfile>'])

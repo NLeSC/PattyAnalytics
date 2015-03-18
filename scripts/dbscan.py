@@ -40,9 +40,8 @@ if __name__ == '__main__':
     n_outliers = len(pc)
     for i, cluster in enumerate(clusters):
         print("%d points in cluster %d" % (len(cluster), i))
-        filename = '%s/cluster%d.%s' % (
-                args['--output_dir'], i, args['--format']
-            )
+        filename = '%s/cluster%d.%s' % (args['--output_dir'], i,
+                                        args['--format'])
         save(cluster, filename)
         n_outliers -= len(cluster)
 
