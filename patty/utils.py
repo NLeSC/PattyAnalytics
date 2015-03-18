@@ -1,4 +1,5 @@
 import numpy as np
+from conversions import is_registered, copy_registration
 
 
 class BoundingBox(object):
@@ -81,13 +82,25 @@ def downsample(pc, fraction, random_seed=None):
     integer.
 
     Use random_seed=k for some integer k to get reproducible results.
+    Arguments:
+        pc: pcl.PointCloud
+            input pointcloud
+        fraction: double
+            fraction of points to include
+        random_seed: int
+            seed to use in random number generator
+
+    Returns:
+        pcl.Pointcloud
     """
-
-    rng = np.random.RandomState(random_seed)
-
     if not 0 < fraction <= 1:
         raise ValueError("Expected fraction in (0,1], got %r" % fraction)
 
+    rng = np.random.RandomState(random_seed)
+
     k = max(int(round(fraction * len(pc))), 1)
     sample = rng.choice(len(pc), k, replace=False)
-    return pc.extract(sample)
+    new_pc = pc.extract(sample)
+    if is_registered(pc):
+        copy_registration(new_pc, pc)
+    return new_pc

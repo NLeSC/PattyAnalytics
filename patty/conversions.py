@@ -172,8 +172,10 @@ def register(pointcloud, offset=None, precision=None, crs_wkt=None,
 def copy_registration(pointcloud_target, pointcloud_src):
     """Copy spatial reference system metadata from src to target.
     Arguments:
-        pointcloud_target
-        pointcloud_src
+        pointcloud_target: pcl.PointCloud
+            pointcloud to copy registration to
+        pointcloud_src: pcl.PointCloud
+            registered pointcloud to copy registration from
     """
     pointcloud_target.is_registered = True
     pointcloud_target.offset = pointcloud_src.offset
@@ -192,6 +194,15 @@ def loadCsvPolygon(csvFile, delimiter=','):
 
 
 def extract_mask(pointcloud, mask):
+    """Extract all points in a mask into a new pointcloud.
+
+    Arguments:
+        pointcloud: pcl.PointCloud
+            Input pointcloud
+        mask: array of bool
+            mask for which points from the pointcloud to include.
+    Returns:
+        pointcloud with the same registration (if any) as the original one."""
     pointcloud_new = pointcloud.extract(np.where(mask)[0])
     if is_registered(pointcloud):
         copy_registration(pointcloud_new, pointcloud)
@@ -199,6 +210,16 @@ def extract_mask(pointcloud, mask):
 
 
 def makeLasHeader(pc):
+    """ Make a LAS header for given pointcloud.
+    If the pointcloud is registered, this is taken into account for the
+    header metadata. Has the side-effect of registering the given pointcloud.
+
+    Arguments:
+        pc: pcl.PointCloud
+            Input pointcloud.
+    Returns:
+        liblas.header.Header for writing the pointcloud to LAS file with.
+    """
     f = liblas.schema.Schema()
     f.time = False
     f.color = True
