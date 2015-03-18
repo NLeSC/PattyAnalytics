@@ -11,6 +11,7 @@ before_install:
 - "sudo apt-get -qq install libpcl-all python-matplotlib liblas-c2 python-liblas"
 - "pip install coverage"
 - "pip install -r requirements.txt"
+- "export PYTHONPATH=/usr/share/pyshared:$PYTHONPATH"
 
 install:
 - "echo done"
