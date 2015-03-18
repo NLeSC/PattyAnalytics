@@ -18,4 +18,3 @@ def test_centered_line_on_x_axis():
 
     # Assert
     assert_almost_equal(sum(reds), expected)
-    
