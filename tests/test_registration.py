@@ -3,7 +3,7 @@ import pcl
 
 from patty import center_boundingbox, conversions
 from patty.registration import (point_in_polygon2d, downsample_voxel,
-                                scale_points, intersect_polgyon2d,
+                                scale_points, intersect_polygon2d,
                                 get_pointcloud_boundaries)
 from patty.utils import BoundingBox
 
@@ -54,7 +54,7 @@ class TestCutoutPointCloud(unittest.TestCase):
 
     def test_cutout_from_footprint(self):
         ''' Test whether a cutout from a pointcloud gets the right points '''
-        pc_fp = intersect_polgyon2d(self.pc, self.footprint)
+        pc_fp = intersect_polygon2d(self.pc, self.footprint)
         self.assertEqual(pc_fp.size, 1,
                          "number of points expected in polygon not matched")
         assert_array_almost_equal(pc_fp[0], [0.5, 0.2, 0., 0., 0., 0.],

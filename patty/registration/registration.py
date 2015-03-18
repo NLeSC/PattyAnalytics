@@ -185,7 +185,7 @@ def point_in_polygon2d(points, polygon):
                     dtype=np.bool)
 
 
-def intersect_polgyon2d(pc, polygon):
+def intersect_polygon2d(pc, polygon):
     in_polygon = point_in_polygon2d(np.asarray(pc) + pc.offset, polygon)
     return extract_mask(pc, in_polygon)
 

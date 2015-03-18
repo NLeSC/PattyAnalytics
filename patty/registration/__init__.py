@@ -4,4 +4,4 @@ from .registration import (downsample, downsample_voxel,
                            register_from_footprint,
                            register_from_reference, get_pointcloud_boundaries,
                            find_rotation, point_in_polygon2d,
-                           intersect_polgyon2d, scale_points)
+                           intersect_polygon2d, scale_points)
