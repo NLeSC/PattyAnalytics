@@ -2,7 +2,7 @@
 """Segment points by colour from a pointcloud file and saves all reddish points
 target pointcloud file. Autodectects ply, pcd and las files.
 
-Usage: redStickDetection.py  [-h] <infile> <outfile>
+Usage: redstickdetection.py  [-h] <infile> <outfile>
 """
 
 from docopt import docopt
