@@ -1,7 +1,7 @@
 import numpy as np
 from pcl import PointCloud
 
-from patty.utils import downsample
+from patty.conversions import downsample
 
 from nose.tools import assert_equal, assert_raises
 
