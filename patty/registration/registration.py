@@ -37,8 +37,8 @@ def downsample_voxel(pointcloud, voxel_size=0.01):
     filtered_pointcloud = pc_filter.filter()
     new_len = len(filtered_pointcloud)
     decrease_percent = (old_len - new_len) * 100 / old_len
-    logging.info("number of points reduced from", old_len,
-                 "to", new_len, "(", decrease_percent, "pct. decrease)")
+    #logging.info("number of points reduced from", old_len,
+    #             "to", new_len, "(", decrease_percent, "pct. decrease)")
     return filtered_pointcloud
 
 

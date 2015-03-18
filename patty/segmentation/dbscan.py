@@ -21,6 +21,7 @@ def _dbscan_labels(pointcloud, epsilon, minpoints, rgb_weight=0,
     Parameters
     ----------
     pointcloud : pcl.PointCloud
+        Input pointcloud.
     epsilon : float
         Neighborhood radius for DBSCAN.
     minpoints : integer
@@ -55,6 +56,7 @@ def segment_dbscan(pointcloud, epsilon, minpoints, **kwargs):
     Parameters
     ----------
     pointcloud : pcl.PointCloud
+        Input pointcloud.
     epsilon : float
         Neighborhood radius for DBSCAN.
     minpoints : integer
@@ -80,6 +82,7 @@ def largest_dbscan_cluster(pointcloud, epsilon=0.1, minpoints=250,
     Parameters
     ----------
     pointcloud : pcl.PointCloud
+        Input pointcloud.
     epsilon : float
         Neighborhood radius for DBSCAN.
     minpoints : integer
@@ -92,7 +95,8 @@ def largest_dbscan_cluster(pointcloud, epsilon=0.1, minpoints=250,
 
     Returns
     -------
-    cluster: registered pointcloud of the largest cluster found by dbscan
+    cluster: PointCloud
+        Registered pointcloud of the largest cluster found by dbscan
     '''
     labels = _dbscan_labels(
         pointcloud, epsilon, minpoints, rgb_weight=rgb_weight)
@@ -152,7 +156,7 @@ def get_top_labels(labels, min_return_fragment):
     minimum = min_return_fragment * total
     selected = []
     selectedcount = 0
-    while((selectedcount < minimum) & (len(labelbinpairs) > 0)):
+    while selectedcount < minimum and len(labelbinpairs) > 0:
         label, count = labelbinpairs.pop()
         selected.append(label)
         selectedcount += count

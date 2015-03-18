@@ -1,10 +1,6 @@
 '''
 Pointcloud functions for reading/writing LAS files, and functions for dealing
 with the spatial reference system.
-
-Created on Oct 22, 2014
-
-@author: carlosm, joris, jisk, lars, christiaan (NLeSC)
 '''
 
 # DONT: liblas is deprecated, use laspy instead!
@@ -118,7 +114,7 @@ def loadLas(lasFile):
 
 
 def is_registered(pointcloud):
-    """Returns True when a pointcleoud is registerd"""
+    """Returns True when a pointcloud is registered."""
     return hasattr(pointcloud, 'is_registered') and pointcloud.is_registered
 
 
@@ -169,24 +165,26 @@ def register(pointcloud, offset=None, precision=None, crs_wkt=None,
         pointcloud.crs_verticalcs = crs_verticalcs
 
 
-def copy_registration(pointcloud_target, pointcloud_src):
+def copy_registration(target, src):
     """Copy spatial reference system metadata from src to target.
+
     Arguments:
         pointcloud_target: pcl.PointCloud
             pointcloud to copy registration to
         pointcloud_src: pcl.PointCloud
             registered pointcloud to copy registration from
     """
-    pointcloud_target.is_registered = True
-    pointcloud_target.offset = pointcloud_src.offset
-    pointcloud_target.precision = pointcloud_src.precision
-    pointcloud_target.crs_wkt = pointcloud_src.crs_wkt
-    pointcloud_target.crs_proj4 = pointcloud_src.crs_proj4
-    pointcloud_target.crs_verticalcs = pointcloud_src.crs_verticalcs
+    target.is_registered = True
+    target.offset = src.offset
+    target.precision = src.precision
+    target.crs_wkt = src.crs_wkt
+    target.crs_proj4 = src.crs_proj4
+    target.crs_verticalcs = src.crs_verticalcs
 
 
 def loadCsvPolygon(csvFile, delimiter=','):
     """Load a polygon from a simple CSV file
+
     Returns:
         numpy array containing the CSV file
     """
@@ -252,9 +250,11 @@ def makeLasHeader(pc):
 
 def writeLas(lasFile, pc, header=None):
     """Write a pointcloud to a LAS file
+
     Arguments:
-        lasFile  filename
-        pc       Pointclout to write
+        lasFile : filename
+
+        pc      : Pointclout to write
     """
     _checkWritable(lasFile)
 
