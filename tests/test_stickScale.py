@@ -1,4 +1,4 @@
-from patty.registration.stickScale import get_stick_scale
+from patty.registration.stickscale import get_stick_scale
 from patty.conversions import load
 from nose_parameterized import parameterized
 

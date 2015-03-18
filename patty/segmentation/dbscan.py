@@ -155,9 +155,10 @@ def _get_top_labels(labels, min_return_fragment):
     """Return labels of the smallest set of clusters that contain at least
     min_return_fragment of the points (or everything)."""
 
-    bins = np.bincount(labels + 1)
-    labelbinpairs = [(i, v) for (i, v) in enumerate(bins[1:])]
-    labelbinpairs.sort(key=lambda x: x[1], reverse=False)
+    # +1 to make bincount happy, [1:] to get rid of outliers.
+    bins = np.bincount(labels + 1)[1:]
+    labelbinpairs = sorted(enumerate(bins), key=lambda x: x[1])
+
     total = len(labels)
     minimum = min_return_fragment * total
     selected = []

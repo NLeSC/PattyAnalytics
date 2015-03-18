@@ -6,6 +6,7 @@ from patty.registration import (point_in_polygon2d, downsample_voxel,
                                 scale_points, intersect_polygon2d,
                                 get_pointcloud_boundaries)
 from patty.utils import BoundingBox
+from scripts.registration import registration_pipeline
 
 from helpers import make_tri_pyramid_with_base
 from nose.tools import assert_equal, assert_greater, assert_less, assert_true
@@ -128,61 +129,62 @@ class TestBoundary(unittest.TestCase):
 
 class TestRegistrationPipeline(unittest.TestCase):
     def setUp(self):
-        self.drivemapLas = 'testDriveMap.las'
-        self.sourceLas = 'testSource.las'
-        self.footprintCsv = 'testFootprint.csv'
-        self.foutLas = 'testOutput.las'
+        self.drivemapLas = './testDriveMap.las'
+        self.sourcelas = './testSource.las'
+        self.footprint_csv = './testFootprint.csv'
+        self.foutlas = './testOutput.las'
 
         self.min = -10
         self.max = 10
         self.num_rows = 50
 
         # Create plane with a pyramid
-        cubePct = 0.5
-        cubeRows = np.round(self.num_rows * cubePct)
-        cubeMin = self.min * cubePct
-        cubeMax = self.max * cubePct
-        cubeOffset = [0, 0, 0]
-        denseCubeOffset = [3, 2, 1 + (cubeMax - cubeMin) / 2]
+        dm_pct = 0.5
+        dm_rows = np.round(self.num_rows * dm_pct)
+        dm_min = self.min * dm_pct
+        dm_max = self.max * dm_pct
+
+        delta = dm_max / dm_rows
+        shape_side = dm_max - dm_min
+
+        dm_offset = [0, 0, 0]
+        dense_obj_offset = [3, 2, -(1 + shape_side / 2)]
 
         plane_row = np.linspace(
             start=self.min, stop=self.max, num=self.num_rows)
-        planePoints = cartesian((plane_row, plane_row, 0))
+        plane_points = cartesian((plane_row, plane_row, 0))
 
-        cubePoints, footprint = make_tri_pyramid_with_base(cubeMin, cubeMax,
-                                                           cubeRows,
-                                                           cubeOffset)
+        shape_points, footprint = make_tri_pyramid_with_base(
+            shape_side, delta, dm_offset)
+        all_points = np.vstack([plane_points, shape_points])
 
-        allPoints = np.vstack([planePoints, cubePoints])
-
-        plane_grid = np.zeros((allPoints.shape[0], 6))
-        plane_grid[:, 0:3] = allPoints
+        plane_grid = np.zeros((all_points.shape[0], 6))
+        plane_grid[:, 0:3] = all_points
 
         self.drivemap_pc = pcl.PointCloudXYZRGB(plane_grid.astype(np.float32))
-        self.drivemap_pc = downsample_voxel(self.drivemap_pc, voxel_size=0.01)
+        self.drivemap_pc = downsample_voxel(self.drivemap_pc, voxel_size=delta)
         conversions.register(self.drivemap_pc)
         conversions.save(self.drivemap_pc, self.drivemapLas)
 
-        # Create a simple box
-        denseCubePoints, _ = self.make_tri_pyramid_with_base(
-            cubeMin, cubeMax, cubeRows * 20, denseCubeOffset)
+        # Create a simple pyramid
+        dense_obj_points, _ = make_tri_pyramid_with_base(
+            shape_side, delta / 20, dense_obj_offset)
+        dense_grid = np.zeros((dense_obj_points.shape[0], 6))
+        dense_grid[:, 0:3] = dense_obj_points
 
-        denseGrid = np.zeros((denseCubePoints.shape[0], 6))
-        denseGrid[:, 0:3] = denseCubePoints
-
-        self.source_pc = pcl.PointCloudXYZRGB(denseGrid.astype(np.float32))
-        self.source_pc = downsample_voxel(self.source_pc, voxel_size=0.01)
+        print delta
+        self.source_pc = pcl.PointCloudXYZRGB(dense_grid.astype(np.float32))
+        self.source_pc = downsample_voxel(self.source_pc, voxel_size=delta/4)
         conversions.register(self.source_pc)
-        conversions.save(self.source_pc, self.sourceLas)
+        conversions.save(self.source_pc, self.sourcelas)
 
-        np.savetxt(self.footprintCsv, footprint, fmt='%.3f', delimiter=',')
+        np.savetxt(self.footprint_csv, footprint, fmt='%.3f', delimiter=',')
 
     def test_pipeline(self):
-        '''
         # Register box on surface
-        registrationPipeline(self.sourceLas, self.drivemapLas,
-                             self.footprintCsv, self.foutLas)
-        registered_pc = conversions.load(self.foutLas)
+        registration_pipeline(self.sourcelas, self.drivemapLas,
+                             self.footprint_csv, self.foutlas)
+        registered_pc = conversions.load(self.foutlas)
 
         target = np.asarray(self.source_pc)
         actual = np.asarray(registered_pc)
@@ -196,4 +198,3 @@ class TestRegistrationPipeline(unittest.TestCase):
         assert_array_almost_equal(target.mean(axis=0), actual.mean(axis=0), 6,
                                   "Middle point of registered cloud does not"
                                   " match expectation")
-        '''
