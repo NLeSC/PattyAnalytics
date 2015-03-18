@@ -58,7 +58,7 @@ def make_tri_pyramid_with_base(side, delta, offset):
     points += (rng.rand(points.shape[0], points.shape[1]) - 0.5) * 0.1
 
     for s in np.arange(0, side * 0.05, delta):
-        xs, ys = make_triangle(sx * (1 + s), sy * (1 + s), dx + s, dz + s,
+        xs, ys = make_triangle(sx * (1 + s), sy * (1 + s), dx + s, dy + s,
                                delta)
         zs = np.zeros(xs.shape) - dz
         tmp = np.vstack([xs, ys, zs]).T
