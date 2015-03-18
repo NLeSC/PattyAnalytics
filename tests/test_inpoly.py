@@ -1,7 +1,6 @@
 import logging
 from patty.conversions import load, save, load_csv_polygon
 from patty.registration import intersect_polygon2d
-from patty.registration import registration
 
 from nose.tools import assert_true
 

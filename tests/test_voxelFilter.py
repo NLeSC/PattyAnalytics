@@ -1,7 +1,6 @@
 import logging
 from patty.conversions import load, save
 
-from nose import SkipTest
 from nose.tools import assert_greater
 
 logging.basicConfig(level=logging.INFO)

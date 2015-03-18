@@ -7,8 +7,8 @@ from patty.registration import (point_in_polygon2d, downsample_voxel,
                                 get_pointcloud_boundaries)
 from patty.utils import BoundingBox
 
-from helpers import make_triangle, make_tri_pyramid, make_tri_pyramid_footprint
-from nose.tools import assert_equal, assert_greater, assert_true
+from helpers import make_tri_pyramid_with_base
+from nose.tools import assert_equal, assert_greater, assert_less, assert_true
 from numpy.testing import (assert_array_equal, assert_array_almost_equal,
                            assert_array_less)
 from sklearn.utils.extmath import cartesian
