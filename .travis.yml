@@ -9,7 +9,7 @@ before_install:
 - "pip install -U -q cython"
 - "export DEBIAN_FRONTEND=noninteractive"
 # ATLAS is installed to speed up scikit-learn build (shouldn't build its own)
-- "sudo apt-get -qq install libpcl-all python-matplotlib liblas-c2 python-liblas libatlas-base-dev"
+- "sudo apt-get -qq install libpcl-all python-matplotlib liblas-c2 python-liblas libatlas-base-dev python-scipy"
 - "pip install coverage"
 - "pip install -r requirements.txt"
 - "sudo ln -s /usr/lib/liblas_c.so.2.2.0 /usr/lib/liblas_c.so"
