@@ -37,5 +37,10 @@ def get_one_big_and_10_small_clusters():
 
 
 def test_get_top_labels():
+    # With outliers
     labels = np.array([0, 0, 0, -1, -1, 0, 1, 1, 2, 3])
     assert_equal(_get_top_labels(labels, .6), ([0, 1], 6))
+
+    # Without outliers
+    labels = np.array([0, 1, 0, 0, 2, 2, 0, 0, 2, 2])
+    assert_equal(_get_top_labels(labels, .6), ([0, 2], 9))
