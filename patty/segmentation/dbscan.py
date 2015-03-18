@@ -13,8 +13,8 @@ from sklearn.cluster import dbscan
 from patty.conversions import extract_mask
 
 
-def _dbscan_labels(pointcloud, epsilon, minpoints, rgb_weight=0,
-                   algorithm='ball_tree'):
+def dbscan_labels(pointcloud, epsilon, minpoints, rgb_weight=0,
+                  algorithm='ball_tree'):
     '''
     Find an array of point-labels of clusters found by the DBSCAN algorithm.
 
@@ -47,7 +47,7 @@ def _dbscan_labels(pointcloud, epsilon, minpoints, rgb_weight=0,
 
     _, labels = dbscan(X, eps=epsilon, min_samples=minpoints,
                        algorithm=algorithm)
-    return labels
+    return np.asarray(labels)
 
 
 def segment_dbscan(pointcloud, epsilon, minpoints, **kwargs):
@@ -68,7 +68,7 @@ def segment_dbscan(pointcloud, epsilon, minpoints, **kwargs):
     -------
     clusters : iterable over registered PointCloud
     """
-    labels = _dbscan_labels(pointcloud, epsilon, minpoints, **kwargs)
+    labels = dbscan_labels(pointcloud, epsilon, minpoints, **kwargs)
 
     return (extract_mask(pointcloud, labels == label)
             for label in np.unique(labels[labels != -1]))
@@ -98,12 +98,11 @@ def largest_dbscan_cluster(pointcloud, epsilon=0.1, minpoints=250,
     cluster: PointCloud
         Registered pointcloud of the largest cluster found by dbscan
     '''
-    labels = _dbscan_labels(
+    labels = dbscan_labels(
         pointcloud, epsilon, minpoints, rgb_weight=rgb_weight)
 
     # Labels start at -1, so increase all by 1.
-    bins = np.bincount(np.asarray(labels) + 1)
-    print 'DBSCAN bins: ', bins
+    bins = np.bincount(labels + 1)
 
     # Pointcloud is the only cluster
     if len(bins) < 2:
@@ -140,24 +139,28 @@ def get_largest_dbscan_clusters(pointcloud, min_return_fragment=0.7,
     -------
     cluster: registered pointcloud of the largest cluster found by dbscan
     '''
-    labels = [np.int64(i)
-              for i in _dbscan_labels(pointcloud, epsilon, minpoints,
-                                      rgb_weight=rgb_weight)]
-    selected = get_top_labels(labels, min_return_fragment)
-    mask = [l in selected for l in labels]
-    return extract_mask(pointcloud, mask)
+    labels = dbscan_labels(pointcloud, epsilon, minpoints,
+                           rgb_weight=rgb_weight)
+    selection, selected_count = _get_top_labels(labels, min_return_fragment)
+
+    # No clusters were found
+    if selected_count < min_return_fragment * len(labels):
+        return pointcloud
+    else:
+        mask = [label in selection for label in labels]
+        return extract_mask(pointcloud, mask)
 
 
-def get_top_labels(labels, min_return_fragment):
-    bins = np.bincount([i + 1 for i in labels])
-    labelbinpairs = [(label, bins[label + 1]) for label in np.unique(labels)]
+def _get_top_labels(labels, min_return_fragment):
+    bins = np.bincount(labels + 1)
+    labelbinpairs = [enumerate(bins[1:])]
     labelbinpairs.sort(key=lambda x: x[1], reverse=False)
     total = len(labels)
     minimum = min_return_fragment * total
     selected = []
-    selectedcount = 0
-    while selectedcount < minimum and len(labelbinpairs) > 0:
+    selected_count = 0
+    while selected_count < minimum and len(labelbinpairs) > 0:
         label, count = labelbinpairs.pop()
         selected.append(label)
-        selectedcount += count
-    return selected
+        selected_count += count
+    return selected, selected_count
