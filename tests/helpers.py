@@ -51,6 +51,7 @@ def __makeTriPyramidFootprint__(sX, sY, sZ, dX, dY, dZ):
 
 
 def __makeTriPyramidWithBase__(side, delta, offset):
+    np.random.seed(0)
     sX = side / 2
     sY = side
     sZ = side / 4
@@ -60,7 +61,7 @@ def __makeTriPyramidWithBase__(side, delta, offset):
     dZ = offset[2]
 
     points = __makeTriPyramid__(sX, sY, sZ, dX, dY, dZ, delta)
-    points += np.random.rand(points.shape[0], points.shape[1]) * 0.1
+    _add_noise(points, 0.1)
 
     dS = np.arange(0, side * 0.05, delta)
     for s in dS:
@@ -72,3 +73,7 @@ def __makeTriPyramidWithBase__(side, delta, offset):
 
     footprint = __makeTriPyramidFootprint__(sX, sY, sZ, dX, dY, dZ)
     return points, footprint
+
+def _add_noise(points, size):
+    points += (np.random.rand(points.shape) - 0.5) * size
+
