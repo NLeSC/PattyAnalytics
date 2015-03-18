@@ -21,6 +21,7 @@ def _dbscan_labels(pointcloud, epsilon, minpoints, rgb_weight=0,
     Parameters
     ----------
     pointcloud : pcl.PointCloud
+        Input pointcloud.
     epsilon : float
         Neighborhood radius for DBSCAN.
     minpoints : integer
@@ -55,6 +56,7 @@ def segment_dbscan(pointcloud, epsilon, minpoints, **kwargs):
     Parameters
     ----------
     pointcloud : pcl.PointCloud
+        Input pointcloud.
     epsilon : float
         Neighborhood radius for DBSCAN.
     minpoints : integer
@@ -80,6 +82,7 @@ def largest_dbscan_cluster(pointcloud, epsilon=0.1, minpoints=250,
     Parameters
     ----------
     pointcloud : pcl.PointCloud
+        Input pointcloud.
     epsilon : float
         Neighborhood radius for DBSCAN.
     minpoints : integer
