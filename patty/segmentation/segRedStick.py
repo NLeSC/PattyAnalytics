@@ -2,7 +2,7 @@ import colorsys
 import numpy as np
 
 
-def getRedMask(pointcloud):
+def get_red_mask(pointcloud):
     """Returns a mask for the red parts of a pointcloud"""
     redMask = np.empty(len(pointcloud), dtype=np.bool)
     for i in xrange(len(pointcloud)):

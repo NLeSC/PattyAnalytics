@@ -11,7 +11,7 @@ import logging
 from patty import copy_registration, is_registered, extract_mask, register
 from patty.segmentation import dbscan
 from matplotlib import path
-from patty.registration import principal_axes_rotation
+from patty.registration.principalComponents import find_principal_axes_rotation
 
 logging.basicConfig(level=logging.INFO)
 
@@ -125,8 +125,8 @@ def register_from_footprint(pc, footprint):
     boundary = get_pointcloud_boundaries(pc_main)
 
     logging.info("Finding rotation")
-    pc_transform = principal_axes_rotation(np.asarray(boundary))
-    fp_transform = principal_axes_rotation(footprint)
+    pc_transform = find_principal_axes_rotation(np.asarray(boundary))
+    fp_transform = find_principal_axes_rotation(footprint)
     transform = np.linalg.inv(fp_transform) * pc_transform
     boundary.transform(transform)
 
@@ -156,8 +156,8 @@ def register_from_reference(pc, pc_ref):
     pc_main = dbscan.largest_dbscan_cluster(pc, .1, 250)
 
     logging.info("Finding rotation")
-    pc_transform = principal_axes_rotation(np.asarray(pc_main))
-    ref_transform = principal_axes_rotation(np.asarray(pc_ref))
+    pc_transform = find_principal_axes_rotation(np.asarray(pc_main))
+    ref_transform = find_principal_axes_rotation(np.asarray(pc_ref))
     transform = np.linalg.inv(ref_transform) * pc_transform
     pc_main.transform(transform)
 
@@ -174,8 +174,8 @@ def register_from_reference(pc, pc_ref):
 
 
 def find_rotation(pointcloud, ref):
-    pc_transform = principal_axes_rotation(pointcloud)
-    ref_transform = principal_axes_rotation(ref)
+    pc_transform = find_principal_axes_rotation(pointcloud)
+    ref_transform = find_principal_axes_rotation(ref)
     return np.linalg.inv(ref_transform) * pc_transform
 
 
@@ -185,7 +185,7 @@ def point_in_polygon2d(points, polygon):
                     dtype=np.bool)
 
 
-def intersect_polgyon2d(pc, polygon):
+def intersect_polygon2d(pc, polygon):
     in_polygon = point_in_polygon2d(np.asarray(pc) + pc.offset, polygon)
     return extract_mask(pc, in_polygon)
 

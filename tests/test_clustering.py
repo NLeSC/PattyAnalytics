@@ -6,7 +6,7 @@ import numpy as np
 
 class TestClustering(unittest.TestCase):
 
-    def test_largestDbscanCluster(self):
+    def test_largest_dbscan_cluster(self):
         """largest_dbscan_clusters returns the correct number of points"""
         # Arrange
         ar = self.get_one_big_and_10_small_clusters()

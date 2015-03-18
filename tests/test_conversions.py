@@ -6,14 +6,13 @@ import pcl
 from patty import conversions
 from tempfile import mktemp
 
-from nose import SkipTest
 from nose.tools import assert_equal, assert_true
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
 
-def testReadLas():
+def test_read_las():
     fname = 'data/footprints/20.las'
-    pc = conversions.loadLas(fname)
+    pc = conversions.load_las(fname)
 
     xyz_array = np.asarray(pc)
     minimum = xyz_array.min(axis=0)
@@ -51,32 +50,32 @@ class TestWriteLas(unittest.TestCase):
         conversions.register(self.pc, offset=[2., 1., 15.], crs_wkt=WKT,
                              precision=[0.1, 0.1, 0.1])
 
-    def getHeader(self):
-        return conversions.makeLasHeader(self.pc)
+    def get_header(self):
+        return conversions.make_las_header(self.pc)
 
-    def testHeader(self):
-        header = self.getHeader()
+    def test_header(self):
+        header = self.get_header()
         assert_array_almost_equal(header.max, [3 + 2, 3 + 1, 3 + 15])
         assert_array_almost_equal(header.min, [1 + 2, 1 + 1, 1 + 15])
-        self.pointCloudHeader(self.pc, header)
+        self.pointcloud_header(self.pc, header)
 
-    def pointCloudHeader(self, cloud, header):
+    def pointcloud_header(self, cloud, header):
         assert_array_almost_equal(
             np.asarray(cloud).min(axis=0) + cloud.offset, header.min)
         assert_array_almost_equal(
             np.asarray(cloud).max(axis=0) + cloud.offset, header.max)
 
-    def testWriteRead(self):
+    def test_write_read(self):
         """Write-then-read should be idempotent."""
         wfname = mktemp()
-        header = self.getHeader()
-        conversions.writeLas(wfname, self.pc, header=header)
+        header = self.get_header()
+        conversions.write_las(wfname, self.pc, header=header)
 
         assert_true(os.path.exists(wfname), "temporary test file not written")
-        pc_new = conversions.loadLas(wfname)
+        pc_new = conversions.load_las(wfname)
         os.remove(wfname)
-
-        self.pointCloudHeader(pc_new, header)
+        
+        self.pointcloud_header(pc_new, header)
         assert_array_almost_equal(np.asarray(self.pc) + self.pc.offset,
                                   np.asarray(pc_new) + pc_new.offset,
                                   err_msg='points differ')
@@ -88,7 +87,6 @@ class TestWriteLas(unittest.TestCase):
 
 
 class TestExtractMask(unittest.TestCase):
-
     def setUp(self):
         data = np.array(
             [[1, 1, 1, 1, 120, 13], [3, 3, 3, 1, 2, 3]], dtype=np.float32)
@@ -96,7 +94,7 @@ class TestExtractMask(unittest.TestCase):
         self.offset = [2., 1., 15.]
         conversions.register(self.pc, offset=self.offset)
 
-    def testExtractMask(self):
+    def test_extract_mask(self):
         assert_array_equal(self.pc[0], [1., 1., 1., 1., 120., 13.],
                            err_msg="data not represented in pointcloud")
         pc_first = conversions.extract_mask(self.pc, [True, False])

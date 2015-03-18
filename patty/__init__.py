@@ -1,4 +1,4 @@
-from .conversions import (load, loadLas, save, writeLas, is_registered,
-                          register, copy_registration, loadCsvPolygon,
-                          extract_mask, makeLasHeader, BoundingBox,
+from .conversions import (load, load_las, save, write_las, is_registered,
+                          register, copy_registration, load_csv_polygon,
+                          extract_mask, make_las_header, BoundingBox,
                           center_boundingbox)

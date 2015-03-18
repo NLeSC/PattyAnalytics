@@ -8,12 +8,12 @@ from nose import SkipTest
 logging.basicConfig(level=logging.INFO)
 
 
-def testPCARotation():
+def test_pca_rotation():
     raise SkipTest
     fileIn = 'data/footprints/162_inFootprint.las'
     fileOut = 'data/footprints/162_pca.las'
     pc = load(fileIn)
-    transform = principal_axes_rotation(np.asarray(pc))
+    transform = find_principal_axes_rotation(np.asarray(pc))
     pc.transform(transform)
 
     # TODO: How to test? assert what?

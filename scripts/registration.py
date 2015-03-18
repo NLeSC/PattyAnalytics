@@ -1,4 +1,3 @@
-#!/usr/bin/env python2.7
 """Registration script.
 
 Usage: registration.py [-h] <SOURCE> <DRIVEMAP> <FOOTPRINT> <OUTPUT>
@@ -7,7 +6,7 @@ Options:
   SOURCE     Source LAS file
   DRIVEMAP   Target LAS file to map source to
   FOOTPRINT  Footprint for the source LAS file
-  OUTPUT     File to write output LAS to
+  OUTPUT     file to write output LAS to
 """
 
 from __future__ import print_function
@@ -17,13 +16,13 @@ import numpy as np
 import time
 import os
 import sys
-from patty.conversions import (load, save, loadCsvPolygon,
+from patty.conversions import (load, save, load_csv_polygon,
                                copy_registration, extract_mask)
 from patty.registration import (get_pointcloud_boundaries, find_rotation,
                                 register_offset_scale_from_ref, scale_points,
                                 point_in_polygon2d)
 from patty.segmentation.dbscan import get_largest_dbscan_clusters
-from patty.registration.stickScale import getPreferredScaleFactor
+from patty.registration.stickScale import get_preferred_scale_factor
 from patty.utils import BoundingBox
 
 
@@ -34,25 +33,25 @@ def log(*args, **kwargs):
 def process_args():
     args = docopt(__doc__)
 
-    sourceFile = args['<SOURCE>']
-    drivemapFile = args['<DRIVEMAP>']
+    sourcefile = args['<SOURCE>']
+    drivemapfile = args['<DRIVEMAP>']
     footprintCsv = args['<FOOTPRINT>']
     foutLas = args['<OUTPUT>']
 
-    return sourceFile, drivemapFile, footprintCsv, foutLas
+    return sourcefile, drivemapfile, footprintCsv, foutLas
 
 
-def registrationPipeline(sourceFile, drivemapFile, footprintCsv, f_out):
+def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out):
     """Single function wrapping whole script, so it can be unit tested"""
-    assert os.path.exists(sourceFile), sourceFile + ' does not exist'
-    assert os.path.exists(drivemapFile), drivemapFile + ' does not exist'
+    assert os.path.exists(sourcefile), sourcefile + ' does not exist'
+    assert os.path.exists(drivemapfile), drivemapfile + ' does not exist'
     assert os.path.exists(footprintCsv), footprintCsv + ' does not exist'
 
-    log("reading source", sourceFile)
-    pointcloud = load(sourceFile)
-    log("reading drivemap ", drivemapFile)
-    drivemap = load(drivemapFile)
-    footprint = loadCsvPolygon(footprintCsv)
+    log("reading source", sourcefile)
+    pointcloud = load(sourcefile)
+    log("reading drivemap ", drivemapfile)
+    drivemap = load(drivemapfile)
+    footprint = load_csv_polygon(footprintCsv)
 
     # Footprint is off by some meters
     footprint[:, 0] += -1.579381346780
@@ -101,8 +100,8 @@ def registrationPipeline(sourceFile, drivemapFile, footprintCsv, f_out):
         log("Calculating scale and shift from boundary to footprint")
         registered_offset, registered_scale = \
             register_offset_scale_from_ref(boundary, footprint)
-        registered_scale = getPreferredScaleFactor(pointcloud,
-                                                   registered_scale)
+        registered_scale = get_preferred_scale_factor(pointcloud,
+                                                      registered_scale)
 
         log("Scaling pointcloud: %f" % registered_scale)
         pc_array = np.asarray(pointcloud)
@@ -131,5 +130,5 @@ def registrationPipeline(sourceFile, drivemapFile, footprintCsv, f_out):
 
 
 if __name__ == '__main__':
-    sourceFile, drivemapFile, footprintCsv, foutLas = process_args()
-    registrationPipeline(sourceFile, drivemapFile, footprintCsv, foutLas)
+    sourcefile, drivemapfile, footprintCsv, foutLas = process_args()
+    registration_pipeline(sourcefile, drivemapfile, footprintCsv, foutLas)

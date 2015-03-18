@@ -7,7 +7,7 @@ from nose.tools import assert_greater
 logging.basicConfig(level=logging.INFO)
 
 
-def testFilter():
+def test_filter():
     '''
     Test Voxel Grid Filter functionality
     '''
