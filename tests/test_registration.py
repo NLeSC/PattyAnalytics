@@ -152,7 +152,7 @@ class TestRegistrationPipeline(unittest.TestCase):
 
         plane_row = np.linspace(
             start=self.min, stop=self.max, num=self.num_rows)
-        plane_points = cartesian((plane_row, plane_row, 0))
+        plane_points = cartesian((plane_row, plane_row, [0]))
 
         shape_points, footprint = make_tri_pyramid_with_base(
             shape_side, delta, dm_offset)
