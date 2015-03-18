@@ -130,9 +130,9 @@ class TestBoundary(unittest.TestCase):
 class TestRegistrationPipeline(unittest.TestCase):
     def setUp(self):
         self.drivemapLas = './testDriveMap.las'
-        self.sourceLas = './testSource.las'
-        self.footprintCsv = './testFootprint.csv'
-        self.foutLas = './testOutput.las'
+        self.sourcelas = './testSource.las'
+        self.footprint_csv = './testFootprint.csv'
+        self.foutlas = './testOutput.las'
 
         self.min = -10
         self.max = 10
@@ -176,15 +176,15 @@ class TestRegistrationPipeline(unittest.TestCase):
         self.source_pc = pcl.PointCloudXYZRGB(dense_grid.astype(np.float32))
         self.source_pc = downsample_voxel(self.source_pc, voxel_size=delta/4)
         conversions.register(self.source_pc)
-        conversions.save(self.source_pc, self.sourceLas)
+        conversions.save(self.source_pc, self.sourcelas)
 
-        np.savetxt(self.footprintCsv, footprint, fmt='%.3f', delimiter=',')
+        np.savetxt(self.footprint_csv, footprint, fmt='%.3f', delimiter=',')
 
     def test_pipeline(self):
         # Register box on surface
-        registration_pipeline(self.sourceLas, self.drivemapLas,
-                             self.footprintCsv, self.foutLas)
-        registered_pc = conversions.load(self.foutLas)
+        registration_pipeline(self.sourcelas, self.drivemapLas,
+                             self.footprint_csv, self.foutlas)
+        registered_pc = conversions.load(self.foutlas)
 
         target = np.asarray(self.source_pc)
         actual = np.asarray(registered_pc)
