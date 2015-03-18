@@ -7,7 +7,7 @@ before_install:
 - "sudo apt-get -qq update"
 - "pip install -U -q cython"
 - "export DEBIAN_FRONTEND=noninteractive"
-- "sudo apt-get -qq install libpcl-all python-matplotlib"
+- "sudo apt-get -qq install libpcl-all python-matplotlib liblas"
 - "pip install coverage"
 - "pip install -r requirements.txt"
 
