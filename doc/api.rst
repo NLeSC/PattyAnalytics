@@ -9,10 +9,16 @@ Conversions
 .. automodule:: patty.conversions
     :members:
 
+Registration
+------------
+
+.. automodule:: patty.registration
+    :members:
+    :imported-members:
+
 Segmentation
 ------------
 
 .. automodule:: patty.segmentation
-
-.. autofunction:: largest_dbscan_cluster
-.. autofunction:: segment_dbscan
+    :members:
+    :imported-members:
