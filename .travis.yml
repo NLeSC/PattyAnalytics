@@ -1,19 +1,22 @@
 language: python
+
+virtualenv: 
+  system_site_packages: true
+
 python:
 - "2.7" 
 
 before_install:
 # "sudo add-apt-repository -y ppa:ubuntugis/ubuntugis-unstable"
+- "export DEBIAN_FRONTEND=noninteractive"
 - "sudo add-apt-repository -y ppa:v-launchpad-jochen-sprickerhof-de/pcl"
 - "sudo apt-get update"
-- "pip install -U -q cython"
-- "export DEBIAN_FRONTEND=noninteractive"
+- "pip install -U cython"
 # ATLAS is installed to speed up scikit-learn build (shouldn't build its own)
-- "sudo apt-get -qq install libpcl-all liblas-c2 python-liblas libatlas-base-dev"
-- "sudo apt-get -qq install python-numpy python-scipy python-matplotlib"
+- "sudo apt-get -qq install libpcl-all python-liblas liblas-bin liblas1 liblas-dev libatlas-base-dev"
+- "sudo apt-get -qq install python-numpy-dev python-scipy python-matplotlib"
 - "pip install coverage"
 - "pip install -r requirements.txt"
-- "sudo ln -s /usr/lib/liblas_c.so.2.2.0 /usr/lib/liblas_c.so"
 
 install:
 - "echo done"
