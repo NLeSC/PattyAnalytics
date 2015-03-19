@@ -1,3 +1,7 @@
+import os.path
+import shutil
+from tempfile import mkdtemp
+
 import numpy as np
 import pcl
 
@@ -129,10 +133,11 @@ class TestBoundary(unittest.TestCase):
 
 class TestRegistrationPipeline(unittest.TestCase):
     def setUp(self):
-        self.drivemapLas = './testDriveMap.las'
-        self.sourcelas = './testSource.las'
-        self.footprint_csv = './testFootprint.csv'
-        self.foutlas = './testOutput.las'
+        self.tempdir = tempdir = mkdtemp(prefix='patty-analytics')
+        self.drivemapLas = os.path.join(tempdir, 'testDriveMap.las')
+        self.sourcelas = os.path.join(tempdir, 'testSource.las')
+        self.footprint_csv = os.path.join(tempdir, 'testFootprint.csv')
+        self.foutlas = os.path.join(tempdir, 'testOutput.las')
 
         self.min = -10
         self.max = 10
@@ -179,6 +184,9 @@ class TestRegistrationPipeline(unittest.TestCase):
         conversions.save(self.source_pc, self.sourcelas)
 
         np.savetxt(self.footprint_csv, footprint, fmt='%.3f', delimiter=',')
+
+    def tearDown(self):
+        shutil.rmtree(self.tempdir, ignore_errors=True)
 
     def test_pipeline(self):
         # Register box on surface
