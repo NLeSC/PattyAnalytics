@@ -106,6 +106,8 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
         with open(os.path.join(f_outdir, 'rotation.csv'), 'w') as f:
             for row in transform:
                 print(','.join(np.char.mod('%f', row)), file=f)
+        with open(os.path.join(f_outdir, 'rotation_offset.csv'), 'w') as f:
+            print(','.join(np.char.mod('%f', pointcloud.offset)), file=f)
 
         log("Calculating scale and shift from boundary to footprint")
         registered_offset, registered_scale = \
