@@ -14,6 +14,7 @@ Patty Analytics
 
 Reusable point cloud analytics software. Includes segmentation, registration,
 file format conversion.
+This makes uses of the python bindings of the Point Cloud Library (PCL).
 
 Copyright 2014-2015 Netherlands eScience Center. Covered by the Apache 2.0
 License, see the file ``LICENSE.txt``.
@@ -25,16 +26,25 @@ First install the required dependencies:
 
 * Python 2.7
 * NumPy
-* SciPy
+* SciPy 
+* virtualenv
 * LibLAS
 * PCL 1.7
-* virtualenv
 
 Now set up an environment::
 
-    virtualenv /some/where/env
-    pip install -r requirements.txt
-    python setup.py install
+    $ virtualenv /some/where/env --system-site-packages
+    $ . /some/where/env/activate
+
+
+Install the python packages listed in ``requirements.txt`` using pip::
+
+    $ pip install -r requirements.txt
+    $ python setup.py install
+
+To exit the python virtualenv run::
+
+    $ deactivate
 
 Testing
 -------
@@ -42,3 +52,10 @@ Testing
 To run unit tests, issue::
 
     $ nosetests
+
+Documentation
+-------------
+
+API documentation can be found here_
+
+.. here: http://nlesc.github.io/PattyAnalytics/

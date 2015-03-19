@@ -1,4 +1,5 @@
 Cython>=0.21.2
+liblas
 docopt
 nose_parameterized
 matplotlib
