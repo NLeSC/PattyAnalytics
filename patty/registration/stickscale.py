@@ -5,7 +5,7 @@ from patty.conversions import extract_mask
 from patty.segmentation.segRedStick import get_red_mask
 
 # according to Rens, sticks are .8m and contain 4 segments:
-segments_per_meter = 5.0
+SEGMENTS_PER_METER = 5.0
 
 
 def get_stick_scale(pointcloud, eps=0.1, min_samples=20):
@@ -34,7 +34,7 @@ def get_stick_scale(pointcloud, eps=0.1, min_samples=20):
         pointcloud, eps, min_samples, algorithm='kd_tree')
 
     sizes = [{'len': len(cluster),
-              'meter': measure_length(cluster) * segments_per_meter}
+              'meter': measure_length(cluster) * SEGMENTS_PER_METER}
              for cluster in cluster_generator]
     scale, votes, n_clusters = ransac(sizes)
     confidence = get_confidence_level(votes, n_clusters)
