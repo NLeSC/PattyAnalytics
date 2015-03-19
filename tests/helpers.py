@@ -3,6 +3,8 @@ import math
 
 
 def make_triangle(sx, sy, dx, dy, delta):
+    '''Create a right rectangle, alinged with X and Y axes, with x-side size sX
+    and y-side size sY. Triangle is offset by dX and dY.'''
     x1 = np.arange(0, sx, delta)
     y1 = np.zeros(x1.shape)
 
@@ -19,6 +21,9 @@ def make_triangle(sx, sy, dx, dy, delta):
 
 
 def make_tri_pyramid(sx, sy, sz, dx, dy, dz, delta):
+    '''Create a right rectangle triangular pyramid, alinged with X and Y axes,
+    with x-side at the base size of sX and y-side size at the base of sY.
+    Pyramid has high sZ. It is offset by dX, dY and dZ.'''
     points = []
     for z in np.arange(0, sz, delta):
         ai = sx - z * sx / sz
@@ -33,6 +38,7 @@ def make_tri_pyramid(sx, sy, sz, dx, dy, dz, delta):
 
 
 def make_tri_pyramid_footprint(sx, sy, sz, dx, dy, dz):
+    '''Create the footprint of a pyramid created by make_tri_pyramid'''
     footprint = np.array([
         [0, 0, 0],
         [0, sy, 0],
@@ -46,6 +52,8 @@ def make_tri_pyramid_footprint(sx, sy, sz, dx, dy, dz):
 
 
 def make_tri_pyramid_with_base(side, delta, offset):
+    '''Create a pyramid as per make_tri_pyramid, suroundeded by a triangular
+    flat base.'''
     rng = np.random.RandomState(0)
     sx = side / 2
     sy = side
@@ -70,6 +78,7 @@ def make_tri_pyramid_with_base(side, delta, offset):
 
 
 def _add_noise(points, size, rng):
+    '''Add noise to an array of 2D points'''
     points += (rng.rand(points.shape[0], points.shape[1]) - 0.5) * size
 
 
