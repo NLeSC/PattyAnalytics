@@ -40,8 +40,7 @@ def find_largest_cluster(pointcloud, sample):
     if sample != -1 and len(pointcloud) > sample:
         fraction = float(sample) / len(pointcloud)
         log("downsampling from %d to %d points (%d%%) for registration" % (
-            len(pointcloud), sample, int(fraction * 100)
-        ))
+            len(pointcloud), sample, int(fraction * 100)))
         pc = downsample(pointcloud, fraction, random_seed=0)
     else:
         pc = pointcloud
@@ -85,8 +84,8 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
     bb = BoundingBox(points=drivemap_array)
     # use bottom two meters of drivemap (not trees)
     if bb.size[2] > bb.size[1] or bb.size[2] > bb.size[0]:
-        drivemap = extract_mask(drivemap, drivemap_array[:,2] < bb.min[2] + 2)
-    
+        drivemap = extract_mask(drivemap, drivemap_array[:, 2] < bb.min[2] + 2)
+
     footprint = load_csv_polygon(footprintCsv)
 
     if f_outdir is None:
@@ -114,12 +113,12 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
         transform = find_rotation(boundary, footprint_boundary)
         log(transform)
         rotate180 = np.eye(4)
-        rotate180[1,1] = rotate180[2,2] = -1
+        rotate180[1, 1] = rotate180[2, 2] = -1
 
-        upIsDown = is_upside_down(upfile, transform)
+        upIsDown = is_upside_down(upfile, transform[:3,:3])
         if upIsDown:
             transform = np.dot(rotate180, transform)
-        
+
         log("Rotating pointcloud...")
         boundary.transform(transform)
         cluster.transform(transform)
@@ -138,6 +137,12 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
         with open(f_out + '.translation.csv', 'w') as f:
             str_arr = np.char.mod('%f', registered_offset - pointcloud.offset)
             print(','.join(str_arr), file=f)
+
+        boundary_zmean = np.asarray(boundary)[:, 2].mean()
+        boundary_zmean += boundary.offset[2]
+        footprint_zmean = np.asarray(footprint_boundary)[:, 2].mean()
+        footprint_zmean += footprint_boundary.offset[2]
+        boundary.offset[2] += footprint_zmean - boundary_zmean
 
         registered_scale = get_preferred_scale_factor(pointcloud,
                                                       registered_scale)
