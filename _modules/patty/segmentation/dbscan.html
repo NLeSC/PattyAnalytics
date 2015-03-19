@@ -40,6 +40,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">Patty Analytics 0.1 documentation</a> &raquo;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
@@ -83,8 +86,8 @@
 <span class="kn">from</span> <span class="nn">patty.conversions</span> <span class="kn">import</span> <span class="n">extract_mask</span>
 
 
-<span class="k">def</span> <span class="nf">_dbscan_labels</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">minpoints</span><span class="p">,</span> <span class="n">rgb_weight</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-                   <span class="n">algorithm</span><span class="o">=</span><span class="s">&#39;ball_tree&#39;</span><span class="p">):</span>
+<div class="viewcode-block" id="dbscan_labels"><a class="viewcode-back" href="../../../api.html#patty.segmentation.dbscan_labels">[docs]</a><span class="k">def</span> <span class="nf">dbscan_labels</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">minpoints</span><span class="p">,</span> <span class="n">rgb_weight</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                  <span class="n">algorithm</span><span class="o">=</span><span class="s">&#39;ball_tree&#39;</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    Find an array of point-labels of clusters found by the DBSCAN algorithm.</span>
 
@@ -117,9 +120,9 @@
 
     <span class="n">_</span><span class="p">,</span> <span class="n">labels</span> <span class="o">=</span> <span class="n">dbscan</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="n">epsilon</span><span class="p">,</span> <span class="n">min_samples</span><span class="o">=</span><span class="n">minpoints</span><span class="p">,</span>
                        <span class="n">algorithm</span><span class="o">=</span><span class="n">algorithm</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">labels</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
 
-
+</div>
 <div class="viewcode-block" id="segment_dbscan"><a class="viewcode-back" href="../../../api.html#patty.segmentation.segment_dbscan">[docs]</a><span class="k">def</span> <span class="nf">segment_dbscan</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">minpoints</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Run the DBSCAN clustering+outlier detection algorithm on pointcloud.</span>
 
@@ -138,7 +141,7 @@
 <span class="sd">    -------</span>
 <span class="sd">    clusters : iterable over registered PointCloud</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">labels</span> <span class="o">=</span> <span class="n">_dbscan_labels</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">minpoints</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">dbscan_labels</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">minpoints</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="p">(</span><span class="n">extract_mask</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">labels</span> <span class="o">==</span> <span class="n">label</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">labels</span><span class="p">[</span><span class="n">labels</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
@@ -168,12 +171,11 @@
 <span class="sd">    cluster: PointCloud</span>
 <span class="sd">        Registered pointcloud of the largest cluster found by dbscan</span>
 <span class="sd">    &#39;&#39;&#39;</span>
-    <span class="n">labels</span> <span class="o">=</span> <span class="n">_dbscan_labels</span><span class="p">(</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">dbscan_labels</span><span class="p">(</span>
         <span class="n">pointcloud</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">minpoints</span><span class="p">,</span> <span class="n">rgb_weight</span><span class="o">=</span><span class="n">rgb_weight</span><span class="p">)</span>
 
     <span class="c"># Labels start at -1, so increase all by 1.</span>
-    <span class="n">bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-    <span class="k">print</span> <span class="s">&#39;DBSCAN bins: &#39;</span><span class="p">,</span> <span class="n">bins</span>
+    <span class="n">bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">labels</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
 
     <span class="c"># Pointcloud is the only cluster</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">bins</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
@@ -184,7 +186,7 @@
     <span class="k">return</span> <span class="n">extract_mask</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">labels</span> <span class="o">==</span> <span class="n">max_label</span><span class="p">)</span>
 
 </div>
-<span class="k">def</span> <span class="nf">get_largest_dbscan_clusters</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">min_return_fragment</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span>
+<div class="viewcode-block" id="get_largest_dbscan_clusters"><a class="viewcode-back" href="../../../api.html#patty.segmentation.get_largest_dbscan_clusters">[docs]</a><span class="k">def</span> <span class="nf">get_largest_dbscan_clusters</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">min_return_fragment</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span>
                                 <span class="n">epsilon</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">minpoints</span><span class="o">=</span><span class="mi">250</span><span class="p">,</span> <span class="n">rgb_weight</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;</span>
 <span class="sd">    Finds the largest clusters containing together at least min_return_fragment</span>
@@ -210,27 +212,35 @@
 <span class="sd">    -------</span>
 <span class="sd">    cluster: registered pointcloud of the largest cluster found by dbscan</span>
 <span class="sd">    &#39;&#39;&#39;</span>
-    <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
-              <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">_dbscan_labels</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">minpoints</span><span class="p">,</span>
-                                      <span class="n">rgb_weight</span><span class="o">=</span><span class="n">rgb_weight</span><span class="p">)]</span>
-    <span class="n">selected</span> <span class="o">=</span> <span class="n">get_top_labels</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">min_return_fragment</span><span class="p">)</span>
-    <span class="n">mask</span> <span class="o">=</span> <span class="p">[</span><span class="n">l</span> <span class="ow">in</span> <span class="n">selected</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">]</span>
-    <span class="k">return</span> <span class="n">extract_mask</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">dbscan_labels</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">minpoints</span><span class="p">,</span>
+                           <span class="n">rgb_weight</span><span class="o">=</span><span class="n">rgb_weight</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
+    <span class="n">selection</span><span class="p">,</span> <span class="n">selected_count</span> <span class="o">=</span> <span class="n">_get_top_labels</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">min_return_fragment</span><span class="p">)</span>
 
+    <span class="c"># No clusters were found</span>
+    <span class="k">if</span> <span class="n">selected_count</span> <span class="o">&lt;</span> <span class="n">min_return_fragment</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">pointcloud</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="p">[</span><span class="n">label</span> <span class="ow">in</span> <span class="n">selection</span> <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">extract_mask</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span>
 
-<span class="k">def</span> <span class="nf">get_top_labels</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">min_return_fragment</span><span class="p">):</span>
-    <span class="n">bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">([</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">])</span>
-    <span class="n">labelbinpairs</span> <span class="o">=</span> <span class="p">[(</span><span class="n">label</span><span class="p">,</span> <span class="n">bins</span><span class="p">[</span><span class="n">label</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">labels</span><span class="p">)]</span>
-    <span class="n">labelbinpairs</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+</div>
+<span class="k">def</span> <span class="nf">_get_top_labels</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">min_return_fragment</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return labels of the smallest set of clusters that contain at least</span>
+<span class="sd">    min_return_fragment of the points (or everything).&quot;&quot;&quot;</span>
+
+    <span class="c"># +1 to make bincount happy, [1:] to get rid of outliers.</span>
+    <span class="n">bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">labels</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)[</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="n">labelbinpairs</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">enumerate</span><span class="p">(</span><span class="n">bins</span><span class="p">),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
     <span class="n">total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
     <span class="n">minimum</span> <span class="o">=</span> <span class="n">min_return_fragment</span> <span class="o">*</span> <span class="n">total</span>
     <span class="n">selected</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="n">selectedcount</span> <span class="o">=</span> <span class="mi">0</span>
-    <span class="k">while</span><span class="p">((</span><span class="n">selectedcount</span> <span class="o">&lt;</span> <span class="n">minimum</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">labelbinpairs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)):</span>
+    <span class="n">selected_count</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">while</span> <span class="n">selected_count</span> <span class="o">&lt;</span> <span class="n">minimum</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">labelbinpairs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
         <span class="n">label</span><span class="p">,</span> <span class="n">count</span> <span class="o">=</span> <span class="n">labelbinpairs</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
         <span class="n">selected</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">label</span><span class="p">)</span>
-        <span class="n">selectedcount</span> <span class="o">+=</span> <span class="n">count</span>
-    <span class="k">return</span> <span class="n">selected</span>
+        <span class="n">selected_count</span> <span class="o">+=</span> <span class="n">count</span>
+    <span class="k">return</span> <span class="n">selected</span><span class="p">,</span> <span class="n">selected_count</span>
 </pre></div>
 
           </div>
@@ -244,6 +254,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../../genindex.html" title="General Index"
              >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../../index.html">Patty Analytics 0.1 documentation</a> &raquo;</li>
           <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &raquo;</li> 
       </ul>

@@ -41,6 +41,9 @@
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
           <a href="index.html" title="Patty Analytics"
              accesskey="P">previous</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">Patty Analytics 0.1 documentation</a> &raquo;</li> 
@@ -51,8 +54,9 @@
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">API reference</a><ul>
-<li><a class="reference internal" href="#conversions">Conversions</a></li>
-<li><a class="reference internal" href="#segmentation">Segmentation</a></li>
+<li><a class="reference internal" href="#module-patty.conversions">Conversions</a></li>
+<li><a class="reference internal" href="#module-patty.registration">Registration</a></li>
+<li><a class="reference internal" href="#module-patty.segmentation">Segmentation</a></li>
 </ul>
 </li>
 </ul>
@@ -90,11 +94,461 @@
             
   <div class="section" id="api-reference">
 <span id="api"></span><h1>API reference<a class="headerlink" href="#api-reference" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="conversions">
-<h2>Conversions<a class="headerlink" href="#conversions" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-patty.conversions">
+<span id="conversions"></span><h2>Conversions<a class="headerlink" href="#module-patty.conversions" title="Permalink to this headline">¶</a></h2>
+<p>Pointcloud functions for reading/writing LAS files, and functions for dealing
+with the spatial reference system.</p>
+<dl class="class">
+<dt id="patty.conversions.BoundingBox">
+<em class="property">class </em><code class="descclassname">patty.conversions.</code><code class="descname">BoundingBox</code><span class="sig-paren">(</span><em>points=None</em>, <em>min=None</em>, <em>max=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/conversions.html#BoundingBox"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.conversions.BoundingBox" title="Permalink to this definition">¶</a></dt>
+<dd><p>A bounding box for a sequence of points.</p>
+<p>Center, size and diagonal are updated when the minimum or maximum are
+updated.</p>
+<p>Constructor usage: either set points (any object that is converted to an
+NxD array by np.asarray, with D the number of dimensions) or a fixed min
+and max.</p>
+<dl class="attribute">
+<dt id="patty.conversions.BoundingBox.center">
+<code class="descname">center</code><a class="headerlink" href="#patty.conversions.BoundingBox.center" title="Permalink to this definition">¶</a></dt>
+<dd><p>Center point of the bounding box</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="patty.conversions.BoundingBox.contains">
+<code class="descname">contains</code><span class="sig-paren">(</span><em>pos</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/conversions.html#BoundingBox.contains"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.conversions.BoundingBox.contains" title="Permalink to this definition">¶</a></dt>
+<dd><p>Whether the bounding box contains given position.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="patty.conversions.BoundingBox.diagonal">
+<code class="descname">diagonal</code><a class="headerlink" href="#patty.conversions.BoundingBox.diagonal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Length of the diagonal of the box.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="patty.conversions.BoundingBox.size">
+<code class="descname">size</code><a class="headerlink" href="#patty.conversions.BoundingBox.size" title="Permalink to this definition">¶</a></dt>
+<dd><p>N-dimensional size array</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="patty.conversions.center_boundingbox">
+<code class="descclassname">patty.conversions.</code><code class="descname">center_boundingbox</code><span class="sig-paren">(</span><em>pointcloud</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/conversions.html#center_boundingbox"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.conversions.center_boundingbox" title="Permalink to this definition">¶</a></dt>
+<dd><p>Center the pointcloud on origin using the center of its bounding box.
+The offset compared to the original location is added to the
+pointcloud.offset. The pointcloud is registered after use.</p>
+<dl class="docutils">
+<dt>Arguments:</dt>
+<dd><dl class="first last docutils">
+<dt>pointcloud: pcl.PointCloud</dt>
+<dd>input pointcloud</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="patty.conversions.copy_registration">
+<code class="descclassname">patty.conversions.</code><code class="descname">copy_registration</code><span class="sig-paren">(</span><em>target</em>, <em>src</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/conversions.html#copy_registration"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.conversions.copy_registration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Copy spatial reference system metadata from src to target.</p>
+<dl class="docutils">
+<dt>Arguments:</dt>
+<dd><dl class="first last docutils">
+<dt>pointcloud_target: pcl.PointCloud</dt>
+<dd>pointcloud to copy registration to</dd>
+<dt>pointcloud_src: pcl.PointCloud</dt>
+<dd>registered pointcloud to copy registration from</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="patty.conversions.extract_mask">
+<code class="descclassname">patty.conversions.</code><code class="descname">extract_mask</code><span class="sig-paren">(</span><em>pointcloud</em>, <em>mask</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/conversions.html#extract_mask"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.conversions.extract_mask" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extract all points in a mask into a new pointcloud.</p>
+<dl class="docutils">
+<dt>Arguments:</dt>
+<dd><dl class="first last docutils">
+<dt>pointcloud: pcl.PointCloud</dt>
+<dd>Input pointcloud</dd>
+<dt>mask: array of bool</dt>
+<dd>mask for which points from the pointcloud to include.</dd>
+</dl>
+</dd>
+<dt>Returns:</dt>
+<dd>pointcloud with the same registration (if any) as the original one.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="patty.conversions.is_registered">
+<code class="descclassname">patty.conversions.</code><code class="descname">is_registered</code><span class="sig-paren">(</span><em>pointcloud</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/conversions.html#is_registered"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.conversions.is_registered" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns True when a pointcloud is registered.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="patty.conversions.load">
+<code class="descclassname">patty.conversions.</code><code class="descname">load</code><span class="sig-paren">(</span><em>path</em>, <em>format=None</em>, <em>load_rgb=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/conversions.html#load"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.conversions.load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read a pointcloud file.</p>
+<p>Supports LAS files, and lets PCD and PLY files be read by python-pcl.</p>
+<dl class="docutils">
+<dt>Arguments:</dt>
+<dd><p class="first">path: file to load
+format: &#8220;PLY&#8221;, &#8220;PCD&#8221;, &#8220;LAS&#8221; or None. With none, it detects the filetype</p>
+<blockquote>
+<div>from the file extension.</div></blockquote>
+<dl class="last docutils">
+<dt>load_rgb: whether RGB is loaded for PLY and PCD files. For LAS files</dt>
+<dd>RGB is always read.</dd>
+</dl>
+</dd>
+<dt>Returns:</dt>
+<dd>registered pointcloud</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="patty.conversions.load_csv_polygon">
+<code class="descclassname">patty.conversions.</code><code class="descname">load_csv_polygon</code><span class="sig-paren">(</span><em>csvfile</em>, <em>delimiter='</em>, <em>'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/conversions.html#load_csv_polygon"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.conversions.load_csv_polygon" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load a polygon from a simple CSV file</p>
+<dl class="docutils">
+<dt>Returns:</dt>
+<dd>numpy array containing the CSV file</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="patty.conversions.load_las">
+<code class="descclassname">patty.conversions.</code><code class="descname">load_las</code><span class="sig-paren">(</span><em>lasfile</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/conversions.html#load_las"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.conversions.load_las" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read a LAS file
+Returns:</p>
+<blockquote>
+<div>registered pointcloudxyzrgb</div></blockquote>
+<p>The pointcloud has color and XYZ coordinates, and the offset and precision
+set.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="patty.conversions.make_las_header">
+<code class="descclassname">patty.conversions.</code><code class="descname">make_las_header</code><span class="sig-paren">(</span><em>pointcloud</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/conversions.html#make_las_header"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.conversions.make_las_header" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make a LAS header for given pointcloud.
+If the pointcloud is registered, this is taken into account for the
+header metadata. Has the side-effect of registering the given pointcloud.</p>
+<dl class="docutils">
+<dt>Arguments:</dt>
+<dd><dl class="first last docutils">
+<dt>pointcloud: pcl.PointCloud</dt>
+<dd>Input pointcloud.</dd>
+</dl>
+</dd>
+<dt>Returns:</dt>
+<dd>liblas.header.Header for writing the pointcloud to LAS file with.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="patty.conversions.register">
+<code class="descclassname">patty.conversions.</code><code class="descname">register</code><span class="sig-paren">(</span><em>pointcloud</em>, <em>offset=None</em>, <em>precision=None</em>, <em>crs_wkt=None</em>, <em>crs_proj4=None</em>, <em>crs_verticalcs=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/conversions.html#register"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.conversions.register" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register a pointcloud</p>
+<dl class="docutils">
+<dt>Arguments:</dt>
+<dd><dl class="first last docutils">
+<dt>offset=None</dt>
+<dd>Offset [dx, dy, dz] for the pointcloud.
+Pointclouds often use double precision coordinates, this is
+necessary for some spatial reference systems like standard lat/lon.
+Subtracting an offset, typically the center of the pointcloud,
+allows us to use floats without losing precission.
+If no offset is set, defaults to [0, 0, 0]</dd>
+<dt>precision=None</dt>
+<dd>Precision of the points, used to store into a LAS file. Update
+when scaling the pointcloud.
+If no precision is set, defaults to [0.01, 0.01, 0.01].</dd>
+<dt>crs_wkt=None</dt>
+<dd>Well Knonw Text form of the spatial reference system</dd>
+<dt>crs_proj4=None</dt>
+<dd>PROJ4 projection string for the spatial reference system</dd>
+<dt>crs_verticalcs=None</dt>
+<dd>Well Known Text form of the vertical coordinate system.</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="patty.conversions.save">
+<code class="descclassname">patty.conversions.</code><code class="descname">save</code><span class="sig-paren">(</span><em>cloud</em>, <em>path</em>, <em>format=None</em>, <em>binary=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/conversions.html#save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.conversions.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save a pointcloud to file.</p>
+<p>Supports LAS files, and lets PCD and PLY files be saved by python-pcl.</p>
+<dl class="docutils">
+<dt>Arguments:</dt>
+<dd><p class="first">cloud: pcl.PointCloud/PointCloudXYZRGB
+file: file to save
+format: &#8220;PLY&#8221;, &#8220;PCD&#8221;, &#8220;LAS&#8221; or None. With none, it detects the filetype</p>
+<blockquote>
+<div>from the file extension.</div></blockquote>
+<p class="last">binary: whether PLY and PCD files are saved in binary format.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="patty.conversions.write_las">
+<code class="descclassname">patty.conversions.</code><code class="descname">write_las</code><span class="sig-paren">(</span><em>lasfile</em>, <em>pointcloud</em>, <em>header=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/conversions.html#write_las"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.conversions.write_las" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write a pointcloud to a LAS file</p>
+<dl class="docutils">
+<dt>Arguments:</dt>
+<dd><p class="first">lasfile : filename</p>
+<p class="last">pointcloud      : Pointclout to write</p>
+</dd>
+</dl>
+</dd></dl>
+
 </div>
-<div class="section" id="segmentation">
-<h2>Segmentation<a class="headerlink" href="#segmentation" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-patty.registration">
+<span id="registration"></span><h2>Registration<a class="headerlink" href="#module-patty.registration" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="patty.registration.downsample">
+<code class="descclassname">patty.registration.</code><code class="descname">downsample</code><span class="sig-paren">(</span><em>pc</em>, <em>fraction</em>, <em>random_seed=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/registration/registration.html#downsample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.registration.downsample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Randomly downsample pointcloud to a fraction of its size.</p>
+<p>Returns a pointcloud of size fraction * len(pc), rounded to the nearest
+integer.</p>
+<p>Use random_seed=k for some integer k to get reproducible results.
+Arguments:</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>pc: pcl.PointCloud</dt>
+<dd>input pointcloud</dd>
+<dt>fraction: double</dt>
+<dd>fraction of points to include</dd>
+<dt>random_seed: int</dt>
+<dd>seed to use in random number generator</dd>
+</dl>
+</div></blockquote>
+<dl class="docutils">
+<dt>Returns:</dt>
+<dd>pcl.Pointcloud</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="patty.registration.downsample_voxel">
+<code class="descclassname">patty.registration.</code><code class="descname">downsample_voxel</code><span class="sig-paren">(</span><em>pointcloud</em>, <em>voxel_size=0.01</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/registration/registration.html#downsample_voxel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.registration.downsample_voxel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Downsample a pointcloud using a voxel grid filter.</p>
+<dl class="docutils">
+<dt>Arguments:</dt>
+<dd>pointcloud    Original pointcloud
+voxel_size    Grid spacing for the voxel grid</dd>
+<dt>Returns:</dt>
+<dd>filtered_pointcloud</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="patty.registration.find_principal_axes_rotation">
+<code class="descclassname">patty.registration.</code><code class="descname">find_principal_axes_rotation</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/registration/pca.html#find_principal_axes_rotation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.registration.find_principal_axes_rotation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find the 3 principal axes of the XYZ array, and the rotation to align
+it to the x,y, and z axis.</p>
+<dl class="docutils">
+<dt>Arguments:</dt>
+<dd>data    pointcloud</dd>
+<dt>Returns:</dt>
+<dd>transformation matrix</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="patty.registration.get_pointcloud_boundaries">
+<code class="descclassname">patty.registration.</code><code class="descname">get_pointcloud_boundaries</code><span class="sig-paren">(</span><em>pointcloud</em>, <em>angle_threshold=0.1</em>, <em>search_radius=0.02</em>, <em>normal_search_radius=0.02</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/registration/registration.html#get_pointcloud_boundaries"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.registration.get_pointcloud_boundaries" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find the boundary of a pointcloud.</p>
+<dl class="docutils">
+<dt>Arguments:</dt>
+<dd><p class="first">pointcloud : pcl.PointCloud</p>
+<p>angle_threshold : float</p>
+<p>search_radius : float</p>
+<p class="last">normal_radius : float</p>
+</dd>
+<dt>Returns:</dt>
+<dd>a pointcloud</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="patty.registration.get_stick_scale">
+<code class="descclassname">patty.registration.</code><code class="descname">get_stick_scale</code><span class="sig-paren">(</span><em>pc</em>, <em>eps=0.1</em>, <em>min_samples=20</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/registration/stickscale.html#get_stick_scale"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.registration.get_stick_scale" title="Permalink to this definition">¶</a></dt>
+<dd><p>Takes a point cloud, as a numpy array, containing only the red segments
+of scale sticks and returns the scale estimation with most support.
+Method:
+pointcloud &#8211;dbscan&#8211;&gt; clusters &#8211;lengthEstimation&#8211;&gt;</p>
+<blockquote>
+<div>lengths &#8211;ransac&#8211;&gt; best length</div></blockquote>
+<dl class="docutils">
+<dt>Arguments:</dt>
+<dd><dl class="first last docutils">
+<dt>pc            Point cloud containing only measuring stick segments</dt>
+<dd>(only the red, or only the white parts)</dd>
+<dt>eps           DBSCAN parameter: Maximum distance between two samples</dt>
+<dd>for them to be considered as in the same neighborhood.</dd>
+<dt>min_samples   DBSCAN parameter: The number of samples in a neighborhood</dt>
+<dd>for a point to be considered as a core point.</dd>
+</dl>
+</dd>
+<dt>Returns:</dt>
+<dd><dl class="first last docutils">
+<dt>scale         Estimate of the size of one actual meter in expressed</dt>
+<dd>in units of the pointcloud&#8217;s coordinates.</dd>
+<dt>confidence    A number expressing the reliability of the estimated</dt>
+<dd>scale. Confidence is in [0, 1]. With a confidence greater
+than .5, the estimate can be considered useable for
+further calculations.</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="patty.registration.register_from_footprint">
+<code class="descclassname">patty.registration.</code><code class="descname">register_from_footprint</code><span class="sig-paren">(</span><em>pc</em>, <em>footprint</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/registration/registration.html#register_from_footprint"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.registration.register_from_footprint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register a pointcloud by placing it in footprint. Applies dbscan first.</p>
+<dl class="docutils">
+<dt>Arguments:</dt>
+<dd><p class="first">pc : pcl.PointCloud</p>
+<dl class="last docutils">
+<dt>footprint <span class="classifier-delimiter">:</span> <span class="classifier">np.ndarray</span></dt>
+<dd>Array of [x,y,z] describing the footprint.</dd>
+</dl>
+</dd>
+<dt>Returns:</dt>
+<dd>The original pointcloud, rotated/translated to the footprint.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="patty.registration.register_from_reference">
+<code class="descclassname">patty.registration.</code><code class="descname">register_from_reference</code><span class="sig-paren">(</span><em>pc</em>, <em>pc_ref</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/registration/registration.html#register_from_reference"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.registration.register_from_reference" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register a pointcloud by aligning it with a reference pointcloud.</p>
+<p>Applies dbscan first.</p>
+<dl class="docutils">
+<dt>Arguments:</dt>
+<dd>pc         pointcloud
+footprint  array of [x,y,z] describing the footprint</dd>
+<dt>Returns:</dt>
+<dd>the original pointcloud, but rotated/translated to the footprint</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="patty.registration.register_offset_scale_from_ref">
+<code class="descclassname">patty.registration.</code><code class="descname">register_offset_scale_from_ref</code><span class="sig-paren">(</span><em>pc</em>, <em>ref_array</em>, <em>ref_offset=array([ 0.</em>, <em>0.</em>, <em>0.])</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/registration/registration.html#register_offset_scale_from_ref"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.registration.register_offset_scale_from_ref" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a 3d-offset and uniform scale value from footprint.</p>
+<p>The scale is immediately applied to the pointcloud. The offset is
+set to the patty_registration.conversions.RegisteredPointCloud.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-patty.segmentation">
+<span id="segmentation"></span><h2>Segmentation<a class="headerlink" href="#module-patty.segmentation" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="patty.segmentation.dbscan_labels">
+<code class="descclassname">patty.segmentation.</code><code class="descname">dbscan_labels</code><span class="sig-paren">(</span><em>pointcloud</em>, <em>epsilon</em>, <em>minpoints</em>, <em>rgb_weight=0</em>, <em>algorithm='ball_tree'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/segmentation/dbscan.html#dbscan_labels"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.segmentation.dbscan_labels" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find an array of point-labels of clusters found by the DBSCAN algorithm.</p>
+<dl class="docutils">
+<dt>pointcloud <span class="classifier-delimiter">:</span> <span class="classifier">pcl.PointCloud</span></dt>
+<dd>Input pointcloud.</dd>
+<dt>epsilon <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
+<dd>Neighborhood radius for DBSCAN.</dd>
+<dt>minpoints <span class="classifier-delimiter">:</span> <span class="classifier">integer</span></dt>
+<dd>Minimum neighborhood density for DBSCAN.</dd>
+<dt>rgb_weight <span class="classifier-delimiter">:</span> <span class="classifier">float, optional</span></dt>
+<dd>If non-zero, cluster on color information as well as location;
+specifies the relative weight of the RGB components to spatial
+coordinates in distance computations.
+(RGB values have wildly different scales than spatial coordinates.)</dd>
+</dl>
+<p>labels: a sequence of labels per point. Label -1 indicates a point does
+not belong to any cluster, other labels indicate the cluster number a
+point belongs to.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="patty.segmentation.get_largest_dbscan_clusters">
+<code class="descclassname">patty.segmentation.</code><code class="descname">get_largest_dbscan_clusters</code><span class="sig-paren">(</span><em>pointcloud</em>, <em>min_return_fragment=0.7</em>, <em>epsilon=0.1</em>, <em>minpoints=250</em>, <em>rgb_weight=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/segmentation/dbscan.html#get_largest_dbscan_clusters"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.segmentation.get_largest_dbscan_clusters" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finds the largest clusters containing together at least min_return_fragment
+of the complete point cloud. In case less points belong to clusters, all
+clustered points are returned.</p>
+<p>pointcloud : pcl.PointCloud
+min_return_fragment : float</p>
+<blockquote>
+<div>Minimum desired fragment of pointcloud to be returned</div></blockquote>
+<dl class="docutils">
+<dt>epsilon <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
+<dd>Neighborhood radius for DBSCAN.</dd>
+<dt>minpoints <span class="classifier-delimiter">:</span> <span class="classifier">integer</span></dt>
+<dd>Minimum neighborhood density for DBSCAN.</dd>
+<dt>rgb_weight <span class="classifier-delimiter">:</span> <span class="classifier">float, optional</span></dt>
+<dd>If non-zero, cluster on color information as well as location;
+specifies the relative weight of the RGB components to spatial
+coordinates in distance computations.
+(RGB values have wildly different scales than spatial coordinates.)</dd>
+</dl>
+<p>cluster: registered pointcloud of the largest cluster found by dbscan</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="patty.segmentation.get_red_mask">
+<code class="descclassname">patty.segmentation.</code><code class="descname">get_red_mask</code><span class="sig-paren">(</span><em>pointcloud</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/segmentation/segRedStick.html#get_red_mask"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.segmentation.get_red_mask" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a mask for the red parts of a pointcloud</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="patty.segmentation.largest_dbscan_cluster">
+<code class="descclassname">patty.segmentation.</code><code class="descname">largest_dbscan_cluster</code><span class="sig-paren">(</span><em>pointcloud</em>, <em>epsilon=0.1</em>, <em>minpoints=250</em>, <em>rgb_weight=0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/segmentation/dbscan.html#largest_dbscan_cluster"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.segmentation.largest_dbscan_cluster" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finds the largest cluster found in the pointcloud</p>
+<dl class="docutils">
+<dt>pointcloud <span class="classifier-delimiter">:</span> <span class="classifier">pcl.PointCloud</span></dt>
+<dd>Input pointcloud.</dd>
+<dt>epsilon <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
+<dd>Neighborhood radius for DBSCAN.</dd>
+<dt>minpoints <span class="classifier-delimiter">:</span> <span class="classifier">integer</span></dt>
+<dd>Minimum neighborhood density for DBSCAN.</dd>
+<dt>rgb_weight <span class="classifier-delimiter">:</span> <span class="classifier">float, optional</span></dt>
+<dd>If non-zero, cluster on color information as well as location;
+specifies the relative weight of the RGB components to spatial
+coordinates in distance computations.
+(RGB values have wildly different scales than spatial coordinates.)</dd>
+</dl>
+<dl class="docutils">
+<dt>cluster: PointCloud</dt>
+<dd>Registered pointcloud of the largest cluster found by dbscan</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="patty.segmentation.measure_length">
+<code class="descclassname">patty.segmentation.</code><code class="descname">measure_length</code><span class="sig-paren">(</span><em>pointcloud</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/segmentation/pointCloudMeasurer.html#measure_length"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.segmentation.measure_length" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the length of a point cloud in its longest direction.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="patty.segmentation.segment_dbscan">
+<code class="descclassname">patty.segmentation.</code><code class="descname">segment_dbscan</code><span class="sig-paren">(</span><em>pointcloud</em>, <em>epsilon</em>, <em>minpoints</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/patty/segmentation/dbscan.html#segment_dbscan"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#patty.segmentation.segment_dbscan" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run the DBSCAN clustering+outlier detection algorithm on pointcloud.</p>
+<dl class="docutils">
+<dt>pointcloud <span class="classifier-delimiter">:</span> <span class="classifier">pcl.PointCloud</span></dt>
+<dd>Input pointcloud.</dd>
+<dt>epsilon <span class="classifier-delimiter">:</span> <span class="classifier">float</span></dt>
+<dd>Neighborhood radius for DBSCAN.</dd>
+<dt>minpoints <span class="classifier-delimiter">:</span> <span class="classifier">integer</span></dt>
+<dd>Minimum neighborhood density for DBSCAN.</dd>
+<dt><a href="#id1"><span class="problematic" id="id2">**</span></a>kwargs <span class="classifier-delimiter">:</span> <span class="classifier">keyword arguments, optional</span></dt>
+<dd>arguments passed to _dbscan_labels</dd>
+</dl>
+<p>clusters : iterable over registered PointCloud</p>
+</dd></dl>
+
 </div>
 </div>
 
@@ -110,6 +564,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="right" >
           <a href="index.html" title="Patty Analytics"
              >previous</a> |</li>

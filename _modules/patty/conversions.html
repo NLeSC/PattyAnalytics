@@ -40,6 +40,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../index.html">Patty Analytics 0.1 documentation</a> &raquo;</li>
           <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
       </ul>
@@ -78,23 +81,24 @@
 <span class="c"># http://laspy.readthedocs.org/en/latest/</span>
 <span class="c"># https://github.com/grantbrown/laspy.git</span>
 
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
 <span class="kn">import</span> <span class="nn">liblas</span>
 <span class="kn">import</span> <span class="nn">pcl</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
-<span class="kn">from</span> <span class="nn">patty.utils</span> <span class="kn">import</span> <span class="n">BoundingBox</span>
 
 
-<span class="k">def</span> <span class="nf">_checkReadable</span><span class="p">(</span><span class="n">filepath</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">_check_readable</span><span class="p">(</span><span class="n">filepath</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; Test whether filepath is readable, raises IOError otherwise &quot;&quot;&quot;</span>
     <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">):</span>
         <span class="k">pass</span>
 
 
-<span class="k">def</span> <span class="nf">_checkWritable</span><span class="p">(</span><span class="n">filepath</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">_check_writable</span><span class="p">(</span><span class="n">filepath</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; Test whether filepath is writable, raises IOError otherwise &quot;&quot;&quot;</span>
     <span class="c"># either the path exists but is not writable, or the path does not exist</span>
     <span class="c"># and the parent is not writable.</span>
+    <span class="n">filepath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
     <span class="k">if</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span>
             <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span> <span class="ow">or</span>
             <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">access</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">W_OK</span><span class="p">)</span>
@@ -102,7 +106,7 @@
         <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;Cannot write to &quot;</span> <span class="o">+</span> <span class="n">filepath</span><span class="p">)</span>
 
 
-<div class="viewcode-block" id="load"><a class="viewcode-back" href="../../api.html#patty.conversions.load">[docs]</a><span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">loadRGB</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+<div class="viewcode-block" id="load"><a class="viewcode-back" href="../../api.html#patty.conversions.load">[docs]</a><span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">load_rgb</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; Read a pointcloud file.</span>
 
 <span class="sd">    Supports LAS files, and lets PCD and PLY files be read by python-pcl.</span>
@@ -110,18 +114,18 @@
 <span class="sd">    Arguments:</span>
 <span class="sd">        path: file to load</span>
 <span class="sd">        format: &quot;PLY&quot;, &quot;PCD&quot;, &quot;LAS&quot; or None. With none, it detects the filetype</span>
-<span class="sd">             from the file extension.</span>
-<span class="sd">        loadRGB: whether RGB is loaded for PLY and PCD files. For LAS files RGB</span>
-<span class="sd">            is always read.</span>
+<span class="sd">            from the file extension.</span>
+<span class="sd">        load_rgb: whether RGB is loaded for PLY and PCD files. For LAS files</span>
+<span class="sd">            RGB is always read.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        registered pointcloud&quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">format</span> <span class="o">==</span> <span class="s">&#39;las&#39;</span> <span class="ow">or</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;.las&#39;</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">loadLas</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">load_las</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">_checkReadable</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
-        <span class="n">pc</span> <span class="o">=</span> <span class="n">pcl</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="n">format</span><span class="p">,</span> <span class="n">loadRGB</span><span class="o">=</span><span class="n">loadRGB</span><span class="p">)</span>
-        <span class="n">register</span><span class="p">(</span><span class="n">pc</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">pc</span>
+        <span class="n">_check_readable</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">pointcloud</span> <span class="o">=</span> <span class="n">pcl</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="n">format</span><span class="p">,</span> <span class="n">loadRGB</span><span class="o">=</span><span class="n">load_rgb</span><span class="p">)</span>
+        <span class="n">register</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">pointcloud</span>
 
 </div>
 <div class="viewcode-block" id="save"><a class="viewcode-back" href="../../api.html#patty.conversions.save">[docs]</a><span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="n">cloud</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">binary</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
@@ -137,47 +141,47 @@
 <span class="sd">        binary: whether PLY and PCD files are saved in binary format.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">format</span> <span class="o">==</span> <span class="s">&#39;las&#39;</span> <span class="ow">or</span> <span class="n">path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;.las&#39;</span><span class="p">):</span>
-        <span class="n">writeLas</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">cloud</span><span class="p">)</span>
+        <span class="n">write_las</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">cloud</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">_checkWritable</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">_check_writable</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">is_registered</span><span class="p">(</span><span class="n">cloud</span><span class="p">)</span> <span class="ow">and</span> <span class="n">cloud</span><span class="o">.</span><span class="n">offset</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
             <span class="n">cloud_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">cloud</span><span class="p">)</span>
             <span class="n">cloud_array</span> <span class="o">+=</span> <span class="n">cloud</span><span class="o">.</span><span class="n">offset</span>
         <span class="n">pcl</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">cloud</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="n">format</span><span class="p">,</span> <span class="n">binary</span><span class="o">=</span><span class="n">binary</span><span class="p">)</span>
 
 </div>
-<div class="viewcode-block" id="loadLas"><a class="viewcode-back" href="../../api.html#patty.conversions.loadLas">[docs]</a><span class="k">def</span> <span class="nf">loadLas</span><span class="p">(</span><span class="n">lasFile</span><span class="p">):</span>
+<div class="viewcode-block" id="load_las"><a class="viewcode-back" href="../../api.html#patty.conversions.load_las">[docs]</a><span class="k">def</span> <span class="nf">load_las</span><span class="p">(</span><span class="n">lasfile</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot; Read a LAS file</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        registered pointcloudxyzrgb</span>
 
 <span class="sd">    The pointcloud has color and XYZ coordinates, and the offset and precision</span>
 <span class="sd">    set.&quot;&quot;&quot;</span>
-    <span class="n">_checkReadable</span><span class="p">(</span><span class="n">lasFile</span><span class="p">)</span>
+    <span class="n">_check_readable</span><span class="p">(</span><span class="n">lasfile</span><span class="p">)</span>
 
-    <span class="k">print</span> <span class="s">&quot;--READING--&quot;</span><span class="p">,</span> <span class="n">lasFile</span><span class="p">,</span> <span class="s">&quot;---------&quot;</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;--READING--&quot;</span><span class="p">,</span> <span class="n">lasfile</span><span class="p">,</span> <span class="s">&quot;---------&quot;</span><span class="p">)</span>
 
     <span class="n">las</span> <span class="o">=</span> <span class="bp">None</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">las</span> <span class="o">=</span> <span class="n">liblas</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">lasFile</span><span class="p">)</span>
-        <span class="n">nPoints</span> <span class="o">=</span> <span class="n">las</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">get_count</span><span class="p">()</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">nPoints</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">las</span> <span class="o">=</span> <span class="n">liblas</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">lasfile</span><span class="p">)</span>
+        <span class="n">n_points</span> <span class="o">=</span> <span class="n">las</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">get_count</span><span class="p">()</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_points</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">point</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">las</span><span class="p">):</span>
             <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">point</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">point</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">point</span><span class="o">.</span><span class="n">z</span><span class="p">,</span> <span class="n">point</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">red</span> <span class="o">/</span>
                        <span class="mi">256</span><span class="p">,</span> <span class="n">point</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">green</span> <span class="o">/</span> <span class="mi">256</span><span class="p">,</span> <span class="n">point</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">blue</span> <span class="o">/</span> <span class="mi">256</span><span class="p">)</span>
 
-        <span class="n">bb</span> <span class="o">=</span> <span class="n">BoundingBox</span><span class="p">(</span><span class="n">points</span><span class="o">=</span><span class="n">data</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">])</span>
+        <span class="n">bbox</span> <span class="o">=</span> <span class="n">BoundingBox</span><span class="p">(</span><span class="n">points</span><span class="o">=</span><span class="n">data</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">])</span>
         <span class="c"># reduce the offset to decrease floating point errors</span>
-        <span class="n">data</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">-=</span> <span class="n">bb</span><span class="o">.</span><span class="n">center</span>
+        <span class="n">data</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">-=</span> <span class="n">bbox</span><span class="o">.</span><span class="n">center</span>
 
-        <span class="n">pc</span> <span class="o">=</span> <span class="n">pcl</span><span class="o">.</span><span class="n">PointCloudXYZRGB</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
+        <span class="n">pointcloud</span> <span class="o">=</span> <span class="n">pcl</span><span class="o">.</span><span class="n">PointCloudXYZRGB</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
 
-        <span class="n">register</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="n">bb</span><span class="o">.</span><span class="n">center</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="n">las</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">scale</span><span class="p">,</span>
+        <span class="n">register</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="n">bbox</span><span class="o">.</span><span class="n">center</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="n">las</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">scale</span><span class="p">,</span>
                  <span class="n">crs_wkt</span><span class="o">=</span><span class="n">las</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">srs</span><span class="o">.</span><span class="n">get_wkt</span><span class="p">(),</span>
                  <span class="n">crs_proj4</span><span class="o">=</span><span class="n">las</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">srs</span><span class="o">.</span><span class="n">get_proj4</span><span class="p">())</span>
 
-        <span class="k">return</span> <span class="n">pc</span>
+        <span class="k">return</span> <span class="n">pointcloud</span>
     <span class="k">finally</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">las</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
             <span class="n">las</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
@@ -239,9 +243,10 @@
     <span class="sd">&quot;&quot;&quot;Copy spatial reference system metadata from src to target.</span>
 
 <span class="sd">    Arguments:</span>
-<span class="sd">        target : PointCloud</span>
-
-<span class="sd">        src : PointCloud</span>
+<span class="sd">        pointcloud_target: pcl.PointCloud</span>
+<span class="sd">            pointcloud to copy registration to</span>
+<span class="sd">        pointcloud_src: pcl.PointCloud</span>
+<span class="sd">            registered pointcloud to copy registration from</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">target</span><span class="o">.</span><span class="n">is_registered</span> <span class="o">=</span> <span class="bp">True</span>
     <span class="n">target</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">offset</span>
@@ -251,84 +256,192 @@
     <span class="n">target</span><span class="o">.</span><span class="n">crs_verticalcs</span> <span class="o">=</span> <span class="n">src</span><span class="o">.</span><span class="n">crs_verticalcs</span>
 
 </div>
-<div class="viewcode-block" id="loadCsvPolygon"><a class="viewcode-back" href="../../api.html#patty.conversions.loadCsvPolygon">[docs]</a><span class="k">def</span> <span class="nf">loadCsvPolygon</span><span class="p">(</span><span class="n">csvFile</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s">&#39;,&#39;</span><span class="p">):</span>
+<div class="viewcode-block" id="load_csv_polygon"><a class="viewcode-back" href="../../api.html#patty.conversions.load_csv_polygon">[docs]</a><span class="k">def</span> <span class="nf">load_csv_polygon</span><span class="p">(</span><span class="n">csvfile</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s">&#39;,&#39;</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Load a polygon from a simple CSV file</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        numpy array containing the CSV file</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">csvFile</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="n">delimiter</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">csvfile</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="n">delimiter</span><span class="p">)</span>
 
 </div>
-<span class="k">def</span> <span class="nf">extract_mask</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">mask</span><span class="p">):</span>
+<div class="viewcode-block" id="extract_mask"><a class="viewcode-back" href="../../api.html#patty.conversions.extract_mask">[docs]</a><span class="k">def</span> <span class="nf">extract_mask</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">mask</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Extract all points in a mask into a new pointcloud.</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        pointcloud: pcl.PointCloud</span>
+<span class="sd">            Input pointcloud</span>
+<span class="sd">        mask: array of bool</span>
+<span class="sd">            mask for which points from the pointcloud to include.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        pointcloud with the same registration (if any) as the original one.&quot;&quot;&quot;</span>
     <span class="n">pointcloud_new</span> <span class="o">=</span> <span class="n">pointcloud</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
     <span class="k">if</span> <span class="n">is_registered</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">):</span>
         <span class="n">copy_registration</span><span class="p">(</span><span class="n">pointcloud_new</span><span class="p">,</span> <span class="n">pointcloud</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">pointcloud_new</span>
 
+</div>
+<div class="viewcode-block" id="make_las_header"><a class="viewcode-back" href="../../api.html#patty.conversions.make_las_header">[docs]</a><span class="k">def</span> <span class="nf">make_las_header</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Make a LAS header for given pointcloud.</span>
+<span class="sd">    If the pointcloud is registered, this is taken into account for the</span>
+<span class="sd">    header metadata. Has the side-effect of registering the given pointcloud.</span>
 
-<span class="k">def</span> <span class="nf">makeLasHeader</span><span class="p">(</span><span class="n">pc</span><span class="p">):</span>
-    <span class="n">f</span> <span class="o">=</span> <span class="n">liblas</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">Schema</span><span class="p">()</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="bp">False</span>
-    <span class="n">f</span><span class="o">.</span><span class="n">color</span> <span class="o">=</span> <span class="bp">True</span>
+<span class="sd">    Arguments:</span>
+<span class="sd">        pointcloud: pcl.PointCloud</span>
+<span class="sd">            Input pointcloud.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        liblas.header.Header for writing the pointcloud to LAS file with.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">liblas</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">Schema</span><span class="p">()</span>
+    <span class="n">schema</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="n">schema</span><span class="o">.</span><span class="n">color</span> <span class="o">=</span> <span class="bp">True</span>
 
-    <span class="n">h</span> <span class="o">=</span> <span class="n">liblas</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">Header</span><span class="p">()</span>
-    <span class="n">h</span><span class="o">.</span><span class="n">schema</span> <span class="o">=</span> <span class="n">f</span>
-    <span class="n">h</span><span class="o">.</span><span class="n">dataformat_id</span> <span class="o">=</span> <span class="mi">3</span>
-    <span class="n">h</span><span class="o">.</span><span class="n">major_version</span> <span class="o">=</span> <span class="mi">1</span>
-    <span class="n">h</span><span class="o">.</span><span class="n">minor_version</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">head</span> <span class="o">=</span> <span class="n">liblas</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">Header</span><span class="p">()</span>
+    <span class="n">head</span><span class="o">.</span><span class="n">schema</span> <span class="o">=</span> <span class="n">schema</span>
+    <span class="n">head</span><span class="o">.</span><span class="n">dataformat_id</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">head</span><span class="o">.</span><span class="n">major_version</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">head</span><span class="o">.</span><span class="n">minor_version</span> <span class="o">=</span> <span class="mi">2</span>
 
-    <span class="n">register</span><span class="p">(</span><span class="n">pc</span><span class="p">)</span>
+    <span class="n">register</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">)</span>
     <span class="c"># FIXME: need extra precision to reduce floating point errors. We don&#39;t</span>
     <span class="c"># know exactly why this works. It might reduce precision on the top of</span>
     <span class="c"># the float, but reduces an error of one bit for the last digit.</span>
-    <span class="n">h</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pc</span><span class="o">.</span><span class="n">precision</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.5</span>
-    <span class="n">h</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="n">pc</span><span class="o">.</span><span class="n">offset</span>
+    <span class="n">head</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pointcloud</span><span class="o">.</span><span class="n">precision</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.5</span>
+    <span class="n">head</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="n">pointcloud</span><span class="o">.</span><span class="n">offset</span>
 
-    <span class="k">if</span> <span class="n">pc</span><span class="o">.</span><span class="n">crs_wkt</span> <span class="o">!=</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
-        <span class="n">h</span><span class="o">.</span><span class="n">srs</span><span class="o">.</span><span class="n">set_wkt</span><span class="p">(</span><span class="n">pc</span><span class="o">.</span><span class="n">crs_wkt</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">pc</span><span class="o">.</span><span class="n">crs_proj4</span> <span class="o">!=</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
-        <span class="n">h</span><span class="o">.</span><span class="n">srs</span><span class="o">.</span><span class="n">set_proj4</span><span class="p">(</span><span class="n">pc</span><span class="o">.</span><span class="n">crs_proj4</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">pc</span><span class="o">.</span><span class="n">crs_verticalcs</span> <span class="o">!=</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
-        <span class="n">h</span><span class="o">.</span><span class="n">srs</span><span class="o">.</span><span class="n">set_verticalcs</span><span class="p">(</span><span class="n">pc</span><span class="o">.</span><span class="n">crs_verticalcs</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">pointcloud</span><span class="o">.</span><span class="n">crs_wkt</span> <span class="o">!=</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+        <span class="n">head</span><span class="o">.</span><span class="n">srs</span><span class="o">.</span><span class="n">set_wkt</span><span class="p">(</span><span class="n">pointcloud</span><span class="o">.</span><span class="n">crs_wkt</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">pointcloud</span><span class="o">.</span><span class="n">crs_proj4</span> <span class="o">!=</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+        <span class="n">head</span><span class="o">.</span><span class="n">srs</span><span class="o">.</span><span class="n">set_proj4</span><span class="p">(</span><span class="n">pointcloud</span><span class="o">.</span><span class="n">crs_proj4</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">pointcloud</span><span class="o">.</span><span class="n">crs_verticalcs</span> <span class="o">!=</span> <span class="s">&#39;&#39;</span><span class="p">:</span>
+        <span class="n">head</span><span class="o">.</span><span class="n">srs</span><span class="o">.</span><span class="n">set_verticalcs</span><span class="p">(</span><span class="n">pointcloud</span><span class="o">.</span><span class="n">crs_verticalcs</span><span class="p">)</span>
 
-    <span class="n">pc_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pc</span><span class="p">)</span>
-    <span class="n">h</span><span class="o">.</span><span class="n">min</span> <span class="o">=</span> <span class="n">pc_array</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">h</span><span class="o">.</span><span class="n">offset</span>
-    <span class="n">h</span><span class="o">.</span><span class="n">max</span> <span class="o">=</span> <span class="n">pc_array</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">h</span><span class="o">.</span><span class="n">offset</span>
-    <span class="k">return</span> <span class="n">h</span>
+    <span class="n">pc_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">)</span>
+    <span class="n">head</span><span class="o">.</span><span class="n">min</span> <span class="o">=</span> <span class="n">pc_array</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">head</span><span class="o">.</span><span class="n">offset</span>
+    <span class="n">head</span><span class="o">.</span><span class="n">max</span> <span class="o">=</span> <span class="n">pc_array</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">head</span><span class="o">.</span><span class="n">offset</span>
+    <span class="k">return</span> <span class="n">head</span>
 
-
-<div class="viewcode-block" id="writeLas"><a class="viewcode-back" href="../../api.html#patty.conversions.writeLas">[docs]</a><span class="k">def</span> <span class="nf">writeLas</span><span class="p">(</span><span class="n">lasFile</span><span class="p">,</span> <span class="n">pc</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+</div>
+<div class="viewcode-block" id="write_las"><a class="viewcode-back" href="../../api.html#patty.conversions.write_las">[docs]</a><span class="k">def</span> <span class="nf">write_las</span><span class="p">(</span><span class="n">lasfile</span><span class="p">,</span> <span class="n">pointcloud</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Write a pointcloud to a LAS file</span>
 
 <span class="sd">    Arguments:</span>
-<span class="sd">        lasFile : filename</span>
+<span class="sd">        lasfile : filename</span>
 
-<span class="sd">        pc      : Pointclout to write</span>
+<span class="sd">        pointcloud      : Pointclout to write</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">_checkWritable</span><span class="p">(</span><span class="n">lasFile</span><span class="p">)</span>
+    <span class="n">_check_writable</span><span class="p">(</span><span class="n">lasfile</span><span class="p">)</span>
 
-    <span class="k">print</span> <span class="s">&quot;--WRITING--&quot;</span><span class="p">,</span> <span class="n">lasFile</span><span class="p">,</span> <span class="s">&quot;--------&quot;</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;--WRITING--&quot;</span><span class="p">,</span> <span class="n">lasfile</span><span class="p">,</span> <span class="s">&quot;--------&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">header</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
-        <span class="n">header</span> <span class="o">=</span> <span class="n">makeLasHeader</span><span class="p">(</span><span class="n">pc</span><span class="p">)</span>
+        <span class="n">header</span> <span class="o">=</span> <span class="n">make_las_header</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">)</span>
 
-    <span class="n">precise_points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">precise_points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
     <span class="n">precise_points</span> <span class="o">/=</span> <span class="n">header</span><span class="o">.</span><span class="n">scale</span>
 
     <span class="n">las</span> <span class="o">=</span> <span class="bp">None</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">las</span> <span class="o">=</span> <span class="n">liblas</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">lasFile</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s">&quot;w&quot;</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">)</span>
+        <span class="n">las</span> <span class="o">=</span> <span class="n">liblas</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">lasfile</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s">&quot;w&quot;</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">)</span>
 
-        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="n">pc</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
-            <span class="n">pt</span> <span class="o">=</span> <span class="n">liblas</span><span class="o">.</span><span class="n">point</span><span class="o">.</span><span class="n">Point</span><span class="p">()</span>
-            <span class="n">pt</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">pt</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">pt</span><span class="o">.</span><span class="n">z</span> <span class="o">=</span> <span class="n">precise_points</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-            <span class="n">r</span><span class="p">,</span> <span class="n">g</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="n">pc</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">3</span><span class="p">:</span><span class="mi">6</span><span class="p">]</span>
-            <span class="n">pt</span><span class="o">.</span><span class="n">color</span> <span class="o">=</span> <span class="n">liblas</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">Color</span><span class="p">(</span>
-                <span class="n">red</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">r</span><span class="p">)</span> <span class="o">*</span> <span class="mi">256</span><span class="p">,</span> <span class="n">green</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">g</span><span class="p">)</span> <span class="o">*</span> <span class="mi">256</span><span class="p">,</span> <span class="n">blue</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">b</span><span class="p">)</span> <span class="o">*</span> <span class="mi">256</span><span class="p">)</span>
-            <span class="n">las</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">pt</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="n">pointcloud</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">point</span> <span class="o">=</span> <span class="n">liblas</span><span class="o">.</span><span class="n">point</span><span class="o">.</span><span class="n">Point</span><span class="p">()</span>
+            <span class="n">point</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">point</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">point</span><span class="o">.</span><span class="n">z</span> <span class="o">=</span> <span class="n">precise_points</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">red</span><span class="p">,</span> <span class="n">grn</span><span class="p">,</span> <span class="n">blu</span> <span class="o">=</span> <span class="n">pointcloud</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">3</span><span class="p">:</span><span class="mi">6</span><span class="p">]</span>
+            <span class="n">point</span><span class="o">.</span><span class="n">color</span> <span class="o">=</span> <span class="n">liblas</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">Color</span><span class="p">(</span>
+                <span class="n">red</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">red</span><span class="p">)</span> <span class="o">*</span> <span class="mi">256</span><span class="p">,</span> <span class="n">green</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">grn</span><span class="p">)</span> <span class="o">*</span> <span class="mi">256</span><span class="p">,</span> <span class="n">blue</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">blu</span><span class="p">)</span> <span class="o">*</span> <span class="mi">256</span><span class="p">)</span>
+            <span class="n">las</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">point</span><span class="p">)</span>
     <span class="k">finally</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">las</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
-            <span class="n">las</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+            <span class="n">las</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+</div>
+<div class="viewcode-block" id="BoundingBox"><a class="viewcode-back" href="../../api.html#patty.conversions.BoundingBox">[docs]</a><span class="k">class</span> <span class="nc">BoundingBox</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;A bounding box for a sequence of points.</span>
+
+<span class="sd">    Center, size and diagonal are updated when the minimum or maximum are</span>
+<span class="sd">    updated.</span>
+
+<span class="sd">    Constructor usage: either set points (any object that is converted to an</span>
+<span class="sd">    NxD array by np.asarray, with D the number of dimensions) or a fixed min</span>
+<span class="sd">    and max.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">points</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">min</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="nb">max</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_min</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="nb">min</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="nb">max</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">points</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">points_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_min</span> <span class="o">=</span> <span class="n">points_array</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_max</span> <span class="o">=</span> <span class="n">points_array</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Need to give min and max or matrix&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reset</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&#39;BoundingBox &lt;</span><span class="si">%s</span><span class="s"> - </span><span class="si">%s</span><span class="s">&gt;&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">min</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_center</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_size</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">min</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_min</span>
+
+    <span class="nd">@min.setter</span>
+    <span class="k">def</span> <span class="nf">min</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_min</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reset</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min</span> <span class="o">=</span> <span class="n">new_min</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">max</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max</span>
+
+    <span class="nd">@max.setter</span>
+    <span class="k">def</span> <span class="nf">max</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_max</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reset</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max</span> <span class="o">=</span> <span class="n">new_max</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">center</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; Center point of the bounding box&#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_center</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_center</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">min</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">max</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_center</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; N-dimensional size array &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_size</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">min</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_size</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">diagonal</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; Length of the diagonal of the box. &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+
+<div class="viewcode-block" id="BoundingBox.contains"><a class="viewcode-back" href="../../api.html#patty.conversions.BoundingBox.contains">[docs]</a>    <span class="k">def</span> <span class="nf">contains</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pos</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; Whether the bounding box contains given position. &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">((</span><span class="n">pos</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">pos</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max</span><span class="p">))</span>
+
+</div></div>
+<div class="viewcode-block" id="center_boundingbox"><a class="viewcode-back" href="../../api.html#patty.conversions.center_boundingbox">[docs]</a><span class="k">def</span> <span class="nf">center_boundingbox</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Center the pointcloud on origin using the center of its bounding box.</span>
+<span class="sd">    The offset compared to the original location is added to the</span>
+<span class="sd">    pointcloud.offset. The pointcloud is registered after use.</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        pointcloud: pcl.PointCloud</span>
+<span class="sd">            input pointcloud</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">register</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">)</span>
+    <span class="n">pc_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">)</span>
+    <span class="n">bbox</span> <span class="o">=</span> <span class="n">BoundingBox</span><span class="p">(</span><span class="n">points</span><span class="o">=</span><span class="n">pc_array</span><span class="p">)</span>
+    <span class="n">pc_array</span> <span class="o">-=</span> <span class="n">bbox</span><span class="o">.</span><span class="n">center</span>
+    <span class="n">pointcloud</span><span class="o">.</span><span class="n">offset</span> <span class="o">+=</span> <span class="n">bbox</span><span class="o">.</span><span class="n">center</span></div>
 </pre></div>
 
           </div>
@@ -342,6 +455,9 @@
         <li class="right" style="margin-right: 10px">
           <a href="../../genindex.html" title="General Index"
              >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
         <li class="nav-item nav-item-0"><a href="../../index.html">Patty Analytics 0.1 documentation</a> &raquo;</li>
           <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &raquo;</li> 
       </ul>

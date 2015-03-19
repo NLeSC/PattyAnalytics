@@ -1,0 +1,217 @@
+
+
+<!doctype html>
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>patty.registration.stickscale &mdash; Patty Analytics 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/bizstyle.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="../../../_static/bizstyle.js"></script>
+    <link rel="top" title="Patty Analytics 0.1 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <!--[if lt IE 9]>
+    <script type="text/javascript" src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">Patty Analytics 0.1 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for patty.registration.stickscale</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">patty.segmentation.pointCloudMeasurer</span> <span class="kn">import</span> <span class="n">measure_length</span>
+<span class="kn">from</span> <span class="nn">patty.segmentation</span> <span class="kn">import</span> <span class="n">segment_dbscan</span>
+<span class="kn">from</span> <span class="nn">patty.conversions</span> <span class="kn">import</span> <span class="n">extract_mask</span>
+<span class="kn">from</span> <span class="nn">patty.segmentation.segRedStick</span> <span class="kn">import</span> <span class="n">get_red_mask</span>
+
+<span class="c"># according to Rens, sticks are .8m and contain 4 segments:</span>
+<span class="n">segmentsPerMeter</span> <span class="o">=</span> <span class="mf">5.0</span>
+
+
+<div class="viewcode-block" id="get_stick_scale"><a class="viewcode-back" href="../../../api.html#patty.registration.get_stick_scale">[docs]</a><span class="k">def</span> <span class="nf">get_stick_scale</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">min_samples</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Takes a point cloud, as a numpy array, containing only the red segments</span>
+<span class="sd">    of scale sticks and returns the scale estimation with most support.</span>
+<span class="sd">    Method:</span>
+<span class="sd">    pointcloud --dbscan--&gt; clusters --lengthEstimation--&gt;</span>
+<span class="sd">        lengths --ransac--&gt; best length</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        pc            Point cloud containing only measuring stick segments</span>
+<span class="sd">                      (only the red, or only the white parts)</span>
+<span class="sd">        eps           DBSCAN parameter: Maximum distance between two samples</span>
+<span class="sd">                      for them to be considered as in the same neighborhood.</span>
+<span class="sd">        min_samples   DBSCAN parameter: The number of samples in a neighborhood</span>
+<span class="sd">                      for a point to be considered as a core point.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        scale         Estimate of the size of one actual meter in expressed</span>
+<span class="sd">                      in units of the pointcloud&#39;s coordinates.</span>
+<span class="sd">        confidence    A number expressing the reliability of the estimated</span>
+<span class="sd">                      scale. Confidence is in [0, 1]. With a confidence greater</span>
+<span class="sd">                      than .5, the estimate can be considered useable for</span>
+<span class="sd">                      further calculations.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cluster_generator</span> <span class="o">=</span> <span class="n">segment_dbscan</span><span class="p">(</span>
+        <span class="n">pc</span><span class="p">,</span> <span class="n">eps</span><span class="p">,</span> <span class="n">min_samples</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="s">&#39;kd_tree&#39;</span><span class="p">)</span>
+
+    <span class="n">sizes</span> <span class="o">=</span> <span class="p">[{</span><span class="s">&#39;len&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">cluster</span><span class="p">),</span>
+              <span class="s">&#39;meter&#39;</span><span class="p">:</span> <span class="n">measure_length</span><span class="p">(</span><span class="n">cluster</span><span class="p">)</span> <span class="o">*</span> <span class="n">segmentsPerMeter</span><span class="p">}</span>
+             <span class="k">for</span> <span class="n">cluster</span> <span class="ow">in</span> <span class="n">cluster_generator</span><span class="p">]</span>
+    <span class="n">scale</span><span class="p">,</span> <span class="n">votes</span><span class="p">,</span> <span class="n">supportingClusterCount</span> <span class="o">=</span> <span class="n">ransac</span><span class="p">(</span><span class="n">sizes</span><span class="p">)</span>
+    <span class="n">confidence</span> <span class="o">=</span> <span class="n">get_confidence_level</span><span class="p">(</span><span class="n">votes</span><span class="p">,</span> <span class="n">supportingClusterCount</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">scale</span><span class="p">,</span> <span class="n">confidence</span>
+
+</div>
+<span class="k">def</span> <span class="nf">get_preferred_scale_factor</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">origScaleFactor</span><span class="p">):</span>
+    <span class="c"># Get reg_scale_2 from red stick</span>
+    <span class="n">pc_reds</span> <span class="o">=</span> <span class="n">extract_mask</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">get_red_mask</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pc_reds</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">origScaleFactor</span>
+    <span class="c"># eps and min_samples omitted -- default values</span>
+    <span class="n">redScale</span><span class="p">,</span> <span class="n">redConf</span> <span class="o">=</span> <span class="n">get_stick_scale</span><span class="p">(</span><span class="n">pc_reds</span><span class="p">)</span>
+
+    <span class="c"># Choose best registered scale</span>
+    <span class="k">if</span> <span class="n">redConf</span> <span class="o">&lt;</span> <span class="mf">0.5</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">origScaleFactor</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">redScale</span>
+
+
+<span class="k">def</span> <span class="nf">ransac</span><span class="p">(</span><span class="n">meterClusters</span><span class="p">,</span> <span class="n">relativeInlierMargin</span><span class="o">=</span><span class="mf">0.05</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Very simple RANSAC implementation for finding the value with most</span>
+<span class="sd">    support in a list of scale estimates. I.e. only one parameter is searched</span>
+<span class="sd">    for. The number of points in the cluster on which the scale estimate was</span>
+<span class="sd">    based is taken into account.&quot;&quot;&quot;</span>
+    <span class="n">biggestClusterSize</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">meterClusters</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s">&#39;len&#39;</span><span class="p">])[</span><span class="s">&#39;meter&#39;</span><span class="p">]</span>
+    <span class="n">margin</span> <span class="o">=</span> <span class="n">relativeInlierMargin</span> <span class="o">*</span> <span class="n">biggestClusterSize</span>
+    <span class="c"># meterClusters = sorted(meterClusters, key= lambda meterCluster :</span>
+    <span class="c"># meterCluster[&#39;meter&#39;]) # only for printing within loop, doesn&#39;t change</span>
+    <span class="c"># outcome.</span>
+
+    <span class="n">bestVoteCount</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">bestSupport</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">clust</span> <span class="ow">in</span> <span class="n">meterClusters</span><span class="p">:</span>
+        <span class="n">support</span> <span class="o">=</span> <span class="p">[</span><span class="n">supportCluster</span> <span class="k">for</span> <span class="n">supportCluster</span> <span class="ow">in</span> <span class="n">meterClusters</span>
+                   <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">clust</span><span class="p">[</span><span class="s">&#39;meter&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">supportCluster</span><span class="p">[</span><span class="s">&#39;meter&#39;</span><span class="p">])</span> <span class="o">&lt;</span> <span class="n">margin</span><span class="p">]</span>
+        <span class="n">voteCount</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">([</span><span class="n">supportCluster</span><span class="p">[</span><span class="s">&#39;len&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">supportCluster</span> <span class="ow">in</span> <span class="n">support</span><span class="p">])</span>
+        <span class="c"># print &#39;cluster with meter &#39; + `meter` + &#39; has &#39; +</span>
+        <span class="c"># `len(meterCluster[&#39;cluster&#39;])` + &#39; own votes and &#39; + `len(support)` +</span>
+        <span class="c"># &#39; supporting clusters totalling &#39; + `voteCount` + &#39; votes.&#39;</span>
+
+        <span class="k">if</span> <span class="n">voteCount</span> <span class="o">&gt;</span> <span class="n">bestVoteCount</span><span class="p">:</span>
+            <span class="n">bestVoteCount</span> <span class="o">=</span> <span class="n">voteCount</span>
+            <span class="n">bestSupport</span> <span class="o">=</span> <span class="n">support</span>
+
+    <span class="n">estimate</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">([</span><span class="n">supportCluster</span><span class="p">[</span><span class="s">&#39;meter&#39;</span><span class="p">]</span>
+                       <span class="k">for</span> <span class="n">supportCluster</span> <span class="ow">in</span> <span class="n">bestSupport</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">estimate</span><span class="p">,</span> <span class="n">bestVoteCount</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">bestSupport</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">get_confidence_level</span><span class="p">(</span><span class="n">votes</span><span class="p">,</span> <span class="n">supportingClusterCount</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Gives a confidence score in [0, 1]. This score should give the</span>
+<span class="sd">    user some idea of the reliability of the estimate. Above .5 can be</span>
+<span class="sd">    considered usable.</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        votes: integer</span>
+<span class="sd">            sum of number of points in inlying red clusters found</span>
+<span class="sd">        supportingClusterCount: integer</span>
+<span class="sd">            number of inlying red clusters found</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c"># Higher number of votes implies more detail which gives us more</span>
+    <span class="c"># confidence (but 500 is enough)</span>
+    <span class="n">upperLimitVotes</span> <span class="o">=</span> <span class="mf">500.0</span>
+    <span class="n">lowerLimitVotes</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">voteBasedConfidence</span> <span class="o">=</span> <span class="n">get_score_in_interval</span><span class="p">(</span>
+        <span class="n">votes</span><span class="p">,</span> <span class="n">lowerLimitVotes</span><span class="p">,</span> <span class="n">upperLimitVotes</span><span class="p">)</span>
+
+    <span class="c"># Higher number of supporting clusters tells us multiple independent</span>
+    <span class="c"># sources gave this estimate</span>
+    <span class="n">upperLimitClusters</span> <span class="o">=</span> <span class="mf">3.0</span>
+    <span class="n">lowerLimitClusters</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">clusterBasedConfidence</span> <span class="o">=</span> <span class="n">get_score_in_interval</span><span class="p">(</span>
+        <span class="n">supportingClusterCount</span><span class="p">,</span> <span class="n">lowerLimitClusters</span><span class="p">,</span> <span class="n">upperLimitClusters</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="n">voteBasedConfidence</span><span class="p">,</span> <span class="n">clusterBasedConfidence</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">get_score_in_interval</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">lowerLimit</span><span class="p">,</span> <span class="n">upperLimit</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">upperLimit</span><span class="p">)</span> <span class="o">-</span> <span class="n">lowerLimit</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">upperLimit</span> <span class="o">-</span> <span class="n">lowerLimit</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../../index.html">Patty Analytics 0.1 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2015, Netherlands eScience Center.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+    </div>
+  </body>
+</html>
