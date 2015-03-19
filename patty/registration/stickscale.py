@@ -20,7 +20,7 @@ def get_stick_scale(pc, eps=0.1, min_samples=20):
                       (only the red, or only the white parts)
         eps           DBSCAN parameter: Maximum distance between two samples
                       for them to be considered as in the same neighborhood.
-        min_samples    DBSCAN parameter: The number of samples in a neighborhood
+        min_samples   DBSCAN parameter: The number of samples in a neighborhood
                       for a point to be considered as a core point.
     Returns:
         scale         Estimate of the size of one actual meter in expressed
@@ -90,7 +90,7 @@ def get_confidence_level(votes, supportingClusterCount):
     """ Gives a confidence score in [0, 1]. This score should give the
     user some idea of the reliability of the estimate. Above .5 can be
     considered usable.
-    
+
     Arguments:
         votes: integer
             sum of number of points in inlying red clusters found
