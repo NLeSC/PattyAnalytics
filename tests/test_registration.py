@@ -133,7 +133,13 @@ class TestBoundary(unittest.TestCase):
 
 class TestRegistrationPipeline(unittest.TestCase):
     def setUp(self):
-        self.tempdir = tempdir = mkdtemp(prefix='patty-analytics')
+        self.useLocal = False
+
+        if self.useLocal:
+            self.tempdir = tempdir = mkdtemp(prefix='patty-analytics')
+        else:
+            self.tempdir = tempdir = '.'
+
         self.drivemapLas = os.path.join(tempdir, 'testDriveMap.las')
         self.sourcelas = os.path.join(tempdir, 'testSource.las')
         self.footprint_csv = os.path.join(tempdir, 'testFootprint.csv')
@@ -141,7 +147,7 @@ class TestRegistrationPipeline(unittest.TestCase):
 
         self.min = -10
         self.max = 10
-        self.num_rows = 50
+        self.num_rows = 1000
 
         # Create plane with a pyramid
         dm_pct = 0.5
@@ -153,56 +159,59 @@ class TestRegistrationPipeline(unittest.TestCase):
         shape_side = dm_max - dm_min
 
         dm_offset = [0, 0, 0]
-        dense_obj_offset = [3, 2, -(1 + shape_side / 2)]
+        self.dense_obj_offset = [3, 2, -(1 + shape_side / 2)]
 
+        # make drivemap
         plane_row = np.linspace(
             start=self.min, stop=self.max, num=self.num_rows)
         plane_points = cartesian((plane_row, plane_row, [0]))
 
         shape_points, footprint = make_tri_pyramid_with_base(
             shape_side, delta, dm_offset)
-        all_points = np.vstack([plane_points, shape_points])
+        np.savetxt(self.footprint_csv, footprint, fmt='%.3f', delimiter=',')
 
-        plane_grid = np.zeros((all_points.shape[0], 6))
-        plane_grid[:, 0:3] = all_points
+        dm_points = np.vstack([plane_points, shape_points])
+        plane_grid = np.zeros((dm_points.shape[0], 6), dtype=np.float32)
+        plane_grid[:, 0:3] = dm_points
 
-        self.drivemap_pc = pcl.PointCloudXYZRGB(plane_grid.astype(np.float32))
-        self.drivemap_pc = downsample_voxel(self.drivemap_pc, voxel_size=delta)
+        self.drivemap_pc = pcl.PointCloudXYZRGB(plane_grid)
+        self.drivemap_pc = downsample_voxel(self.drivemap_pc,
+                                            voxel_size=delta * 20)
         conversions.register(self.drivemap_pc)
         conversions.save(self.drivemap_pc, self.drivemapLas)
 
         # Create a simple pyramid
-        dense_obj_points, _ = make_tri_pyramid_with_base(
-            shape_side, delta / 20, dense_obj_offset)
-        dense_grid = np.zeros((dense_obj_points.shape[0], 6))
-        dense_grid[:, 0:3] = dense_obj_points
+        dense_grid = np.zeros((shape_points.shape[0], 6), dtype=np.float32)
+        dense_grid[:, 0:3] = shape_points + self.dense_obj_offset
 
-        print delta
-        self.source_pc = pcl.PointCloudXYZRGB(dense_grid.astype(np.float32))
-        self.source_pc = downsample_voxel(self.source_pc, voxel_size=delta/4)
+        self.source_pc = pcl.PointCloudXYZRGB(dense_grid)
+        self.source_pc = downsample_voxel(self.source_pc, voxel_size=delta * 5)
         conversions.register(self.source_pc)
         conversions.save(self.source_pc, self.sourcelas)
 
-        np.savetxt(self.footprint_csv, footprint, fmt='%.3f', delimiter=',')
-
     def tearDown(self):
-        shutil.rmtree(self.tempdir, ignore_errors=True)
+        if not self.useLocal:
+            shutil.rmtree(self.tempdir, ignore_errors=True)
 
     def test_pipeline(self):
         # Register box on surface
         registration_pipeline(self.sourcelas, self.drivemapLas,
-                              self.footprint_csv, self.foutlas, None)
+                              self.footprint_csv, self.foutlas, self.tempdir)
         registered_pc = conversions.load(self.foutlas)
 
-        target = np.asarray(self.source_pc)
-        actual = np.asarray(registered_pc)
+        target = np.asarray(self.source_pc) + self.source_pc.offset
+        target -= np.array(self.dense_obj_offset)
+        actual = np.asarray(registered_pc) + registered_pc.offset
 
-        assert_array_almost_equal(target.min(axis=0), actual.min(axis=0), 6,
+        assert_array_almost_equal(target.min(axis=0),
+                                  actual.min(axis=0), 6,
                                   "Lower bound of registered cloud does not"
                                   " match expectation")
-        assert_array_almost_equal(target.max(axis=0), actual.max(axis=0), 6,
+        assert_array_almost_equal(target.max(axis=0),
+                                  actual.max(axis=0), 6,
                                   "Upper bound of registered cloud does not"
                                   " match expectation")
-        assert_array_almost_equal(target.mean(axis=0), actual.mean(axis=0), 6,
+        assert_array_almost_equal(target.mean(axis=0),
+                                  actual.mean(axis=0), 6,
                                   "Middle point of registered cloud does not"
                                   " match expectation")
