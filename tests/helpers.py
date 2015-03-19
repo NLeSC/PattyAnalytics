@@ -56,7 +56,7 @@ def make_tri_pyramid_with_base(side, delta, offset):
     dz = offset[2]
 
     points = make_tri_pyramid(sx, sy, sz, dx, dy, dz, delta)
-    points += (rng.rand(points.shape[0], points.shape[1]) - 0.5) * 0.1
+    points += _add_noise(points, 0.1, rng)
 
     for s in np.arange(0, side * 0.05, delta):
         xs, ys = make_triangle(sx * (1 + s), sy * (1 + s), dx + s, dy + s,
@@ -68,10 +68,12 @@ def make_tri_pyramid_with_base(side, delta, offset):
     footprint = make_tri_pyramid_footprint(sx, sy, sz, dx, dy, dz)
     return points, footprint
 
-def _add_noise(points, size):
-    points += (np.random.rand(points.shape) - 0.5) * size
 
-def perpendicular_2d( a ) :
+def _add_noise(points, size, rng):
+    points += (rng.rand(points.shape[0], points.shape[1]) - 0.5) * size
+
+
+def perpendicular_2d(a):
     b = np.zeros(a.shape)
     b[0] = -a[1]
     b[1] = a[0]
@@ -85,40 +87,45 @@ def rotation_around_axis(axis, theta):
     """
     axis = np.asarray(axis)
     theta = np.asarray(theta)
-    axis = axis/math.sqrt(np.dot(axis, axis))
-    a = math.cos(theta/2)
-    b, c, d = -axis*math.sin(theta/2)
-    aa, bb, cc, dd = a*a, b*b, c*c, d*d
-    bc, ad, ac, ab, bd, cd = b*c, a*d, a*c, a*b, b*d, c*d
-    return np.array([[aa+bb-cc-dd, 2*(bc+ad), 2*(bd-ac)],
-                     [2*(bc-ad), aa+cc-bb-dd, 2*(cd+ab)],
-                     [2*(bd+ac), 2*(cd-ab), aa+dd-bb-cc]])
+    axis = axis / math.sqrt(np.dot(axis, axis))
+    a = math.cos(theta / 2)
+    b, c, d = -axis * math.sin(theta / 2)
+    aa, bb, cc, dd = a * a, b * b, c * c, d * d
+    bc, ad, ac, ab, bd, cd = b * c, a * d, a * c, a * b, b * d, c * d
+    return np.array([[aa + bb - cc - dd, 2 * (bc + ad), 2 * (bd - ac)],
+                     [2 * (bc - ad), aa+cc-bb-dd, 2 * (cd + ab)],
+                     [2 * (bd + ac), 2 * (cd - ab), aa + dd - bb - cc]])
 
 
-def make_half_red_stick(point_from, point_to, width = 0.04, num_pts_per_line = 50, num_lines_per_stick = 25):
+def make_half_red_stick(point_from, point_to, width=0.04, num_pts_per_line=50,
+                        num_lines_per_stick=25):
     ''' Make a hollow red-white-red-white stick '''
     point_from = np.asarray(point_from, dtype=float)[:3]
     point_to = np.asarray(point_to, dtype=float)[:3]
     length = np.linalg.norm(point_to - point_from)
     width = length * 0.04
     axis = (point_to - point_from) * 1.0 / length
-    origin = perpendicular_2d(axis)*width
-    
-    points = np.zeros((num_pts_per_line*num_lines_per_stick,6))
-    points[:,3:6] = 255
-    
+    origin = perpendicular_2d(axis) * width
+
+    points = np.zeros((num_pts_per_line * num_lines_per_stick, 6))
+    points[:, 3:6] = 255
+
     idx = 0
     unitline = np.linspace(0, 1, num_pts_per_line)
     for theta in np.linspace(0, math.pi, num_lines_per_stick):
         src = np.dot(rotation_around_axis(axis, theta), origin)
 
+        # straight slope [0, 1]
         line = np.array((unitline, unitline, unitline)).T
-        points[idx:idx + num_pts_per_line,:3] = line * (point_to - point_from) + point_from + src
-                
-        points[idx:idx + num_pts_per_line/2,4:6] = 0
+        # linear function with slope
+        line = point_from + src + (point_to - point_from) * line
+        points[idx:idx + num_pts_per_line, :3] = line
+
+        points[idx:idx + num_pts_per_line/2, 3:6] = [210, 25, 30]
         idx += num_pts_per_line
-    
+
     return points
+
 
 def make_red_stick(point_from, point_to, **kwargs):
     ''' Make a hollow red-white-red-white stick '''
