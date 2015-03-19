@@ -56,7 +56,7 @@ def make_tri_pyramid_with_base(side, delta, offset):
     dz = offset[2]
 
     points = make_tri_pyramid(sx, sy, sz, dx, dy, dz, delta)
-    points += _add_noise(points, 0.1, rng)
+    _add_noise(points, 0.1, rng)
 
     for s in np.arange(0, side * 0.05, delta):
         xs, ys = make_triangle(sx * (1 + s), sy * (1 + s), dx + s, dy + s,
