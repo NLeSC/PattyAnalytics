@@ -2,7 +2,7 @@
 """Registration script.
 
 Usage:
-  registration.py [-h] [-o <dir>] [-d <sample>] <source> <drivemap> <footprint> <output>
+  registration.py [-h] [-d <sample>] [-u <upfile>] <source> <drivemap> <footprint> <output>
 
 Positional arguments:
   source       Source LAS file
@@ -11,9 +11,9 @@ Positional arguments:
   output       file to write output LAS to
 
 Options:
-  -o <dir>     Output directory for translation and transformation matrix.
   -d <sample>  Downsample source pointcloud to a maximum of <sample> points
                [default: -1].
+  -u <upfile>  Json file containing the up vector relative to the pointcloud.
 """
 
 from __future__ import print_function
@@ -36,6 +36,39 @@ def log(*args, **kwargs):
     print(time.strftime("[%H:%M:%S]"), *args, **kwargs)
 
 
+def find_largest_cluster(pointcloud, sample):
+    if sample != -1 and len(pointcloud) > sample:
+        fraction = float(sample) / len(pointcloud)
+        log("downsampling from %d to %d points (%d%%) for registration" % (
+            len(pointcloud), sample, int(fraction * 100)
+        ))
+        pc = downsample(pointcloud, fraction, random_seed=0)
+    else:
+        pc = pointcloud
+    return get_largest_dbscan_clusters(pc, 0.7, .15, 250)
+
+
+def detect_boundary(pointcloud):
+    log("Detecting boundary")
+    boundary_bb = BoundingBox(points=pointcloud)
+    search_radius = boundary_bb.diagonal / 100.0
+    return get_pointcloud_boundaries(
+        pointcloud, search_radius=search_radius,
+        normal_search_radius=search_radius)
+
+
+def cutout_edge(pointcloud, polygon2d, polygon_width):
+    pc_array = np.asarray(pointcloud) + pointcloud.offset
+
+    slightly_large_polygon = scale_points(polygon2d, 1.05)
+    in_polygon = point_in_polygon2d(pc_array, slightly_large_polygon)
+
+    large_polygon = scale_points(polygon2d, polygon_width)
+    in_large_polygon = point_in_polygon2d(pc_array, large_polygon)
+    return extract_mask(pointcloud,
+                        in_large_polygon & np.invert(in_polygon))
+
+
 def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
                           f_outdir, upfile=None, sample=-1):
     """Single function wrapping whole script, so it can be unit tested"""
@@ -47,6 +80,13 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
     pointcloud = load(sourcefile)
     log("reading drivemap ", drivemapfile)
     drivemap = load(drivemapfile)
+
+    drivemap_array = np.asarray(drivemap)
+    bb = BoundingBox(points=drivemap_array)
+    # use bottom two meters of drivemap (not trees)
+    if bb.size[2] > bb.size[1] or bb.size[2] > bb.size[0]:
+        drivemap = extract_mask(drivemap, drivemap_array[:,2] < bb.min[2] + 2)
+    
     footprint = load_csv_polygon(footprintCsv)
 
     if f_outdir is None:
@@ -55,38 +95,13 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
 # Footprint is NO LONGER off by some meters
 # footprint[:, 0] += -1.579381346780
 # footprint[:, 1] += 0.52519696509
-
-    drivemap_array = np.asarray(drivemap) + drivemap.offset
-
-    # Get the pointcloud of the drivemap within the footprint
-    in_footprint = point_in_polygon2d(drivemap_array, footprint)
-
-    # Get a boundary around the drivemap footprint
-    large_footprint = scale_points(footprint, 2)
-    in_large_footprint = point_in_polygon2d(drivemap_array, large_footprint)
-    footprint_boundary = extract_mask(
-        drivemap, in_large_footprint & np.invert(in_footprint))
+    footprint_boundary = cutout_edge(drivemap, footprint, 1.5)
 
     log("Finding largest cluster")
-    if sample != -1 and len(pointcloud) > sample:
-        fraction = float(sample) / len(pointcloud)
-        log("downsampling from %d to %d points (%d%%) for registration" % (
-            len(pointcloud), sample, int(fraction * 100)
-        ))
-        pc = downsample(pointcloud, fraction, random_seed=0)
-    else:
-        pc = pointcloud
-    cluster = get_largest_dbscan_clusters(pc, 0.7, .15, 250)
-
-    log(cluster.offset)
-    boundary_bb = BoundingBox(points=cluster)
-    log(boundary_bb)
+    cluster = find_largest_cluster(pointcloud, sample)
 
     log("Detecting boundary")
-    search_radius = boundary_bb.diagonal / 100.0
-    boundary = get_pointcloud_boundaries(
-        cluster, search_radius=search_radius,
-        normal_search_radius=search_radius)
+    boundary = detect_boundary(cluster)
 
     if len(boundary) == len(cluster) or len(boundary) == 0:
         # DISCARD BOUNDARY INFORMATION
@@ -98,7 +113,14 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
         log("Finding rotation:")
         transform = find_rotation(boundary, footprint_boundary)
         log(transform)
+        rotate180 = np.eye(4)
+        rotate180[1,1] = rotate180[2,2] = -1
 
+        # TODO: detect up/down 
+        upIsDown = False
+        if upIsDown:
+            transform = np.dot(rotate180, transform)
+        
         log("Rotating pointcloud...")
         boundary.transform(transform)
         cluster.transform(transform)
@@ -106,23 +128,24 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
 
         print(is_upside_down(upfile, transform))
 
-        with open(os.path.join(f_outdir, 'rotation.csv'), 'w') as f:
+        with open(f_out + '.rotation.csv', 'w') as f:
             for row in transform:
                 print(','.join(np.char.mod('%f', row)), file=f)
-        with open(os.path.join(f_outdir, 'rotation_offset.csv'), 'w') as f:
+        with open(f_out + '.rotation_offset.csv', 'w') as f:
             print(','.join(np.char.mod('%f', pointcloud.offset)), file=f)
 
         log("Calculating scale and shift from boundary to footprint")
         registered_offset, registered_scale = \
             register_offset_scale_from_ref(boundary, footprint)
-        with open(os.path.join(f_outdir, 'translation.csv'), 'w') as f:
-            print(','.join(np.char.mod('%f',
-                                       registered_offset - pointcloud.offset)), file=f)
+
+        with open(f_out + '.translation.csv', 'w') as f:
+            str_arr = np.char.mod('%f', registered_offset - pointcloud.offset)
+            print(','.join(str_arr), file=f)
 
         registered_scale = get_preferred_scale_factor(pointcloud,
                                                       registered_scale)
 
-        with open(os.path.join(f_outdir, 'scaling_factor.csv'), 'w') as f:
+        with open(f_out + '.scaling_factor.csv', 'w') as f:
             print(registered_scale, file=f)
 
         log("Scaling pointcloud: %f" % registered_scale)
@@ -149,6 +172,7 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
     save(pointcloud, f_out)
     save(cluster, f_out + ".cluster.las")
     save(boundary, f_out + ".boundary.las")
+    save(footprint_boundary, f_out + ".footboundary.las")
 
 
 if __name__ == '__main__':
@@ -158,9 +182,8 @@ if __name__ == '__main__':
     drivemapfile = args['<drivemap>']
     footprintCsv = args['<footprint>']
     foutLas = args['<output>']
-    foutDir = args['-o']
     up_file = args['-u']
     sample = int(args['-d'])
 
     registration_pipeline(sourcefile, drivemapfile, footprintCsv, foutLas,
-                          foutDir, up_file, sample)
+                          None, up_file, sample)

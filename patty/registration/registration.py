@@ -39,12 +39,12 @@ def downsample(pc, fraction, random_seed=None):
 
     Use random_seed=k for some integer k to get reproducible results.
     Arguments:
-        pc: pcl.PointCloud
-            input pointcloud
-        fraction: double
-            fraction of points to include
-        random_seed: int
-            seed to use in random number generator
+        pc : pcl.PointCloud
+            Input pointcloud.
+        fraction : float
+            Fraction of points to include.
+        random_seed : int, optional
+            Seed to use in random number generator.
 
     Returns:
         pcl.Pointcloud
@@ -160,10 +160,15 @@ def register_from_reference(pc, pc_ref):
     Applies dbscan first.
 
     Arguments:
-        pc         pointcloud
-        footprint  array of [x,y,z] describing the footprint
+        pc : pcl.PointCloud
+            Pointcloud to be registered.
+        pc_ref : pcl.PointCloud
+            Reference pointcloud.
+        footprint : numpy.ndarray
+            Array of [x,y,z] describing the footprint.
     Returns:
-        the original pointcloud, but rotated/translated to the footprint
+        pc_trans : pcl.PointCloud
+            The original pointcloud, rotated/translated to the footprint.
     '''
     logging.info("Finding largest cluster")
     pc_main = dbscan.largest_dbscan_cluster(pc, .1, 250)
@@ -189,7 +194,7 @@ def register_from_reference(pc, pc_ref):
 def find_rotation(pointcloud, ref):
     pc_transform = find_principal_axes_rotation(pointcloud)
     ref_transform = find_principal_axes_rotation(ref)
-    return np.linalg.inv(ref_transform) * pc_transform
+    return np.dot(np.linalg.inv(ref_transform), pc_transform)
 
 
 def point_in_polygon2d(points, polygon):
@@ -205,7 +210,7 @@ def intersect_polygon2d(pc, polygon):
 
 def scale_points(polygon, factor):
     polygon = np.asarray(polygon)
-    offset = (polygon.max(axis=0) + polygon.min(axis=0)) / 2.0
+    offset = polygon.mean(axis=0)
     return ((polygon - offset) * factor) + offset
 
 

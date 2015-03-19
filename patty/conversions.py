@@ -3,11 +3,6 @@ Pointcloud functions for reading/writing LAS files, and functions for dealing
 with the spatial reference system.
 '''
 
-# DONT: liblas is deprecated, use laspy instead!
-#       laspy does not work nice with numpy, keep using liblas
-# http://laspy.readthedocs.org/en/latest/
-# https://github.com/grantbrown/laspy.git
-
 from __future__ import print_function
 import liblas
 import pcl
@@ -34,19 +29,24 @@ def _check_writable(filepath):
 
 
 def load(path, format=None, load_rgb=True):
-    """ Read a pointcloud file.
+    """Read a pointcloud file.
 
     Supports LAS files, and lets PCD and PLY files be read by python-pcl.
 
     Arguments:
-        path: file to load
-        format: "PLY", "PCD", "LAS" or None. With none, it detects the filetype
+        path : string
+            Filename.
+        format : string, optional
+            File format: "PLY", "PCD", "LAS" or None to detect the format
             from the file extension.
-        load_rgb: whether RGB is loaded for PLY and PCD files. For LAS files
-            RGB is always read.
+        load_rgb : bool
+            Whether RGB is loaded for PLY and PCD files. For LAS files, RGB is
+            always read.
     Returns:
-        registered pointcloud"""
-    if format == 'las' or str(path).endswith('.las'):
+        cloud : pcl.PointCloud
+            Registered pointcloud.
+    """
+    if format == 'las' or format is None and path.endswith('.las'):
         return load_las(path)
     else:
         _check_readable(path)
@@ -56,18 +56,22 @@ def load(path, format=None, load_rgb=True):
 
 
 def save(cloud, path, format=None, binary=False):
-    """ Save a pointcloud to file.
+    """Save a pointcloud to file.
 
     Supports LAS files, and lets PCD and PLY files be saved by python-pcl.
 
     Arguments:
-        cloud: pcl.PointCloud/PointCloudXYZRGB
-        file: file to save
-        format: "PLY", "PCD", "LAS" or None. With none, it detects the filetype
+        cloud : pcl.PointCloud or pcl.PointCloudXYZRGB
+            Pointcloud to save.
+        path : string
+            Filename.
+        format : string
+            File format: "PLY", "PCD", "LAS" or None to detect the format
              from the file extension.
-        binary: whether PLY and PCD files are saved in binary format.
+        binary : boolean
+            Whether PLY and PCD files are saved in binary format.
     """
-    if format == 'las' or path.endswith('.las'):
+    if format == 'las' or format is None and path.endswith('.las'):
         write_las(path, cloud)
     else:
         _check_writable(path)
@@ -78,12 +82,14 @@ def save(cloud, path, format=None, binary=False):
 
 
 def load_las(lasfile):
-    """ Read a LAS file
+    """Read a LAS file
+
     Returns:
         registered pointcloudxyzrgb
 
     The pointcloud has color and XYZ coordinates, and the offset and precision
-    set."""
+    set.
+    """
     _check_readable(lasfile)
 
     print("--READING--", lasfile, "---------")
@@ -121,7 +127,7 @@ def is_registered(pointcloud):
 
 def register(pointcloud, offset=None, precision=None, crs_wkt=None,
              crs_proj4=None, crs_verticalcs=None):
-    """Register a pointcloud
+    """Register a pointcloud.
 
     Arguments:
         offset=None
@@ -129,8 +135,8 @@ def register(pointcloud, offset=None, precision=None, crs_wkt=None,
             Pointclouds often use double precision coordinates, this is
             necessary for some spatial reference systems like standard lat/lon.
             Subtracting an offset, typically the center of the pointcloud,
-            allows us to use floats without losing precission.
-            If no offset is set, defaults to [0, 0, 0]
+            allows us to use floats without losing precision.
+            If no offset is set, defaults to [0, 0, 0].
 
         precision=None
             Precision of the points, used to store into a LAS file. Update
@@ -138,10 +144,10 @@ def register(pointcloud, offset=None, precision=None, crs_wkt=None,
             If no precision is set, defaults to [0.01, 0.01, 0.01].
 
         crs_wkt=None
-            Well Knonw Text form of the spatial reference system
+            Well Known Text form of the spatial reference system.
 
         crs_proj4=None
-            PROJ4 projection string for the spatial reference system
+            PROJ4 projection string for the spatial reference system.
 
         crs_verticalcs=None
             Well Known Text form of the vertical coordinate system.
@@ -184,10 +190,10 @@ def copy_registration(target, src):
 
 
 def load_csv_polygon(csvfile, delimiter=','):
-    """Load a polygon from a simple CSV file
+    """Load a polygon from a CSV file.
 
     Returns:
-        numpy array containing the CSV file
+        polygon : numpy.ndarray
     """
     return np.genfromtxt(csvfile, delimiter=delimiter)
 
@@ -196,9 +202,9 @@ def extract_mask(pointcloud, mask):
     """Extract all points in a mask into a new pointcloud.
 
     Arguments:
-        pointcloud: pcl.PointCloud
-            Input pointcloud
-        mask: array of bool
+        pointcloud : pcl.PointCloud
+            Input pointcloud.
+        mask : numpy.ndarray of bool
             mask for which points from the pointcloud to include.
     Returns:
         pointcloud with the same registration (if any) as the original one."""
@@ -209,15 +215,17 @@ def extract_mask(pointcloud, mask):
 
 
 def make_las_header(pointcloud):
-    """ Make a LAS header for given pointcloud.
+    """Make a LAS header for given pointcloud.
+
     If the pointcloud is registered, this is taken into account for the
     header metadata. Has the side-effect of registering the given pointcloud.
 
     Arguments:
-        pointcloud: pcl.PointCloud
+        pointcloud : pcl.PointCloud
             Input pointcloud.
     Returns:
-        liblas.header.Header for writing the pointcloud to LAS file with.
+        header : liblas.header.Header
+            Header for writing the pointcloud to a LAS file.
     """
     schema = liblas.schema.Schema()
     schema.time = False
@@ -253,9 +261,14 @@ def write_las(lasfile, pointcloud, header=None):
     """Write a pointcloud to a LAS file
 
     Arguments:
-        lasfile : filename
+        lasfile : string
+            Filename.
 
-        pointcloud      : Pointclout to write
+        pointcloud : pcl.PointCloud
+
+        header : liblas.header.Header, optional
+            See :func:`make_las_header`. If not given, makes a header using
+            that function with default settings.
     """
     _check_writable(lasfile)
 
@@ -356,7 +369,8 @@ class BoundingBox(object):
 
 
 def center_boundingbox(pointcloud):
-    """ Center the pointcloud on origin using the center of its bounding box.
+    """Center the pointcloud on origin using the center of its bounding box.
+
     The offset compared to the original location is added to the
     pointcloud.offset. The pointcloud is registered after use.
 

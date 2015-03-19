@@ -34,9 +34,10 @@ def dbscan_labels(pointcloud, epsilon, minpoints, rgb_weight=0,
 
     Returns
     -------
-    labels: a sequence of labels per point. Label -1 indicates a point does
-    not belong to any cluster, other labels indicate the cluster number a
-    point belongs to.
+    labels : Sequence
+        A sequence of labels per point. Label -1 indicates a point does not
+        belong to any cluster, other labels indicate the cluster number a
+        point belongs to.
     '''
 
     if rgb_weight > 0:
@@ -95,8 +96,8 @@ def largest_dbscan_cluster(pointcloud, epsilon=0.1, minpoints=250,
 
     Returns
     -------
-    cluster: PointCloud
-        Registered pointcloud of the largest cluster found by dbscan
+    cluster : pcl.PointCloud
+        Registered pointcloud of the largest cluster found by dbscan.
     '''
     labels = dbscan_labels(
         pointcloud, epsilon, minpoints, rgb_weight=rgb_weight)
@@ -106,7 +107,7 @@ def largest_dbscan_cluster(pointcloud, epsilon=0.1, minpoints=250,
 
     # Pointcloud is the only cluster
     if len(bins) < 2:
-        return pointcloud
+        return extract_mask(pointcloud, np.ones(len(pointcloud), dtype=bool))
 
     # Indexes are automatically moved one back by [1:]
     max_label = np.argmax(bins[1:])
@@ -123,6 +124,7 @@ def get_largest_dbscan_clusters(pointcloud, min_return_fragment=0.7,
     Parameters
     ----------
     pointcloud : pcl.PointCloud
+        Input pointcloud.
     min_return_fragment : float
         Minimum desired fragment of pointcloud to be returned
     epsilon : float
@@ -137,7 +139,8 @@ def get_largest_dbscan_clusters(pointcloud, min_return_fragment=0.7,
 
     Returns
     -------
-    cluster: registered pointcloud of the largest cluster found by dbscan
+    cluster : pcl.PointCloud
+        Registered pointcloud of the largest cluster found by dbscan.
     '''
     labels = dbscan_labels(pointcloud, epsilon, minpoints,
                            rgb_weight=rgb_weight).astype(np.int64)
@@ -145,7 +148,7 @@ def get_largest_dbscan_clusters(pointcloud, min_return_fragment=0.7,
 
     # No clusters were found
     if selected_count < min_return_fragment * len(labels):
-        return pointcloud
+        return extract_mask(pointcloud, np.ones(len(pointcloud), dtype=bool))
     else:
         mask = [label in selection for label in labels]
         return extract_mask(pointcloud, mask)
