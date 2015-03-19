@@ -190,7 +190,7 @@ class TestRegistrationPipeline(unittest.TestCase):
         conversions.save(self.source_pc, self.sourcelas)
 
     def tearDown(self):
-        if not self.useLocal:
+        if self.useLocal:
             shutil.rmtree(self.tempdir, ignore_errors=True)
 
     def test_pipeline(self):
