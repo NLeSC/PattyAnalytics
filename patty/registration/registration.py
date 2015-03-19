@@ -176,7 +176,7 @@ def register_from_reference(pc, pc_ref):
 def find_rotation(pointcloud, ref):
     pc_transform = find_principal_axes_rotation(pointcloud)
     ref_transform = find_principal_axes_rotation(ref)
-    return np.linalg.inv(ref_transform) * pc_transform
+    return np.dot(np.linalg.inv(ref_transform), pc_transform)
 
 
 def point_in_polygon2d(points, polygon):
@@ -192,5 +192,5 @@ def intersect_polygon2d(pc, polygon):
 
 def scale_points(polygon, factor):
     polygon = np.asarray(polygon)
-    offset = (polygon.max(axis=0) + polygon.min(axis=0)) / 2.0
+    offset = polygon.mean(axis=0)
     return ((polygon - offset) * factor) + offset
