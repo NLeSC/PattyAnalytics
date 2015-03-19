@@ -38,10 +38,10 @@ def log(*args, **kwargs):
 
 def find_largest_cluster(pointcloud, sample):
     if sample != -1 and len(pointcloud) > sample:
-        fraction = float(sample)/len(pointcloud)
+        fraction = float(sample) / len(pointcloud)
         log("downsampling from %d to %d points (%d%%) for registration" % (
-                len(pointcloud), sample, int(fraction*100)
-            ))
+            len(pointcloud), sample, int(fraction * 100)
+        ))
         pc = downsample(pointcloud, fraction, random_seed=0)
     else:
         pc = pointcloud
@@ -122,8 +122,8 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
         registered_offset, registered_scale = \
             register_offset_scale_from_ref(boundary, footprint)
         with open(os.path.join(f_outdir, 'translation.csv'), 'w') as f:
-            print(','.join(np.char.mod('%f',
-                           registered_offset - pointcloud.offset)), file=f)
+            str_arr = np.char.mod('%f', registered_offset - pointcloud.offset)
+            print(','.join(str_arr), file=f)
 
         print(registered_scale)
         registered_scale = get_preferred_scale_factor(pointcloud,

@@ -28,11 +28,14 @@ import numpy as np
 import time
 from patty import load, save, register
 
+
 def log(*args, **kwargs):
     print(time.strftime("[%H:%M:%S]"), *args, **kwargs)
 
+
 def csv_read(path):
     return np.genfromtxt(path, dtype=float, delimiter=',')
+
 
 def rotate(pointcloud, matrix, offset=None):
     if offset is not None and np.any(offset != pointcloud.offset):
@@ -40,13 +43,15 @@ def rotate(pointcloud, matrix, offset=None):
         pc_array = np.asarray(pointcloud)
         pc_array += add_offset
         register(pointcloud, offset=offset)
-        
+
     pointcloud.transform(matrix)
+
 
 def scale(pointcloud, factor):
     pc_array = np.asarray(pointcloud)
     pc_array *= factor
-    register(pointcloud, precision=pointcloud.precision*factor)
+    register(pointcloud, precision=pointcloud.precision * factor)
+
 
 def translate(pointcloud, offset):
     register(pointcloud, offset=pointcloud.offset + offset)
@@ -66,7 +71,7 @@ if __name__ == '__main__':
             log("rotated pointcloud without offset", ex)
     except:
         log("not rotating pointcloud")
-    
+
     try:
         factor = csv_read(args['-s'])
         scale(pc, factor)
@@ -74,11 +79,11 @@ if __name__ == '__main__':
         log("scaled pointcloud by ", factor)
     except Exception as ex:
         log("not scaling pointcloud", ex)
-    
+
     try:
         translate(pc, csv_read(args['-t']))
         log("translated pointcloud")
     except:
         log("not translating pointcloud")
-    
+
     save(pc, args['<target>'])
