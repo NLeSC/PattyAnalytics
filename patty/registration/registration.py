@@ -8,6 +8,7 @@ from __future__ import print_function
 from pcl.boundaries import estimate_boundaries
 import numpy as np
 import logging
+import json
 from .. import copy_registration, is_registered, extract_mask, register
 from ..segmentation import dbscan
 from matplotlib import path
@@ -206,3 +207,30 @@ def scale_points(polygon, factor):
     polygon = np.asarray(polygon)
     offset = (polygon.max(axis=0) + polygon.min(axis=0)) / 2.0
     return ((polygon - offset) * factor) + offset
+
+
+def is_upside_down(upfilepath, transform):
+    '''Decides if a pointcloud is upside down using its relative up
+    vector and the tranformation (rotation only) matrix.
+
+    Arguments:
+        upfilepath path of the json file containing the relative up vector
+        transform  2d array describing the rotation matrix
+    Returns:
+        the original pointcloud, but rotated/translated to the footprint
+    '''
+    if upfilepath == None:
+        return False
+
+    if upfilepath == '':
+        return False
+
+    try:
+        with open(upfilepath) as upfile:
+            dic = json.load(upfile)
+    except:
+        return False
+
+    up = np.array(dic['estimatedUpDirection'])
+    transformed = np.dot(transform, up)
+    return transformed[1] < 0

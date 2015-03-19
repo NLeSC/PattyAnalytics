@@ -8,7 +8,7 @@ import pcl
 from patty import center_boundingbox, conversions
 from patty.registration import (point_in_polygon2d, downsample_voxel,
                                 scale_points, intersect_polygon2d,
-                                get_pointcloud_boundaries)
+                                get_pointcloud_boundaries, is_upside_down)
 from patty.conversions import BoundingBox
 from scripts.registration import registration_pipeline
 
@@ -21,6 +21,7 @@ import unittest
 
 
 class TestPolygon(unittest.TestCase):
+
     def setUp(self):
         self.poly = [[0., 0.], [1., 0.], [0.4, 0.4], [1., 1.], [0., 1.]]
         self.points = [[0., 0.], [0.5, 0.2], [1.1, 1.1], [0.2, 1.1]]
@@ -48,6 +49,7 @@ class TestPolygon(unittest.TestCase):
 
 
 class TestCutoutPointCloud(unittest.TestCase):
+
     def setUp(self):
         self.footprint = [[0., 0.], [1., 0.], [0.4, 0.4], [1., 1.], [0., 1.]]
         self.offset = [-0.01, -0.01, -0.01]
@@ -70,6 +72,7 @@ class TestCutoutPointCloud(unittest.TestCase):
 
 
 class TestCenter(unittest.TestCase):
+
     def setUp(self):
         data = np.array(
             [[1, 1, 1, 1, 1, 1], [3, 3, 3, 1, 1, 1]], dtype=np.float32)
@@ -96,6 +99,7 @@ class TestCenter(unittest.TestCase):
 
 
 class TestBoundary(unittest.TestCase):
+
     def setUp(self):
         self.num_rows = 50
         self.max = 0.1
@@ -132,6 +136,7 @@ class TestBoundary(unittest.TestCase):
 
 
 class TestRegistrationPipeline(unittest.TestCase):
+
     def setUp(self):
         self.useLocal = False
 
@@ -215,3 +220,41 @@ class TestRegistrationPipeline(unittest.TestCase):
                                   actual.mean(axis=0), 6,
                                   "Middle point of registered cloud does not"
                                   " match expectation")
+
+
+class Test_upside_down(unittest.TestCase):
+
+    def setUp(self):
+        testdir = 'tests'
+        self.down = os.path.join(testdir, 'testdownfile.json')
+        self.up = os.path.join(testdir, 'testupfile.json')
+        self.rotate = np.array([[1., 0., 0.], [0., -1., 0.], [0., 0., -1.]])
+
+    def test_no_file(self):
+        '''Without up file path, should return false.'''
+        assert_true(is_upside_down(None, np.identity(3)) == False)
+
+    def test_non_existent_file(self):
+        '''Without existing up file, should return false.'''
+        assert_true(
+            is_upside_down('nonexisting1234.json', np.identity(3)) == False)
+
+    def test_empty_file(self):
+        '''With empty up file path, should return false.'''
+        assert_true(is_upside_down('', np.identity(3)) == False)
+
+    def test_down(self):
+        '''With down vector, should return true.'''
+        assert_true(is_upside_down(self.down, np.identity(3)))
+
+    def test_up(self):
+        '''With up vector, should return false.'''
+        assert_true(is_upside_down(self.up, np.identity(3)) == False)
+
+    def test_rotated_up(self):
+        '''With up vector rotated 180, should return true.'''
+        assert_true(is_upside_down(self.up, self.rotate))
+
+    def test_rotated_down(self):
+        '''With down vector rotated 180, should return false.'''
+        assert_true(is_upside_down(self.down, self.rotate) == False)

@@ -27,7 +27,7 @@ from patty.conversions import (load, save, load_csv_polygon,
                                copy_registration, extract_mask, BoundingBox)
 from patty.registration import (get_pointcloud_boundaries, find_rotation,
                                 register_offset_scale_from_ref, scale_points,
-                                point_in_polygon2d, downsample)
+                                point_in_polygon2d, downsample, is_upside_down)
 from patty.segmentation.dbscan import get_largest_dbscan_clusters
 from patty.registration.stickscale import get_preferred_scale_factor
 
@@ -37,7 +37,7 @@ def log(*args, **kwargs):
 
 
 def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
-                          f_outdir, sample=-1):
+                          f_outdir, upfile=None, sample=-1):
     """Single function wrapping whole script, so it can be unit tested"""
     assert os.path.exists(sourcefile), sourcefile + ' does not exist'
     assert os.path.exists(drivemapfile), drivemapfile + ' does not exist'
@@ -69,10 +69,10 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
 
     log("Finding largest cluster")
     if sample != -1 and len(pointcloud) > sample:
-        fraction = float(sample)/len(pointcloud)
+        fraction = float(sample) / len(pointcloud)
         log("downsampling from %d to %d points (%d%%) for registration" % (
-                len(pointcloud), sample, int(fraction*100)
-            ))
+            len(pointcloud), sample, int(fraction * 100)
+        ))
         pc = downsample(pointcloud, fraction, random_seed=0)
     else:
         pc = pointcloud
@@ -103,6 +103,9 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
         boundary.transform(transform)
         cluster.transform(transform)
         pointcloud.transform(transform)
+
+        print(is_upside_down(upfile, transform))
+
         with open(os.path.join(f_outdir, 'rotation.csv'), 'w') as f:
             for row in transform:
                 print(','.join(np.char.mod('%f', row)), file=f)
@@ -114,7 +117,7 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
             register_offset_scale_from_ref(boundary, footprint)
         with open(os.path.join(f_outdir, 'translation.csv'), 'w') as f:
             print(','.join(np.char.mod('%f',
-                           registered_offset - pointcloud.offset)), file=f)
+                                       registered_offset - pointcloud.offset)), file=f)
 
         registered_scale = get_preferred_scale_factor(pointcloud,
                                                       registered_scale)
@@ -156,7 +159,8 @@ if __name__ == '__main__':
     footprintCsv = args['<footprint>']
     foutLas = args['<output>']
     foutDir = args['-o']
+    up_file = args['-u']
     sample = int(args['-d'])
 
     registration_pipeline(sourcefile, drivemapfile, footprintCsv, foutLas,
-                          foutDir, sample)
+                          foutDir, up_file, sample)
