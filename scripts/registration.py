@@ -84,7 +84,7 @@ def registration_pipeline(sourcefile, drivemapfile, footprintcsv, f_out,
     log("reading drivemap ", drivemapfile)
     drivemap = load(drivemapfile)
 
-    log("reading footprint ", footprint )
+    log("reading footprint ", footprintcsv )
     footprint = load_csv_polygon(footprintcsv)
 
     log("reading source", sourcefile)
@@ -125,7 +125,7 @@ def registration_pipeline(sourcefile, drivemapfile, footprintcsv, f_out,
     transform = find_rotation(boundary, footprint_boundary)
     log(transform)
 
-    if is_upside_down(upfile, transform[:3, :3])
+    if is_upside_down(upfile, transform[:3, :3]):
         transform = np.dot( np.eye(4)*[1,-1,-1,1], transform)
 
     ####
