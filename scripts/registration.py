@@ -2,7 +2,7 @@
 """Registration script.
 
 Usage:
-  registration.py [-h] [-d <sample>] <source> <drivemap> <footprint> <output>
+  registration.py [-h] [-d <sample>] [-u <upfile>] <source> <drivemap> <footprint> <output>
 
 Positional arguments:
   source       Source LAS file
@@ -13,6 +13,7 @@ Positional arguments:
 Options:
   -d <sample>  Downsample source pointcloud to a maximum of <sample> points
                [default: -1].
+  -u <upfile>  Json file containing the up vector relative to the pointcloud.
 """
 
 from __future__ import print_function
@@ -26,7 +27,7 @@ from patty.conversions import (load, save, load_csv_polygon,
                                copy_registration, extract_mask, BoundingBox)
 from patty.registration import (get_pointcloud_boundaries, find_rotation,
                                 register_offset_scale_from_ref, scale_points,
-                                point_in_polygon2d, downsample)
+                                point_in_polygon2d, downsample, is_upside_down)
 from patty.segmentation.dbscan import get_largest_dbscan_clusters
 from patty.registration.stickscale import get_preferred_scale_factor
 
@@ -69,7 +70,7 @@ def cutout_edge(pointcloud, polygon2d, polygon_width):
 
 
 def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
-                          f_outdir, sample=-1):
+                          f_outdir, upfile=None, sample=-1):
     """Single function wrapping whole script, so it can be unit tested"""
     assert os.path.exists(sourcefile), sourcefile + ' does not exist'
     assert os.path.exists(drivemapfile), drivemapfile + ' does not exist'
@@ -115,8 +116,7 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
         rotate180 = np.eye(4)
         rotate180[1, 1] = rotate180[2, 2] = -1
 
-        # TODO: detect up/down
-        upIsDown = False
+        upIsDown = is_upside_down(upfile, transform)
         if upIsDown:
             transform = np.dot(rotate180, transform)
 
@@ -134,6 +134,7 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
         log("Calculating scale and shift from boundary to footprint")
         registered_offset, registered_scale = \
             register_offset_scale_from_ref(boundary, footprint)
+
         with open(f_out + '.translation.csv', 'w') as f:
             str_arr = np.char.mod('%f', registered_offset - pointcloud.offset)
             print(','.join(str_arr), file=f)
@@ -184,7 +185,8 @@ if __name__ == '__main__':
     drivemapfile = args['<drivemap>']
     footprintCsv = args['<footprint>']
     foutLas = args['<output>']
+    up_file = args['-u']
     sample = int(args['-d'])
 
     registration_pipeline(sourcefile, drivemapfile, footprintCsv, foutLas,
-                          None, sample)
+                          None, up_file, sample)
