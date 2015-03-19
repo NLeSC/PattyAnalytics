@@ -32,7 +32,7 @@ def _check_writable(filepath):
         raise IOError("Cannot write to " + filepath)
 
 
-def load(path, format=None, loadRGB=True):
+def load(path, format=None, load_rgb=True):
     """ Read a pointcloud file.
 
     Supports LAS files, and lets PCD and PLY files be read by python-pcl.
@@ -40,18 +40,18 @@ def load(path, format=None, loadRGB=True):
     Arguments:
         path: file to load
         format: "PLY", "PCD", "LAS" or None. With none, it detects the filetype
-             from the file extension.
-        loadRGB: whether RGB is loaded for PLY and PCD files. For LAS files RGB
-            is always read.
+            from the file extension.
+        load_rgb: whether RGB is loaded for PLY and PCD files. For LAS files
+            RGB is always read.
     Returns:
         registered pointcloud"""
     if format == 'las' or str(path).endswith('.las'):
         return load_las(path)
     else:
         _check_readable(path)
-        pc = pcl.load(path, format=format, loadRGB=loadRGB)
-        register(pc)
-        return pc
+        pointcloud = pcl.load(path, format=format, loadRGB=load_rgb)
+        register(pointcloud)
+        return pointcloud
 
 
 def save(cloud, path, format=None, binary=False):
@@ -97,17 +97,17 @@ def load_las(lasfile):
             data[i] = (point.x, point.y, point.z, point.color.red /
                        256, point.color.green / 256, point.color.blue / 256)
 
-        bb = BoundingBox(points=data[:, 0:3])
+        bbox = BoundingBox(points=data[:, 0:3])
         # reduce the offset to decrease floating point errors
-        data[:, 0:3] -= bb.center
+        data[:, 0:3] -= bbox.center
 
-        pc = pcl.PointCloudXYZRGB(data.astype(np.float32))
+        pointcloud = pcl.PointCloudXYZRGB(data.astype(np.float32))
 
-        register(pc, offset=bb.center, precision=las.header.scale,
+        register(pointcloud, offset=bbox.center, precision=las.header.scale,
                  crs_wkt=las.header.srs.get_wkt(),
                  crs_proj4=las.header.srs.get_proj4())
 
-        return pc
+        return pointcloud
     finally:
         if las is not None:
             las.close()
@@ -207,75 +207,75 @@ def extract_mask(pointcloud, mask):
     return pointcloud_new
 
 
-def make_las_header(pc):
+def make_las_header(pointcloud):
     """ Make a LAS header for given pointcloud.
     If the pointcloud is registered, this is taken into account for the
     header metadata. Has the side-effect of registering the given pointcloud.
 
     Arguments:
-        pc: pcl.PointCloud
+        pointcloud: pcl.PointCloud
             Input pointcloud.
     Returns:
         liblas.header.Header for writing the pointcloud to LAS file with.
     """
-    f = liblas.schema.Schema()
-    f.time = False
-    f.color = True
+    schema = liblas.schema.Schema()
+    schema.time = False
+    schema.color = True
 
-    h = liblas.header.Header()
-    h.schema = f
-    h.dataformat_id = 3
-    h.major_version = 1
-    h.minor_version = 2
+    head = liblas.header.Header()
+    head.schema = schema
+    head.dataformat_id = 3
+    head.major_version = 1
+    head.minor_version = 2
 
-    register(pc)
+    register(pointcloud)
     # FIXME: need extra precision to reduce floating point errors. We don't
     # know exactly why this works. It might reduce precision on the top of
     # the float, but reduces an error of one bit for the last digit.
-    h.scale = np.asarray(pc.precision) * 0.5
-    h.offset = pc.offset
+    head.scale = np.asarray(pointcloud.precision) * 0.5
+    head.offset = pointcloud.offset
 
-    if pc.crs_wkt != '':
-        h.srs.set_wkt(pc.crs_wkt)
-    if pc.crs_proj4 != '':
-        h.srs.set_proj4(pc.crs_proj4)
-    if pc.crs_verticalcs != '':
-        h.srs.set_verticalcs(pc.crs_verticalcs)
+    if pointcloud.crs_wkt != '':
+        head.srs.set_wkt(pointcloud.crs_wkt)
+    if pointcloud.crs_proj4 != '':
+        head.srs.set_proj4(pointcloud.crs_proj4)
+    if pointcloud.crs_verticalcs != '':
+        head.srs.set_verticalcs(pointcloud.crs_verticalcs)
 
-    pc_array = np.asarray(pc)
-    h.min = pc_array.min(axis=0) + h.offset
-    h.max = pc_array.max(axis=0) + h.offset
-    return h
+    pc_array = np.asarray(pointcloud)
+    head.min = pc_array.min(axis=0) + head.offset
+    head.max = pc_array.max(axis=0) + head.offset
+    return head
 
 
-def write_las(lasfile, pc, header=None):
+def write_las(lasfile, pointcloud, header=None):
     """Write a pointcloud to a LAS file
 
     Arguments:
         lasfile : filename
 
-        pc      : Pointclout to write
+        pointcloud      : Pointclout to write
     """
     _check_writable(lasfile)
 
     print("--WRITING--", lasfile, "--------")
     if header is None:
-        header = make_las_header(pc)
+        header = make_las_header(pointcloud)
 
-    precise_points = np.array(pc, dtype=np.float64)
+    precise_points = np.array(pointcloud, dtype=np.float64)
     precise_points /= header.scale
 
     las = None
     try:
         las = liblas.file.File(lasfile, mode="w", header=header)
 
-        for i in xrange(pc.size):
-            pt = liblas.point.Point()
-            pt.x, pt.y, pt.z = precise_points[i]
-            r, g, b = pc[i][3:6]
-            pt.color = liblas.color.Color(
-                red=int(r) * 256, green=int(g) * 256, blue=int(b) * 256)
-            las.write(pt)
+        for i in xrange(pointcloud.size):
+            point = liblas.point.Point()
+            point.x, point.y, point.z = precise_points[i]
+            red, grn, blu = pointcloud[i][3:6]
+            point.color = liblas.color.Color(
+                red=int(red) * 256, green=int(grn) * 256, blue=int(blu) * 256)
+            las.write(point)
     finally:
         if las is not None:
             las.close()
@@ -365,6 +365,6 @@ def center_boundingbox(pointcloud):
     """
     register(pointcloud)
     pc_array = np.asarray(pointcloud)
-    bb = BoundingBox(points=pc_array)
-    pc_array -= bb.center
-    pointcloud.offset += bb.center
+    bbox = BoundingBox(points=pc_array)
+    pc_array -= bbox.center
+    pointcloud.offset += bbox.center
