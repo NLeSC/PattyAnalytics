@@ -17,6 +17,8 @@ before_install:
 - "sudo apt-get -qq install python-numpy-dev python-scipy python-matplotlib"
 - "pip install coverage"
 - "pip install -r requirements.txt"
+# python-liblas will try to open  liblas_c.so
+- "ln -s /usr/lib/liblas_c.so liblas_c.so.2.2.0"
 
 install:
 - "echo done"
