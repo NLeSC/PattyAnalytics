@@ -5,3 +5,6 @@
 /data
 # Vim
 *.sw[op]
+/*.las
+/*.csv
+/doc/_build
