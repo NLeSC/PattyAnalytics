@@ -89,7 +89,8 @@ def test_confidence(votes, numberOfClusters, expected_confidence):
     # ("SITE20", 'redstick_SITE_20.ply', 5.55, True),
     # ("SITE21", 'redstick_SITE_21.ply', 5.4, True)
 ])
-def test_actual_data_confidence(name, filename, confidence, expect_confident):
+def test_actual_data_confidence(name, filename, expected_meter,
+                                expect_confident):
     pc = load('tests/testdata/' + filename)
     meter, confidence = get_stick_scale(pc)
     if expect_confident:
