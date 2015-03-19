@@ -2,7 +2,7 @@
 """Registration script.
 
 Usage:
-  registration.py [-h] [-o <dir>] [-d <sample>] <source> <drivemap> <footprint> <output>
+  registration.py [-h] [-d <sample>] <source> <drivemap> <footprint> <output>
 
 Positional arguments:
   source       Source LAS file
@@ -11,7 +11,6 @@ Positional arguments:
   output       file to write output LAS to
 
 Options:
-  -o <dir>     Output directory for translation and transformation matrix.
   -d <sample>  Downsample source pointcloud to a maximum of <sample> points
                [default: -1].
 """
@@ -126,23 +125,23 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
         cluster.transform(transform)
         pointcloud.transform(transform)
 
-        with open(os.path.join(f_outdir, 'rotation.csv'), 'w') as f:
+        with open(f_out + '.rotation.csv', 'w') as f:
             for row in transform:
                 print(','.join(np.char.mod('%f', row)), file=f)
-        with open(os.path.join(f_outdir, 'rotation_offset.csv'), 'w') as f:
+        with open(f_out + '.rotation_offset.csv', 'w') as f:
             print(','.join(np.char.mod('%f', pointcloud.offset)), file=f)
 
         log("Calculating scale and shift from boundary to footprint")
         registered_offset, registered_scale = \
             register_offset_scale_from_ref(boundary, footprint)
-        with open(os.path.join(f_outdir, 'translation.csv'), 'w') as f:
+        with open(f_out + '.translation.csv', 'w') as f:
             str_arr = np.char.mod('%f', registered_offset - pointcloud.offset)
             print(','.join(str_arr), file=f)
 
         registered_scale = get_preferred_scale_factor(pointcloud,
                                                       registered_scale)
 
-        with open(os.path.join(f_outdir, 'scaling_factor.csv'), 'w') as f:
+        with open(f_out + '.scaling_factor.csv', 'w') as f:
             print(registered_scale, file=f)
 
         log("Scaling pointcloud: %f" % registered_scale)
