@@ -17,7 +17,8 @@ logging.basicConfig(level=logging.INFO)
 
 
 def downsample_voxel(pointcloud, voxel_size=0.01):
-    ''' Downsample a pointcloud using a voxel grid filter.
+    '''Downsample a pointcloud using a voxel grid filter.
+
     Arguments:
         pointcloud    Original pointcloud
         voxel_size    Grid spacing for the voxel grid
@@ -61,9 +62,10 @@ def downsample(pc, fraction, random_seed=None):
 
 
 def register_offset_scale_from_ref(pc, ref_array, ref_offset=np.zeros(3)):
-    ''' Returns a 3d-offset and uniform scale value from footprint.
-    The scale is immediately applied to the pointcloud, the offset is
-    set to the patty_registration.conversions.RegisteredPointCloud'''
+    '''Returns a 3d-offset and uniform scale value from footprint.
+
+    The scale is immediately applied to the pointcloud. The offset is
+    set to the patty_registration.conversions.RegisteredPointCloud.'''
     ref_min = ref_array.min(axis=0)
     ref_max = ref_array.max(axis=0)
     ref_center = (ref_min + ref_max) / 2.0 + ref_offset
@@ -93,11 +95,16 @@ def register_offset_scale_from_ref(pc, ref_array, ref_offset=np.zeros(3)):
 def get_pointcloud_boundaries(pointcloud, angle_threshold=0.1,
                               search_radius=0.02, normal_search_radius=0.02):
     '''Find the boundary of a pointcloud.
+
     Arguments:
-        pointcloud            Input pointcloud
-        angle_threshold=0.1
-        search_radius=0.02
-        normal_radius=0.02
+        pointcloud : pcl.PointCloud
+
+        angle_threshold : float
+
+        search_radius : float
+
+        normal_radius : float
+
     Returns:
         a pointcloud
     '''
@@ -112,11 +119,15 @@ def get_pointcloud_boundaries(pointcloud, angle_threshold=0.1,
 
 def register_from_footprint(pc, footprint):
     '''Register a pointcloud by placing it in footprint. Applies dbscan first.
+
     Arguments:
-        pc         pointcloud
-        footprint  array of [x,y,z] describing the footprint
+        pc : pcl.PointCloud
+
+        footprint : np.ndarray
+            Array of [x,y,z] describing the footprint.
+
     Returns:
-        the original pointcloud, but rotated/translated to the footprint
+        The original pointcloud, rotated/translated to the footprint.
     '''
     logging.info("Finding largest cluster")
     pc_main = dbscan.largest_dbscan_cluster(pc, .1, 250)
@@ -146,6 +157,7 @@ def register_from_reference(pc, pc_ref):
     '''Register a pointcloud by aligning it with a reference pointcloud.
 
     Applies dbscan first.
+
     Arguments:
         pc         pointcloud
         footprint  array of [x,y,z] describing the footprint
