@@ -3,11 +3,6 @@ Pointcloud functions for reading/writing LAS files, and functions for dealing
 with the spatial reference system.
 '''
 
-# DONT: liblas is deprecated, use laspy instead!
-#       laspy does not work nice with numpy, keep using liblas
-# http://laspy.readthedocs.org/en/latest/
-# https://github.com/grantbrown/laspy.git
-
 from __future__ import print_function
 import liblas
 import pcl
