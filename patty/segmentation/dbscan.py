@@ -106,7 +106,7 @@ def largest_dbscan_cluster(pointcloud, epsilon=0.1, minpoints=250,
 
     # Pointcloud is the only cluster
     if len(bins) < 2:
-        return pointcloud
+        return extract_mask(pointcloud, np.ones(len(pointcloud), dtype=bool))
 
     # Indexes are automatically moved one back by [1:]
     max_label = np.argmax(bins[1:])
@@ -145,7 +145,7 @@ def get_largest_dbscan_clusters(pointcloud, min_return_fragment=0.7,
 
     # No clusters were found
     if selected_count < min_return_fragment * len(labels):
-        return pointcloud
+        return extract_mask(pointcloud, np.ones(len(pointcloud), dtype=bool))
     else:
         mask = [label in selection for label in labels]
         return extract_mask(pointcloud, mask)
