@@ -5,3 +5,4 @@ from .registration import (downsample, downsample_voxel,
                            register_from_reference, get_pointcloud_boundaries,
                            find_rotation, point_in_polygon2d,
                            intersect_polygon2d, scale_points)
+from .stickscale import get_stick_scale

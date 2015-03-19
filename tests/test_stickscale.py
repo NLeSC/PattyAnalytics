@@ -1,10 +1,11 @@
-from patty.registration.stickscale import get_stick_scale
-from patty import load, save
+from patty.registration import get_stick_scale
+from patty.segmentation import get_red_mask
+from patty import load, extract_mask
 from nose_parameterized import parameterized
 
 from nose.tools import assert_greater, assert_less
 
-from helpers import make_red_stick
+from helpers import make_red_stick, _add_noise
 import pcl
 import numpy as np
 
@@ -14,7 +15,7 @@ import numpy as np
 # Note: failing instances commented out. Uncomment them for testing out
 # new methods.
 @parameterized.expand([
-    (1.0,),
+    (1.0/0.8,),
     # ("SITE9", 'redstick_SITE_9.ply', 11.45),
     # ("SITE11", 'redstick_SITE_11.ply', 2.925),
     # ("SITE12", 'redstick_SITE_12.ply', 10.85),
@@ -37,11 +38,14 @@ import numpy as np
     # ("SITE21", 'redstick_SITE_21.ply', 5.4),
 ])
 def test_actual_data_length(expected_meter):
-    s1 = make_red_stick([0,0,0], [0,1,0])
-    s2 = make_red_stick([1,2,0], [1,1,0])
-    s3 = make_red_stick([3,3,0], [3,4,0])
+    rng = np.random.RandomState(0)
+    s1 = make_red_stick([0, 0, 0], [0, 1, 0])
+    s2 = make_red_stick([1, 2, 0], [1, 1, 0])
+    s3 = make_red_stick([3, 3, 0], [3, 4, 0])
     data = np.array(np.concatenate((s1, s2, s3), axis=0), dtype=np.float32)
+    _add_noise(data, 0.01, rng)
     pc = pcl.PointCloudXYZRGB(data)
+    pc = extract_mask(pc, get_red_mask(pc))
     meter, confidence = get_stick_scale(pc)
     assert_with_error(meter, expected_meter)
 
