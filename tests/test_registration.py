@@ -141,9 +141,9 @@ class TestRegistrationPipeline(unittest.TestCase):
         self.useLocal = False
 
         if self.useLocal:
-            self.tempdir = tempdir = mkdtemp(prefix='patty-analytics')
-        else:
             self.tempdir = tempdir = '.'
+        else:
+            self.tempdir = tempdir = mkdtemp(prefix='patty-analytics')
 
         self.drivemapLas = os.path.join(tempdir, 'testDriveMap.las')
         self.sourcelas = os.path.join(tempdir, 'testSource.las')
@@ -195,7 +195,7 @@ class TestRegistrationPipeline(unittest.TestCase):
         conversions.save(self.source_pc, self.sourcelas)
 
     def tearDown(self):
-        if self.useLocal:
+        if not self.useLocal:
             shutil.rmtree(self.tempdir, ignore_errors=True)
 
     def test_pipeline(self):
