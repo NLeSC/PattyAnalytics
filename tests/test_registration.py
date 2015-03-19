@@ -95,6 +95,11 @@ class TestCenter(unittest.TestCase):
                            "bounding box size changed due to translation")
 
 
+def array_in_margin(target, actual, margin, msg):
+    assert_array_less(target, actual + np.asarray(margin), msg)
+    assert_array_less(actual, target + np.asarray(margin), msg)
+
+
 class TestBoundary(unittest.TestCase):
     def setUp(self):
         self.num_rows = 50
@@ -203,15 +208,12 @@ class TestRegistrationPipeline(unittest.TestCase):
         target -= np.array(self.dense_obj_offset)
         actual = np.asarray(registered_pc) + registered_pc.offset
 
-        assert_array_almost_equal(target.min(axis=0),
-                                  actual.min(axis=0), 6,
-                                  "Lower bound of registered cloud does not"
-                                  " match expectation")
-        assert_array_almost_equal(target.max(axis=0),
-                                  actual.max(axis=0), 6,
-                                  "Upper bound of registered cloud does not"
-                                  " match expectation")
-        assert_array_almost_equal(target.mean(axis=0),
-                                  actual.mean(axis=0), 6,
-                                  "Middle point of registered cloud does not"
-                                  " match expectation")
+        array_in_margin(target.min(axis=0), actual.min(axis=0), [1, 1, 1],
+                        "Lower bound of registered cloud does not"
+                        " match expectation")
+        array_in_margin(target.max(axis=0), actual.max(axis=0), [2.5, 5.5, 2],
+                        "Upper bound of registered cloud does not"
+                        " match expectation")
+        array_in_margin(target.mean(axis=0), actual.mean(axis=0), [1, 1, 1],
+                        "Middle point of registered cloud does not"
+                        " match expectation")
