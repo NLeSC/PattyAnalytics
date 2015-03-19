@@ -46,7 +46,7 @@ def load(path, format=None, load_rgb=True):
         cloud : pcl.PointCloud
             Registered pointcloud.
     """
-    if format == 'las' or str(path).endswith('.las'):
+    if format == 'las' or format is None and path.endswith('.las'):
         return load_las(path)
     else:
         _check_readable(path)
@@ -71,7 +71,7 @@ def save(cloud, path, format=None, binary=False):
         binary : boolean
             Whether PLY and PCD files are saved in binary format.
     """
-    if format == 'las' or path.endswith('.las'):
+    if format == 'las' or format is None and path.endswith('.las'):
         write_las(path, cloud)
     else:
         _check_writable(path)
