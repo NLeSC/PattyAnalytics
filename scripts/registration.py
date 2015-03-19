@@ -116,7 +116,7 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
         rotate180 = np.eye(4)
         rotate180[1, 1] = rotate180[2, 2] = -1
 
-        upIsDown = is_upside_down(upfile, transform)
+        upIsDown = is_upside_down(upfile, transform[:3,:3])
         if upIsDown:
             transform = np.dot(rotate180, transform)
 
