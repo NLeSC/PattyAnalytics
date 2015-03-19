@@ -1,12 +1,19 @@
+#!/usr/bin/env python2.7
 """Registration script.
 
-Usage: registration.py [-h] <SOURCE> <DRIVEMAP> <FOOTPRINT> <OUTPUT>
+Usage:
+  registration.py [-h] [-o <dir>] [-d <sample>] <source> <drivemap> <footprint> <output>
+
+Positional arguments:
+  source       Source LAS file
+  drivemap     Target LAS file to map source to
+  footprint    Footprint for the source LAS file
+  output       file to write output LAS to
 
 Options:
-  SOURCE     Source LAS file
-  DRIVEMAP   Target LAS file to map source to
-  FOOTPRINT  Footprint for the source LAS file
-  OUTPUT     file to write output LAS to
+  -o <dir>     Output directory for translation and transformation matrix.
+  -d <sample>  Downsample source pointcloud to a maximum of <sample> points
+               [default: -1].
 """
 
 from __future__ import print_function
@@ -20,7 +27,7 @@ from patty.conversions import (load, save, load_csv_polygon,
                                copy_registration, extract_mask, BoundingBox)
 from patty.registration import (get_pointcloud_boundaries, find_rotation,
                                 register_offset_scale_from_ref, scale_points,
-                                point_in_polygon2d)
+                                point_in_polygon2d, downsample)
 from patty.segmentation.dbscan import get_largest_dbscan_clusters
 from patty.registration.stickscale import get_preferred_scale_factor
 
@@ -29,18 +36,8 @@ def log(*args, **kwargs):
     print(time.strftime("[%H:%M:%S]"), *args, **kwargs)
 
 
-def process_args():
-    args = docopt(__doc__)
-
-    sourcefile = args['<SOURCE>']
-    drivemapfile = args['<DRIVEMAP>']
-    footprintCsv = args['<FOOTPRINT>']
-    foutLas = args['<OUTPUT>']
-
-    return sourcefile, drivemapfile, footprintCsv, foutLas
-
-
-def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out):
+def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
+                          f_outdir, sample=-1):
     """Single function wrapping whole script, so it can be unit tested"""
     assert os.path.exists(sourcefile), sourcefile + ' does not exist'
     assert os.path.exists(drivemapfile), drivemapfile + ' does not exist'
@@ -52,9 +49,12 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out):
     drivemap = load(drivemapfile)
     footprint = load_csv_polygon(footprintCsv)
 
-    # Footprint is off by some meters
-    footprint[:, 0] += -1.579381346780
-    footprint[:, 1] += 0.52519696509
+    if f_outdir is None:
+        f_outdir = os.path.dirname(f_out)
+
+# Footprint is NO LONGER off by some meters
+# footprint[:, 0] += -1.579381346780
+# footprint[:, 1] += 0.52519696509
 
     drivemap_array = np.asarray(drivemap) + drivemap.offset
 
@@ -68,7 +68,15 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out):
         drivemap, in_large_footprint & np.invert(in_footprint))
 
     log("Finding largest cluster")
-    cluster = get_largest_dbscan_clusters(pointcloud, 0.7, .15, 250)
+    if sample != -1 and len(pointcloud) > sample:
+        fraction = float(sample)/len(pointcloud)
+        log("downsampling from %d to %d points (%d%%) for registration" % (
+                len(pointcloud), sample, int(fraction*100)
+            ))
+        pc = downsample(pointcloud, fraction, random_seed=0)
+    else:
+        pc = pointcloud
+    cluster = get_largest_dbscan_clusters(pc, 0.7, .15, 250)
 
     log(cluster.offset)
     boundary_bb = BoundingBox(points=cluster)
@@ -95,12 +103,22 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out):
         boundary.transform(transform)
         cluster.transform(transform)
         pointcloud.transform(transform)
+        with open(os.path.join(f_outdir, 'rotation.csv'), 'w') as f:
+            for row in transform:
+                print(','.join(np.char.mod('%f', row)), file=f)
 
         log("Calculating scale and shift from boundary to footprint")
         registered_offset, registered_scale = \
             register_offset_scale_from_ref(boundary, footprint)
+        with open(os.path.join(f_outdir, 'translation.csv'), 'w') as f:
+            print(','.join(np.char.mod('%f',
+                           registered_offset - pointcloud.offset)), file=f)
+
         registered_scale = get_preferred_scale_factor(pointcloud,
                                                       registered_scale)
+
+        with open(os.path.join(f_outdir, 'scaling_factor.csv'), 'w') as f:
+            print(registered_scale, file=f)
 
         log("Scaling pointcloud: %f" % registered_scale)
         pc_array = np.asarray(pointcloud)
@@ -129,5 +147,14 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out):
 
 
 if __name__ == '__main__':
-    sourcefile, drivemapfile, footprintCsv, foutLas = process_args()
-    registration_pipeline(sourcefile, drivemapfile, footprintCsv, foutLas)
+    args = docopt(__doc__)
+
+    sourcefile = args['<source>']
+    drivemapfile = args['<drivemap>']
+    footprintCsv = args['<footprint>']
+    foutLas = args['<output>']
+    foutDir = args['-o']
+    sample = int(args['-d'])
+
+    registration_pipeline(sourcefile, drivemapfile, footprintCsv, foutLas,
+                          foutDir, sample)

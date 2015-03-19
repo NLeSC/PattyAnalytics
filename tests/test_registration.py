@@ -191,7 +191,7 @@ class TestRegistrationPipeline(unittest.TestCase):
     def test_pipeline(self):
         # Register box on surface
         registration_pipeline(self.sourcelas, self.drivemapLas,
-                              self.footprint_csv, self.foutlas)
+                              self.footprint_csv, self.foutlas, None)
         registered_pc = conversions.load(self.foutlas)
 
         target = np.asarray(self.source_pc)
