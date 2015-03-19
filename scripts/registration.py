@@ -37,6 +37,7 @@ def log(*args, **kwargs):
 
 
 def find_largest_cluster(pointcloud, sample):
+    log("Finding largest cluster")
     if sample != -1 and len(pointcloud) > sample:
         fraction = float(sample) / len(pointcloud)
         log("downsampling from %d to %d points (%d%%) for registration" % (
@@ -75,31 +76,38 @@ def registration_pipeline(sourcefile, drivemapfile, footprintcsv, f_out,
     assert os.path.exists(drivemapfile), drivemapfile + ' does not exist'
     assert os.path.exists(footprintcsv), footprintcsv + ' does not exist'
 
-    log("reading source", sourcefile)
-    pointcloud = load(sourcefile)
+    #####
+    # Setup * the low-res drivemap
+    #       * footprint
+    #       * pointcloud
+
     log("reading drivemap ", drivemapfile)
     drivemap = load(drivemapfile)
 
+    log("reading footprint ", footprint )
+    footprint = load_csv_polygon(footprintcsv)
+
+    log("reading source", sourcefile)
+    pointcloud = load(sourcefile)
+
+
+    #####
+    # find all the points in the drivemap along the footprint
+    # use bottom two meters of drivemap (not trees)
+
     drivemap_array = np.asarray(drivemap)
     bb = BoundingBox(points=drivemap_array)
-    # use bottom two meters of drivemap (not trees)
     if bb.size[2] > bb.size[1] or bb.size[2] > bb.size[0]:
         drivemap = extract_mask(drivemap, drivemap_array[:, 2] < bb.min[2] + 2)
 
-    footprint = load_csv_polygon(footprintcsv)
-
-    if f_outdir is None:
-        f_outdir = os.path.dirname(f_out)
-
-# Footprint is NO LONGER off by some meters
-# footprint[:, 0] += -1.579381346780
-# footprint[:, 1] += 0.52519696509
     footprint_boundary = cutout_edge(drivemap, footprint, 1.5)
 
-    log("Finding largest cluster")
-    cluster = find_largest_cluster(pointcloud, sample)
 
-    log("Detecting boundary")
+    #####
+    # find all the points in the pointcloud that would
+    # correspond to the footprint_boundary
+
+    cluster = find_largest_cluster(pointcloud, sample)
     boundary = detect_boundary(cluster)
 
     if len(boundary) == len(cluster) or len(boundary) == 0:
@@ -108,58 +116,73 @@ def registration_pipeline(sourcefile, drivemapfile, footprintcsv, f_out,
         print('BoundaryLen:', len(boundary))
         print('ClusterLen:', len(cluster))
         sys.exit(1)
+
+
+    ####
+    # match the pointcloud boundary with the footprint boundary
+
+    log("Finding rotation:")
+    transform = find_rotation(boundary, footprint_boundary)
+    log(transform)
+
+    if is_upside_down(upfile, transform[:3, :3])
+        transform = np.dot( np.eye(4)*[1,-1,-1,1], transform)
+
+    ####
+    # apply the rotation
+
+    log("Rotating pointcloud...")
+    boundary.transform(transform)
+    cluster.transform(transform)
+    pointcloud.transform(transform)
+
+
+
+
+    # construct output file dir/basename
+    if f_outdir is None:
+        f_out = os.path.abspath( f_out )
     else:
-        log("Finding rotation:")
-        transform = find_rotation(boundary, footprint_boundary)
-        log(transform)
-        rotate180 = np.eye(4)
-        rotate180[1, 1] = rotate180[2, 2] = -1
+        f_out = os.path.join( f_outdir, f_out )
 
-        up_is_down = is_upside_down(upfile, transform[:3, :3])
-        if up_is_down:
-            transform = np.dot(rotate180, transform)
+    with open(f_out + '.rotation.csv', 'w') as f:
+        for row in transform:
+            print(','.join(np.char.mod('%f', row)), file=f)
+    with open(f_out + '.rotation_offset.csv', 'w') as f:
+        print(','.join(np.char.mod('%f', pointcloud.offset)), file=f)
 
-        log("Rotating pointcloud...")
-        boundary.transform(transform)
-        cluster.transform(transform)
-        pointcloud.transform(transform)
+    log("Calculating scale and shift from boundary to footprint")
+    registered_offset, registered_scale = \
+        register_offset_scale_from_ref(boundary, footprint)
 
-        with open(f_out + '.rotation.csv', 'w') as f:
-            for row in transform:
-                print(','.join(np.char.mod('%f', row)), file=f)
-        with open(f_out + '.rotation_offset.csv', 'w') as f:
-            print(','.join(np.char.mod('%f', pointcloud.offset)), file=f)
+    with open(f_out + '.translation.csv', 'w') as f:
+        str_arr = np.char.mod('%f', registered_offset - pointcloud.offset)
+        print(','.join(str_arr), file=f)
 
-        log("Calculating scale and shift from boundary to footprint")
-        registered_offset, registered_scale = \
-            register_offset_scale_from_ref(boundary, footprint)
+    boundary_zmean = np.asarray(boundary)[:, 2].mean()
+    boundary_zmean += boundary.offset[2]
+    footprint_zmean = np.asarray(footprint_boundary)[:, 2].mean()
+    footprint_zmean += footprint_boundary.offset[2]
+    boundary.offset[2] += footprint_zmean - boundary_zmean
 
-        with open(f_out + '.translation.csv', 'w') as f:
-            str_arr = np.char.mod('%f', registered_offset - pointcloud.offset)
-            print(','.join(str_arr), file=f)
+    ####
+    # possibly update scalefactor when the redstick detection works
+    registered_scale = get_preferred_scale_factor(pointcloud,
+                                                  registered_scale)
 
-        boundary_zmean = np.asarray(boundary)[:, 2].mean()
-        boundary_zmean += boundary.offset[2]
-        footprint_zmean = np.asarray(footprint_boundary)[:, 2].mean()
-        footprint_zmean += footprint_boundary.offset[2]
-        boundary.offset[2] += footprint_zmean - boundary_zmean
+    with open(f_out + '.scaling_factor.csv', 'w') as f:
+        print(registered_scale, file=f)
 
-        registered_scale = get_preferred_scale_factor(pointcloud,
-                                                      registered_scale)
+    log("Scaling pointcloud: %f" % registered_scale)
+    pc_array = np.asarray(pointcloud)
+    pc_array *= registered_scale
+    cluster_array = np.asarray(cluster)
+    cluster_array *= registered_scale
 
-        with open(f_out + '.scaling_factor.csv', 'w') as f:
-            print(registered_scale, file=f)
-
-        log("Scaling pointcloud: %f" % registered_scale)
-        pc_array = np.asarray(pointcloud)
-        pc_array *= registered_scale
-        cluster_array = np.asarray(cluster)
-        cluster_array *= registered_scale
-
-        log("Adding offset:")
-        copy_registration(pointcloud, boundary)
-        copy_registration(cluster, boundary)
-        log(pointcloud.offset)
+    log("Adding offset:")
+    copy_registration(pointcloud, boundary)
+    copy_registration(cluster, boundary)
+    log(pointcloud.offset)
 
 # TODO: set the right height
 # footprint_drivemap_array = np.asarray(footprint_drivemap)[2]
