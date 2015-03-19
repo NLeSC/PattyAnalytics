@@ -223,8 +223,8 @@ class TestRegistrationPipeline(unittest.TestCase):
                         "Middle point of registered cloud does not"
                         " match expectation")
 
-class Test_upside_down(unittest.TestCase):
 
+class TestUpsideDown(unittest.TestCase):
     def setUp(self):
         testdir = 'tests'
         self.down = os.path.join(testdir, 'testdownfile.json')
@@ -233,16 +233,16 @@ class Test_upside_down(unittest.TestCase):
 
     def test_no_file(self):
         '''Without up file path, should return false.'''
-        assert_true(is_upside_down(None, np.identity(3)) == False)
+        assert_true(is_upside_down(None, np.identity(3)) is False)
 
     def test_non_existent_file(self):
         '''Without existing up file, should return false.'''
         assert_true(
-            is_upside_down('nonexisting1234.json', np.identity(3)) == False)
+            is_upside_down('nonexisting1234.json', np.identity(3)) is False)
 
     def test_empty_file(self):
         '''With empty up file path, should return false.'''
-        assert_true(is_upside_down('', np.identity(3)) == False)
+        assert_true(is_upside_down('', np.identity(3)) is False)
 
     def test_down(self):
         '''With down vector, should return true.'''
@@ -250,7 +250,7 @@ class Test_upside_down(unittest.TestCase):
 
     def test_up(self):
         '''With up vector, should return false.'''
-        assert_true(is_upside_down(self.up, np.identity(3)) == False)
+        assert_true(is_upside_down(self.up, np.identity(3)) is False)
 
     def test_rotated_up(self):
         '''With up vector rotated 180, should return true.'''
@@ -258,4 +258,4 @@ class Test_upside_down(unittest.TestCase):
 
     def test_rotated_down(self):
         '''With down vector rotated 180, should return false.'''
-        assert_true(is_upside_down(self.down, self.rotate) == False)
+        assert_true(is_upside_down(self.down, self.rotate) is False)

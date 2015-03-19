@@ -7,7 +7,7 @@ The transformations (if given) are applied in the following order:
 3. offset
 
 Usage:
-  transfrom.py [-r <rot>][-o <rot_origin>] [-t <translate>] [-s <scaling>] <source> <target>
+  transform.py [-r <rot>][-o <rot_origin>] [-t <translate>] [-s <scaling>] <source> <target>
 
 Positional arguments:
   source            Source pointcloud file

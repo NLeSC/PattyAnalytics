@@ -40,8 +40,7 @@ def find_largest_cluster(pointcloud, sample):
     if sample != -1 and len(pointcloud) > sample:
         fraction = float(sample) / len(pointcloud)
         log("downsampling from %d to %d points (%d%%) for registration" % (
-            len(pointcloud), sample, int(fraction * 100)
-        ))
+            len(pointcloud), sample, int(fraction * 100)))
         pc = downsample(pointcloud, fraction, random_seed=0)
     else:
         pc = pointcloud
