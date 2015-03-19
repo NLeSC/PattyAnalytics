@@ -89,7 +89,14 @@ def ransac(meterClusters, relativeInlierMargin=0.05):
 def get_confidence_level(votes, supportingClusterCount):
     """ Gives a confidence score in [0, 1]. This score should give the
     user some idea of the reliability of the estimate. Above .5 can be
-    considered usable."""
+    considered usable.
+    
+    Arguments:
+        votes: integer
+            sum of number of points in inlying red clusters found
+        supportingClusterCount: integer
+            number of inlying red clusters found
+    """
     # Higher number of votes implies more detail which gives us more
     # confidence (but 500 is enough)
     upperLimitVotes = 500.0
