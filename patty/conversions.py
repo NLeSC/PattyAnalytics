@@ -25,6 +25,7 @@ def _check_writable(filepath):
     """ Test whether filepath is writable, raises IOError otherwise """
     # either the path exists but is not writable, or the path does not exist
     # and the parent is not writable.
+    filepath = os.path.abspath(filepath)
     if (os.path.exists(filepath) and (
             not os.path.isfile(filepath) or
             not os.access(filepath, os.W_OK)
