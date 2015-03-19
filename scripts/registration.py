@@ -112,7 +112,7 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
         log("Finding rotation:")
         transform = find_rotation(boundary, footprint_boundary)
         log(transform)
-        rotate180 = np.eye((4,4))
+        rotate180 = np.eye(4)
         rotate180[1,1] = rotate180[2,2] = -1
 
         # TODO: detect up/down 
