@@ -16,4 +16,4 @@ if __name__ == '__main__':
     args = docopt(__doc__)
 
     pc = load(args['<infile>'])
-    save(args['<outfile>'], pc)
+    save(pc, args['<outfile>'])
