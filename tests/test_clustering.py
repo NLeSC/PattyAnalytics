@@ -2,8 +2,7 @@ import pcl
 from patty.segmentation.dbscan import (get_largest_dbscan_clusters,
                                        _get_top_labels)
 import numpy as np
-
-from nose.tools import assert_equal
+from nose.tools import assert_equal, assert_equals
 
 
 def test_largest_dbscan_cluster():
@@ -22,7 +21,7 @@ def test_largest_dbscan_cluster():
     # Assert
     actual = segmented.shape[0]
     message = 'expected: %r, actual: %r' % (expected, actual)
-    assert actual == expected, message
+    assert_equals(actual, expected, msg=message)
 
 
 def get_one_big_and_10_small_clusters():
