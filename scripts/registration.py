@@ -106,7 +106,14 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
         log("Finding rotation:")
         transform = find_rotation(boundary, footprint_boundary)
         log(transform)
+        rotate180 = np.eye((4,4))
+        rotate180[1,1] = rotate180[2,2] = -1
 
+        # TODO: detect up/down 
+        upIsDown = False
+        if upIsDown:
+            transform = np.dot(rotate180, transform)
+        
         log("Rotating pointcloud...")
         boundary.transform(transform)
         cluster.transform(transform)
@@ -125,11 +132,9 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
             str_arr = np.char.mod('%f', registered_offset - pointcloud.offset)
             print(','.join(str_arr), file=f)
 
-        print(registered_scale)
         registered_scale = get_preferred_scale_factor(pointcloud,
                                                       registered_scale)
 
-        print(registered_scale)
         with open(os.path.join(f_outdir, 'scaling_factor.csv'), 'w') as f:
             print(registered_scale, file=f)
 
