@@ -1,10 +1,16 @@
 *.o
 *.py[co]
 *.so
+
 /build
 /data
+
+.coverage
+
 # Vim
 *.sw[op]
+
 /*.las
 /*.csv
+
 /doc/_build
