@@ -84,7 +84,7 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
     bb = BoundingBox(points=drivemap_array)
     # use bottom two meters of drivemap (not trees)
     if bb.size[2] > bb.size[1] or bb.size[2] > bb.size[0]:
-        drivemap = extract_mask(drivemap, drivemap[:,2] < bb.min[3] + 2)
+        drivemap = extract_mask(drivemap, drivemap_array[:,2] < bb.min[2] + 2)
     
     footprint = load_csv_polygon(footprintCsv)
 
