@@ -178,8 +178,7 @@ if __name__ == '__main__':
     drivemapfile = args['<drivemap>']
     footprintCsv = args['<footprint>']
     foutLas = args['<output>']
-    foutDir = args['-o']
     sample = int(args['-d'])
 
     registration_pipeline(sourcefile, drivemapfile, footprintCsv, foutLas,
-                          foutDir, sample)
+                          None, sample)
