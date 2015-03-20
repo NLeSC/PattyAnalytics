@@ -31,7 +31,7 @@ def downsample_voxel(pointcloud, voxel_size=0.01):
     return pc_filter.filter()
 
 
-def downsample(pc, fraction, random_seed=None):
+def downsample_random(pc, fraction, random_seed=None):
     """Randomly downsample pointcloud to a fraction of its size.
 
     Returns a pointcloud of size fraction * len(pc), rounded to the nearest

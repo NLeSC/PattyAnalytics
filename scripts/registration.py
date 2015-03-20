@@ -27,7 +27,7 @@ from patty.conversions import (load, save, load_csv_polygon,
                                copy_registration, extract_mask, BoundingBox)
 from patty.registration import (get_pointcloud_boundaries, find_rotation,
                                 register_offset_scale_from_ref, scale_points,
-                                point_in_polygon2d, downsample, is_upside_down)
+                                point_in_polygon2d, downsample_random, is_upside_down)
 from patty.segmentation.dbscan import get_largest_dbscan_clusters
 from patty.registration.stickscale import get_preferred_scale_factor
 
@@ -42,7 +42,7 @@ def find_largest_cluster(pointcloud, sample):
         fraction = float(sample) / len(pointcloud)
         log("downsampling from %d to %d points (%d%%) for registration" % (
             len(pointcloud), sample, int(fraction * 100)))
-        pc = downsample(pointcloud, fraction, random_seed=0)
+        pc = downsample_random(pointcloud, fraction, random_seed=0)
     else:
         pc = pointcloud
     return get_largest_dbscan_clusters(pc, 0.7, .15, 250)
