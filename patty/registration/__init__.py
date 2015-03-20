@@ -1,4 +1,3 @@
-from .pca import find_principal_axes_rotation
 from .registration import (downsample_random, downsample_voxel,
                            register_offset_scale_from_ref,
                            register_from_footprint,
@@ -11,7 +10,6 @@ from .stickscale import get_stick_scale
 __all__ = [
     'downsample_random',
     'downsample_voxel',
-    'find_principal_axes_rotation',
     'find_rotation',
     'get_pointcloud_boundaries',
     'get_stick_scale',

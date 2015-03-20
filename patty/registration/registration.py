@@ -12,7 +12,7 @@ import json
 from .. import copy_registration, is_registered, extract_mask, register, BoundingBox
 from ..segmentation import dbscan
 from matplotlib import path
-from .pca import find_principal_axes_rotation
+from sklearn.decomposition import PCA
 
 logging.basicConfig(level=logging.INFO)
 
@@ -190,9 +190,7 @@ def register_from_reference(pc, pc_ref):
     pc_main = dbscan.largest_dbscan_cluster(pc, .1, 250)
 
     logging.info("Finding rotation")
-    pc_transform = find_principal_axes_rotation(np.asarray(pc_main))
-    ref_transform = find_principal_axes_rotation(np.asarray(pc_ref))
-    transform = np.linalg.inv(ref_transform) * pc_transform
+    transform = find_rotation( pc_main, pc_ref )
     pc_main.transform(transform)
 
     logging.info("Registering pointcloud to footprint")
@@ -206,10 +204,27 @@ def register_from_reference(pc, pc_ref):
 
     return pc
 
+def _find_rotation_helper(pointcloud):
+    pca = PCA(n_components=3)
+    pca.fit(np.asarray(pointcloud))
+
+    transform = np.eye(4)
+    transform[:3, :3] = np.array(pca.components_)
+
+    # make sure the rotation is a proper rotation, ie det = +1
+    if np.linalg.det( transform ) < 0:
+        transform[:,1] *= -1.0
+
+    # keep the up direction pointing (mostly) upwards
+    if transform[2,2] < 0.0:
+        transform[:,1] *= -1.0
+        transform[:,2] *= -1.0
+
+    return transform
 
 def find_rotation(pointcloud, ref):
     '''Find the transformation that rotates the principal axis of pointcloud
-    onto those of the reference.
+    onto those of the reference pointcloud. Keep the 3 axis pointing upwards.
 
     Arguments:
         pointcloud: pcl.PointCloud
@@ -220,8 +235,9 @@ def find_rotation(pointcloud, ref):
         numpy array
     '''
 
-    pc_transform = find_principal_axes_rotation(pointcloud)
-    ref_transform = find_principal_axes_rotation(ref)
+    pc_transform  = _find_rotation_helper( pointcloud )
+    ref_transform = _find_rotation_helper( ref )
+
     return np.dot(np.linalg.inv(ref_transform), pc_transform)
 
 
