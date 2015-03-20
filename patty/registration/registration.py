@@ -9,7 +9,7 @@ from pcl.boundaries import estimate_boundaries
 import numpy as np
 import logging
 import json
-from .. import copy_registration, is_registered, extract_mask, register
+from .. import copy_registration, is_registered, extract_mask, register, BoundingBox
 from ..segmentation import dbscan
 from matplotlib import path
 from .pca import find_principal_axes_rotation
@@ -94,7 +94,7 @@ def register_offset_scale_from_ref(pc, ref_array, ref_offset=np.zeros(3)):
 
 
 def get_pointcloud_boundaries(pointcloud, angle_threshold=0.1,
-                              search_radius=None, normal_search_radius=0.02):
+                              search_radius=None, normal_search_radius=None):
     '''Find the boundary of a pointcloud.
 
     Arguments:
@@ -105,7 +105,7 @@ def get_pointcloud_boundaries(pointcloud, angle_threshold=0.1,
         search_radius : float defaults to 1 percent of pointcloud size as
                         determined by the diagonal of the boundingbox
 
-        normal_radius : float
+        normal_radius : float defaults to search_radius
 
     Returns:
         a pointcloud
@@ -113,15 +113,22 @@ def get_pointcloud_boundaries(pointcloud, angle_threshold=0.1,
 
     if search_radius == None:
         bb = BoundingBox(points=pointcloud)
+        logging.info( bb )
+        logging.info( bb.diagonal )
         search_radius = 0.01 * bb.diagonal 
-        logging.info("Search radius from bounding box: %d" % search_radius )
+
+    if normal_search_radius == None:
+        normal_search_radius = search_radius
+
+    logging.info("Search radius from bounding box: %f" % search_radius )
 
     boundary = estimate_boundaries(pointcloud, angle_threshold=angle_threshold,
                                    search_radius=search_radius,
                                    normal_search_radius=normal_search_radius)
-    logging.info("sum %d" % np.sum(boundary))
-    logging.info("len %d" % len(boundary))
-    print(boundary)
+
+    logging.info("Found %d out of %d boundary points" 
+                   % (np.count_nonzero(boundary),len(pointcloud)))
+
     return extract_mask(pointcloud, boundary)
 
 
@@ -142,6 +149,10 @@ def register_from_footprint(pc, footprint):
 
     logging.info("Detecting boundary")
     boundary = get_pointcloud_boundaries(pc_main)
+
+    if len(boundary) == len(pc_main) or len(boundary) == 0:
+        log("Boundary information could not be retrieved")
+        return None
 
     logging.info("Finding rotation")
     pc_transform = find_principal_axes_rotation(np.asarray(boundary))

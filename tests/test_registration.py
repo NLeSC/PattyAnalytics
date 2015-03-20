@@ -120,7 +120,7 @@ class TestBoundary(unittest.TestCase):
              [self.max, self.max], [self.max, 0.0]])
 
     def test_boundaries(self):
-        boundary = get_pointcloud_boundaries(self.pc)
+        boundary = get_pointcloud_boundaries(self.pc, search_radius=0.02)
         assert_equal(self.pc.size, self.num_points)
         assert_less(boundary.size, self.num_points)
         assert_greater(boundary.size, 0)

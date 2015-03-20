@@ -101,13 +101,8 @@ def registration_pipeline(sourcefile, drivemapfile, footprintcsv, f_out,
     cluster = find_largest_cluster(pointcloud, sample)
     boundary = get_pointcloud_boundaries( pointcloud )
 
-    if len(boundary) == len(cluster) or len(boundary) == 0:
-        # DISCARD BOUNDARY INFORMATION
-        log("Boundary information could not be retrieved")
-        print('BoundaryLen:', len(boundary))
-        print('ClusterLen:', len(cluster))
-        sys.exit(1)
-
+    if not boundary:
+        sys.exit()
 
     ####
     # match the pointcloud boundary with the footprint boundary
