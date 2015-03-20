@@ -105,7 +105,7 @@ def get_pointcloud_boundaries(pointcloud, angle_threshold=0.1,
         search_radius : float defaults to 1 percent of pointcloud size as
                         determined by the diagonal of the boundingbox
 
-        normal_radius : float defaults to search_radius
+        normal_search_radius : float defaults to search_radius
 
     Returns:
         a pointcloud
@@ -155,9 +155,7 @@ def register_from_footprint(pc, footprint):
         return None
 
     logging.info("Finding rotation")
-    pc_transform = find_principal_axes_rotation(np.asarray(boundary))
-    fp_transform = find_principal_axes_rotation(footprint)
-    transform = np.linalg.inv(fp_transform) * pc_transform
+    transform = find_rotation(boundary, footprint)
     boundary.transform(transform)
 
     logging.info("Registering pointcloud to footprint")
@@ -210,6 +208,18 @@ def register_from_reference(pc, pc_ref):
 
 
 def find_rotation(pointcloud, ref):
+    '''Find the transformation that rotates the principal axis of pointcloud
+    onto those of the reference.
+
+    Arguments:
+        pointcloud: pcl.PointCloud
+
+        ref: pcl.PointCloud
+
+    Returns:
+        numpy array
+    '''
+
     pc_transform = find_principal_axes_rotation(pointcloud)
     ref_transform = find_principal_axes_rotation(ref)
     return np.dot(np.linalg.inv(ref_transform), pc_transform)

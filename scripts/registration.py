@@ -122,9 +122,6 @@ def registration_pipeline(sourcefile, drivemapfile, footprintcsv, f_out,
     cluster.transform(transform)
     pointcloud.transform(transform)
 
-
-
-
     # construct output file dir/basename
     if f_outdir is None:
         f_out = os.path.abspath( f_out )
