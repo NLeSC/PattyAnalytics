@@ -48,15 +48,6 @@ def find_largest_cluster(pointcloud, sample):
     return get_largest_dbscan_clusters(pc, 0.7, .15, 250)
 
 
-def detect_boundary(pointcloud):
-    log("Detecting boundary")
-    boundary_bb = BoundingBox(points=pointcloud)
-    search_radius = boundary_bb.diagonal / 100.0
-    return get_pointcloud_boundaries(
-        pointcloud, search_radius=search_radius,
-        normal_search_radius=search_radius)
-
-
 def cutout_edge(pointcloud, polygon2d, polygon_width):
     pc_array = np.asarray(pointcloud) + pointcloud.offset
 
@@ -108,7 +99,7 @@ def registration_pipeline(sourcefile, drivemapfile, footprintcsv, f_out,
     # correspond to the footprint_boundary
 
     cluster = find_largest_cluster(pointcloud, sample)
-    boundary = detect_boundary(cluster)
+    boundary = get_pointcloud_boundaries( pointcloud )
 
     if len(boundary) == len(cluster) or len(boundary) == 0:
         # DISCARD BOUNDARY INFORMATION

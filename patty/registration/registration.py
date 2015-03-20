@@ -94,7 +94,7 @@ def register_offset_scale_from_ref(pc, ref_array, ref_offset=np.zeros(3)):
 
 
 def get_pointcloud_boundaries(pointcloud, angle_threshold=0.1,
-                              search_radius=0.02, normal_search_radius=0.02):
+                              search_radius=None, normal_search_radius=0.02):
     '''Find the boundary of a pointcloud.
 
     Arguments:
@@ -102,13 +102,20 @@ def get_pointcloud_boundaries(pointcloud, angle_threshold=0.1,
 
         angle_threshold : float
 
-        search_radius : float
+        search_radius : float defaults to 1 percent of pointcloud size as
+                        determined by the diagonal of the boundingbox
 
         normal_radius : float
 
     Returns:
         a pointcloud
     '''
+
+    if search_radius == None:
+        bb = BoundingBox(points=pointcloud)
+        search_radius = 0.01 * bb.diagonal 
+        logging.info("Search radius from bounding box: %d" % search_radius )
+
     boundary = estimate_boundaries(pointcloud, angle_threshold=angle_threshold,
                                    search_radius=search_radius,
                                    normal_search_radius=normal_search_radius)
