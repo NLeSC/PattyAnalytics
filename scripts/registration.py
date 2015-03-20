@@ -49,6 +49,7 @@ def find_largest_cluster(pointcloud, sample):
 
 
 def cutout_edge(pointcloud, polygon2d, polygon_width):
+    # FIXME: will give overflow in many cases
     pc_array = np.asarray(pointcloud) + pointcloud.offset
 
     slightly_large_polygon = scale_points(polygon2d, 1.05)

@@ -253,6 +253,7 @@ def intersect_polygon2d(pc, polygon):
 
 
 def scale_points(polygon, factor):
+    '''Scales the polygon, but keeps its center fixed.'''
     polygon = np.asarray(polygon)
     offset = polygon.mean(axis=0)
     return ((polygon - offset) * factor) + offset
