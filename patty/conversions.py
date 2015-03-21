@@ -51,7 +51,7 @@ def load(path, format=None, load_rgb=True):
     else:
         _check_readable(path)
         pointcloud = pcl.load(path, format=format, loadRGB=load_rgb)
-        register(pointcloud)
+        set_registration(pointcloud)
         return pointcloud
 
 
@@ -110,9 +110,10 @@ def load_las(lasfile):
 
         pointcloud = pcl.PointCloudXYZRGB(data.astype(np.float32))
 
-        register(pointcloud, offset=bbox.center, precision=las.header.scale,
-                 crs_wkt=las.header.srs.get_wkt(),
-                 crs_proj4=las.header.srs.get_proj4())
+        set_registration(pointcloud, offset=bbox.center,
+                         precision=las.header.scale,
+                         crs_wkt=las.header.srs.get_wkt(),
+                         crs_proj4=las.header.srs.get_proj4())
 
         return pointcloud
     finally:
@@ -121,13 +122,14 @@ def load_las(lasfile):
 
 
 def is_registered(pointcloud):
-    """Returns True when a pointcloud is registered."""
+    """Returns True when a pointcloud is registered; ie coordinates are relative
+       to a specific spatial reference system."""
     return hasattr(pointcloud, 'is_registered') and pointcloud.is_registered
 
 
-def register(pointcloud, offset=None, precision=None, crs_wkt=None,
+def set_registration(pointcloud, offset=None, precision=None, crs_wkt=None,
              crs_proj4=None, crs_verticalcs=None):
-    """Register a pointcloud.
+    """Set spatial reference system metada
 
     Arguments:
         offset=None
@@ -237,7 +239,7 @@ def make_las_header(pointcloud):
     head.major_version = 1
     head.minor_version = 2
 
-    register(pointcloud)
+    set_registration(pointcloud)
     # FIXME: need extra precision to reduce floating point errors. We don't
     # know exactly why this works. It might reduce precision on the top of
     # the float, but reduces an error of one bit for the last digit.
@@ -380,7 +382,7 @@ def center_boundingbox(pointcloud):
         pointcloud: pcl.PointCloud
             input pointcloud
     """
-    register(pointcloud)
+    set_registration(pointcloud)
     pc_array = np.asarray(pointcloud)
     bbox = BoundingBox(points=pc_array)
     pc_array -= bbox.center

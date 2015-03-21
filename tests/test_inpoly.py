@@ -23,7 +23,7 @@ def test_in_poly():
     points, footprint = make_tri_pyramid_with_base(side, delta, offset)
 
     pc = pcl.PointCloudXYZRGB(points.astype(np.float32))
-    patty.register(pc)
+    patty.set_registration(pc)
 
     pcIn = patty.registration.intersect_polygon2d(pc, footprint)
 

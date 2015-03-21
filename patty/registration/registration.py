@@ -9,7 +9,7 @@ from pcl.boundaries import estimate_boundaries
 import numpy as np
 import logging
 import json
-from .. import copy_registration, is_registered, extract_mask, register, BoundingBox
+from .. import copy_registration, is_registered, extract_mask, set_registration, BoundingBox
 from ..segmentation import dbscan
 from matplotlib import path
 from sklearn.decomposition import PCA
@@ -87,8 +87,8 @@ def register_offset_scale_from_ref(pc, ref_array, ref_offset=np.zeros(3)):
     pc_min *= pc_registration_scale
     pc_max *= pc_registration_scale
 
-    register(pc, offset=ref_center - (pc_min + pc_max) / 2.0,
-             precision=pc.precision * pc_registration_scale)
+    set_registration(pc, offset=ref_center - (pc_min + pc_max) / 2.0,
+                     precision=pc.precision * pc_registration_scale)
 
     return pc.offset, pc_registration_scale
 

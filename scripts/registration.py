@@ -174,7 +174,7 @@ def registration_pipeline(sourcefile, drivemapfile, footprintcsv, f_out,
 # ref_boundary_height = ((footprint_drivemap_array.min()
 #                         + footprint_drivemap_array.max()) / 2.0
 #                        + footprint_drivemap.offset[2])
-# register(pointcloud, offset=[pointcloud.offset[0], pointcloud.offset[1],
+# set_registeration(pointcloud, offset=[pointcloud.offset[0], pointcloud.offset[1],
 #          ref_boundary_height])
 
     log("Writing output")

@@ -23,7 +23,7 @@ def test_read_write():
     filename = './testIO.las'
 
     pc = _make_some_points()
-    conversions.register(pc)
+    conversions.set_registration(pc)
 
     conversions.save(pc, filename)
     pc2 = conversions.load(filename)

@@ -26,7 +26,7 @@ from docopt import docopt
 
 import numpy as np
 import time
-from patty import load, save, register
+from patty import load, save, set_registeration
 
 
 def log(*args, **kwargs):
@@ -42,7 +42,7 @@ def rotate(pointcloud, matrix, offset=None):
         add_offset = offset - pointcloud.offset
         pc_array = np.asarray(pointcloud)
         pc_array += add_offset
-        register(pointcloud, offset=offset)
+        set_registeration(pointcloud, offset=offset)
 
     pointcloud.transform(matrix)
 
@@ -50,11 +50,11 @@ def rotate(pointcloud, matrix, offset=None):
 def scale(pointcloud, factor):
     pc_array = np.asarray(pointcloud)
     pc_array *= factor
-    register(pointcloud, precision=pointcloud.precision * factor)
+    set_registeration(pointcloud, precision=pointcloud.precision * factor)
 
 
 def translate(pointcloud, offset):
-    register(pointcloud, offset=pointcloud.offset + offset)
+    set_registeration(pointcloud, offset=pointcloud.offset + offset)
 
 if __name__ == '__main__':
     args = docopt(__doc__)

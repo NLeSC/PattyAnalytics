@@ -58,7 +58,7 @@ class TestCutoutPointCloud(unittest.TestCase):
         data = np.zeros((4, 6), dtype=np.float32)
         data[:, :2] = points
         self.pc = pcl.PointCloudXYZRGB(data)
-        conversions.register(self.pc, offset=self.offset)
+        conversions.set_registration(self.pc, offset=self.offset)
 
     def test_cutout_from_footprint(self):
         ''' Test whether a cutout from a pointcloud gets the right points '''
@@ -114,7 +114,7 @@ class TestBoundary(unittest.TestCase):
         row = np.linspace(start=0.0, stop=self.max, num=self.num_rows)
         grid[:, 0:2] = cartesian((row, row))
         self.pc = pcl.PointCloudXYZRGB(grid.astype(np.float32))
-        conversions.register(self.pc)
+        conversions.set_registration(self.pc)
         self.footprint_boundary = np.array(
             [[0.0, 0.0], [0.0, self.max],
              [self.max, self.max], [self.max, 0.0]])
@@ -188,7 +188,7 @@ class TestRegistrationPipeline(unittest.TestCase):
         self.drivemap_pc = pcl.PointCloudXYZRGB(plane_grid)
         self.drivemap_pc = downsample_voxel(self.drivemap_pc,
                                             voxel_size=delta * 20)
-        conversions.register(self.drivemap_pc)
+        conversions.set_registration(self.drivemap_pc)
         conversions.save(self.drivemap_pc, self.drivemapLas)
 
         # Create a simple pyramid
@@ -197,7 +197,7 @@ class TestRegistrationPipeline(unittest.TestCase):
 
         self.source_pc = pcl.PointCloudXYZRGB(dense_grid)
         self.source_pc = downsample_voxel(self.source_pc, voxel_size=delta * 5)
-        conversions.register(self.source_pc)
+        conversions.set_registration(self.source_pc)
         conversions.save(self.source_pc, self.sourcelas)
 
     def tearDown(self):
