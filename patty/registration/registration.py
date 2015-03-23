@@ -208,34 +208,33 @@ def _find_rotation_helper(pointcloud):
     pca = PCA(n_components=3)
     pca.fit(np.asarray(pointcloud))
 
-    transform = np.eye(4)
-    transform[:3, :3] = np.array(pca.components_)
-
-    # make sure the rotation is a proper rotation, ie det = +1
-    if np.linalg.det( transform ) < 0:
-        transform[:,1] *= -1.0
+    rotation = np.array(pca.components_)
 
     # keep the up direction pointing (mostly) upwards
-    if transform[2,2] < 0.0:
-        transform[:,1] *= -1.0
-        transform[:,2] *= -1.0
+    if rotation[2,2] < 0.0:
+        rotation[:,2] *= -1.0 # flip the whole vector
 
-    return transform
+    # make sure the rotation is a proper rotation, ie det = +1
+    if np.linalg.det( rotation ) < 0:
+        rotation[:,1] *= -1.0
 
-def find_rotation(pointcloud, ref):
-    '''Find the transformation that rotates the principal axis of pointcloud
-    onto those of the reference pointcloud. Keep the 3 axis pointing upwards.
+    return rotation 
+
+def find_rotation(pc, ref):
+    '''Find the transformation that rotates the principal axis of the
+    pointcloud onto those of the reference.
+    Keep the z-axis pointing upwards.
 
     Arguments:
-        pointcloud: pcl.PointCloud
+        pc: pcl.PointCloud
 
         ref: pcl.PointCloud
 
     Returns:
-        numpy array
+        numpy array of shape [3,3], can be used to rotate pointclouds with pc.rotate()
     '''
 
-    pc_transform  = _find_rotation_helper( pointcloud )
+    pc_transform  = _find_rotation_helper( pc )
     ref_transform = _find_rotation_helper( ref )
 
     return np.dot(np.linalg.inv(ref_transform), pc_transform)
