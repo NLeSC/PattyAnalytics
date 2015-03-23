@@ -2,7 +2,7 @@ from .registration import (downsample_random, downsample_voxel,
                            register_from_footprint,
                            get_pointcloud_boundaries,
                            find_rotation, point_in_polygon2d,
-                           intersect_polygon2d, scale_points,
+                           intersect_polygon2d,
                            is_upside_down)
 from .stickscale import get_stick_scale
 
@@ -15,6 +15,5 @@ __all__ = [
     'intersect_polygon2d',
     'point_in_polygon2d',
     'register_from_footprint',
-    'scale_points',
     'is_upside_down',
 ]

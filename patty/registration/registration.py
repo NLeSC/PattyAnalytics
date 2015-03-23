@@ -209,14 +209,6 @@ def intersect_polygon2d(pc, polygon):
     in_polygon = point_in_polygon2d(np.asarray(pc) + pc.offset, polygon)
     return extract_mask(pc, in_polygon)
 
-
-def scale_points(polygon, factor):
-    '''Scales the polygon, but keeps its center fixed.'''
-    polygon = np.asarray(polygon)
-    offset = polygon.mean(axis=0)
-    return ((polygon - offset) * factor) + offset
-
-
 def is_upside_down(upfilepath, transform):
     '''Decides if a pointcloud is upside down using its relative up
     vector and the transformation (rotation only) matrix.

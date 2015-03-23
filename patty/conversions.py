@@ -27,17 +27,31 @@ def _check_writable(filepath):
             )) or not os.access(os.path.dirname(filepath), os.W_OK | os.X_OK):
         raise IOError("Cannot write to " + filepath)
 
+def clone(pc):
+    """Return a copy of a pointcloud, including registration metadata
+
+    Arguments:
+        pc: pcl.PointCloud()
+    Returns:
+        cp: pcl.PointCloud()
+    """
+
+    cp = pcl.PointCloud( np.asarray(pc) )
+    if is_registered(pc):
+        copy_registration(cp, pc)
+
+    return cp
 
 def load(path, format=None, load_rgb=True):
     """Read a pointcloud file.
 
-    Supports LAS files, and lets PCD and PLY files be read by python-pcl.
+    Supports LAS and CSV files, and lets PCD and PLY files be read by python-pcl.
 
     Arguments:
         path : string
             Filename.
         format : string, optional
-            File format: "PLY", "PCD", "LAS" or None to detect the format
+            File format: "PLY", "PCD", "LAS", "CSV" or None to detect the format
             from the file extension.
         load_rgb : bool
             Whether RGB is loaded for PLY and PCD files. For LAS files, RGB is
@@ -48,6 +62,8 @@ def load(path, format=None, load_rgb=True):
     """
     if format == 'las' or format is None and path.endswith('.las'):
         return _load_las(path)
+    elif format == 'las' or format is None and path.endswith('.csv'):
+        return _load_csv(path)
     else:
         _check_readable(path)
         pointcloud = pcl.load(path, format=format, loadRGB=load_rgb)
@@ -58,7 +74,7 @@ def load(path, format=None, load_rgb=True):
 def save(cloud, path, format=None, binary=False):
     """Save a pointcloud to file.
 
-    Supports LAS files, and lets PCD and PLY files be saved by python-pcl.
+    Supports LAS and CSV files, and lets PCD and PLY files be saved by python-pcl.
 
     Arguments:
         cloud : pcl.PointCloud or pcl.PointCloudXYZRGB
@@ -66,13 +82,15 @@ def save(cloud, path, format=None, binary=False):
         path : string
             Filename.
         format : string
-            File format: "PLY", "PCD", "LAS" or None to detect the format
+            File format: "PLY", "PCD", "LAS", "CSV" or None to detect the format
              from the file extension.
         binary : boolean
             Whether PLY and PCD files are saved in binary format.
     """
     if format == 'las' or format is None and path.endswith('.las'):
         _write_las(path, cloud)
+    elif format == 'csv' or format is None and path.endswith('.csv'):
+        _write_csv(path, cloud)
     else:
         _check_writable(path)
         if is_registered(cloud) and cloud.offset != np.zeros(3):
@@ -200,13 +218,27 @@ def copy_registration(target, src):
     target.crs_verticalcs = src.crs_verticalcs
 
 
-def load_csv_polygon(csvfile, delimiter=','):
-    """Load a polygon from a CSV file.
+def _load_csv(path, delimiter=','):
+    """Load a set of points from a CSV file as 
 
     Returns:
-        polygon : numpy.ndarray
+        pc : pcl.PointCloud
     """
-    return np.genfromtxt(csvfile, delimiter=delimiter)
+    return pcl.PointCloud( np.genfromtxt(path, delimiter=delimiter).astype( np.float32 ) )
+
+def _write_csv(path, pc, delimiter=', '):
+    """Write a pointcloud to a CSV file.
+
+    Arguments:
+        path: string
+            Output filename
+        pc: pcl.PointCloud
+            Pointcloud to write
+        delimiter: string
+            Field delimiter to use, see np.savetxt documentation.
+
+    """
+    np.savetxt(path, np.asarray(pc), delimiter=delimiter )
 
 
 def extract_mask(pointcloud, mask):

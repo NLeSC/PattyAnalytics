@@ -7,9 +7,9 @@ import pcl
 
 from patty import conversions
 from patty.registration import (point_in_polygon2d, downsample_voxel,
-                                scale_points, intersect_polygon2d,
+                                intersect_polygon2d,
                                 get_pointcloud_boundaries, is_upside_down)
-from patty.conversions import BoundingBox
+from patty.conversions import BoundingBox, clone
 from scripts.registration import registration_pipeline
 
 from helpers import make_tri_pyramid_with_base
@@ -32,21 +32,6 @@ class TestPolygon(unittest.TestCase):
         in_polygon = point_in_polygon2d(self.points, self.poly)
         assert_array_equal(in_polygon, [False, True, False, False],
                            "points expected in polygon not matched")
-
-    def test_scale_polygon(self):
-        ''' Test whether scaling up the polygon works '''
-        newpoly = scale_points(self.poly, 1.3)
-        assert_equal(len(newpoly), len(self.poly),
-                     "number of polygon points is altered when scaling")
-        assert_array_equal(self.poly[0], [.0, .0],
-                           "original polygon is altered when scaling")
-        assert_array_less(newpoly[0], self.poly[0],
-                          "small polygon points do not shrink when scaling up")
-        assert_array_less(self.poly[3], newpoly[3],
-                          "large polygon points do not grow when scaling up")
-        in_scaled_polygon = point_in_polygon2d(self.points, newpoly)
-        assert_true(np.all(in_scaled_polygon),
-                    "not all points are in polygon when scaling up")
 
 
 class TestCutoutPointCloud(unittest.TestCase):
@@ -98,8 +83,11 @@ class TestBoundary(unittest.TestCase):
         assert_less(boundary.size, self.num_points)
         assert_greater(boundary.size, 0)
 
-        small_footprint = scale_points(self.footprint_boundary, 0.9)
-        large_footprint = scale_points(self.footprint_boundary, 1.1)
+        center = boundary.center()
+        small_footprint = clone( boundary ).scale(0.9, origin=center)
+        large_footprint = clone( boundary ).scale(0.9, origin=center)
+
+        print(boundary, large_footprint, small_footprint)
 
         assert_equal(np.sum(point_in_polygon2d(boundary, small_footprint)), 0)
         assert_equal(np.sum(point_in_polygon2d(boundary, large_footprint)),
@@ -183,7 +171,7 @@ class TestRegistrationPipeline(unittest.TestCase):
         # Register box on surface
         pc = conversions.load(self.sourcelas)
         dm = conversions.load(self.drivemapLas)
-        fp = conversions.load_csv_polygon(self.footprint_csv)
+        fp = conversions.load(self.footprint_csv)
         
         registration_pipeline(pc, dm, fp)
         registered_pc = pc 

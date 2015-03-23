@@ -19,15 +19,15 @@ Options:
 from __future__ import print_function
 from docopt import docopt
 
+from pcl import PointCloud
 from pcl.registration import icp
 import numpy as np
 import time
 import os
 import sys
-from patty.conversions import (load, save, load_csv_polygon,
+from patty.conversions import (load, save, clone,
                                copy_registration, extract_mask, BoundingBox)
 from patty.registration import (get_pointcloud_boundaries, find_rotation, register_from_footprint,
-                                scale_points,
                                 point_in_polygon2d, downsample_random, is_upside_down)
 from patty.segmentation.dbscan import get_largest_dbscan_clusters
 from patty.registration.stickscale import get_stick_scale
@@ -52,14 +52,18 @@ def find_largest_cluster(pointcloud, sample):
 
 
 def cutout_edge(pointcloud, polygon2d, polygon_width):
-    # FIXME: will give overflow in many cases
+
+    # FIXME: will give overflow in many cases;
+    # caller should make sure pointcloud and polygon have the same registration
     pc_array = np.asarray(pointcloud) + pointcloud.offset
 
-    slightly_large_polygon = scale_points(polygon2d, 1.05)
-    in_polygon = point_in_polygon2d(pc_array, slightly_large_polygon)
+    center = polygon2d.center()
+    slightly_large_polygon = clone(polygon2d).scale(1.05, origin=center)
+    large_polygon          = clone(polygon2d).scale(1.05, origin=center)
 
-    large_polygon = scale_points(polygon2d, polygon_width)
+    in_polygon = point_in_polygon2d(pc_array, slightly_large_polygon)
     in_large_polygon = point_in_polygon2d(pc_array, large_polygon)
+
     return extract_mask(pointcloud,
                         in_large_polygon & np.invert(in_polygon))
 
@@ -75,8 +79,8 @@ def registration_pipeline(pointcloud, drivemap, footprint, sample=-1):
         drivemap:   pcl.PointCloud
                     A small part of the low-res drivemap on which to register 
 
-        footprint:  np.array
-                    Array containing the objects footprint
+        footprint:  pcl.PointCloud
+                    Pointlcloud containing the objects footprint
 
         sample: int, default=-1, no resampling
                     Downsample the high-res pointcloud before ICP step (UNIMPLEMENTED)
@@ -179,8 +183,8 @@ if __name__ == '__main__':
     log("reading drivemap ", drivemapfile)
     drivemap = load(drivemapfile)
 
-    log("reading footprint ", footprintcsv )
-    footprint = load_csv_polygon(footprintcsv)
+    log("reading footprint ", footprintcsv)
+    footprint = load(footprintcsv)
 
     # TODO: use up_file to orient the pointcloud upwards
 
