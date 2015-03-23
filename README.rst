@@ -56,6 +56,6 @@ To run unit tests, issue::
 Documentation
 -------------
 
-API documentation can be found here_
+Documentation can be found here_
 
 .. _here: http://nlesc.github.io/PattyAnalytics/
