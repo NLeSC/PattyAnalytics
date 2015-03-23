@@ -30,7 +30,7 @@ from patty.registration import (get_pointcloud_boundaries, find_rotation, regist
                                 register_offset_scale_from_ref, scale_points,
                                 point_in_polygon2d, downsample_random, is_upside_down)
 from patty.segmentation.dbscan import get_largest_dbscan_clusters
-from patty.registration.stickscale import get_preferred_scale_factor
+from patty.registration.stickscale import get_stick_scale
 
 
 
@@ -104,13 +104,18 @@ def registration_pipeline(sourcefile, drivemapfile, footprintcsv, f_out,
     footprint_boundary = cutout_edge(drivemap, footprint, 1.5)
 
     ###
-    # TODO: find redstick scale, and use it if possible
+    # find redstick scale, and use it if possible
+    scale, confidence = get_stick_scale(pointcloud)
+    log( "Red stick scale=%s confidence=%s" % (scale, confidence) ) 
 
     allow_scaling=True
-    # scale, confidence = red sticks scaler call to return scale and confidence
-    # if (confident):
-    #    pointcloud.scale( scale )
-    #    allow_scaling=False
+    if (confidence > 0.5):
+        log("Applying red stick scale" )
+        pointcloud.scale( scale ) # dont care about origin of scaling
+        allow_scaling=False
+    else:
+        log("Not applying red stick scale, confidence too low"  )
+        allow_scaling=True
     
     ####
     # match the pointcloud boundary with the footprint boundary
