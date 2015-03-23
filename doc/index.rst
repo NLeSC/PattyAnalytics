@@ -23,13 +23,33 @@ available, relative to the object.
 Registration
 ============
 
-The `registration.py` script is the main registration algorithm. It applies a
-dbscan clustering algorithm before anything else to filter out noise and end
-up with the densest parts of the pointcloud. This is the slowest operation.
-The algorithm includes at least 70% of the pointcloud. To speed this operation
-up and make its runtime predictable, the pointcloud can be subsampled to a
-given number of points before doing the clustering algorithm. A uniform
-probability distribution is used for this.
+The `registration.py` script is the main registration algorithm. This script can be run as follows:
+
+```
+Usage:
+  registration.py [-h] [-d <sample>] [-u <upfile>] <source> <drivemap> <footprint> <output>
+
+Positional arguments:
+  source       Source LAS file
+  drivemap     Target LAS file to map source to
+  footprint    Footprint for the source LAS file
+  output       file to write output LAS to
+```
+
+Example run:
+```
+python scripts/registration.py data/SOURCE/SITE_X.las data/DRIVEMAP/X.las data/FOOTPRINT/X.footprint.csv data/OUTPUT/SITE_X.las -d 100000
+```
+
+Initialization
+--------------
+
+The registration script applies a dbscan clustering algorithm before anything
+else to filter out noise and end up with the densest parts of the pointcloud.
+This is the slowest operation. The algorithm includes at least 70% of the
+pointcloud. To speed this operation up and make its runtime predictable, the
+pointcloud can be subsampled to a given number of points before doing the
+clustering algorithm. A uniform probability distribution is used for this.
 
 Orientation
 -----------
@@ -122,28 +142,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
-Running scripts
-===============
-
-** Registration script **
-
-The core functionality of the PattyAnalytics project is the registration of dense point clouds on a reference 'drive map'. This is done through the registration script: scripts/registration.py
-
-This script can be run as follows:
-
-```
-Usage:
-  registration.py [-h] [-d <sample>] [-u <upfile>] <source> <drivemap> <footprint> <output>
-
-Positional arguments:
-  source       Source LAS file
-  drivemap     Target LAS file to map source to
-  footprint    Footprint for the source LAS file
-  output       file to write output LAS to
-```
-
-Example run:
-```
-python scripts/registration.py data/SOURCE/SITE_X.las data/DRIVEMAP/X.las data/FOOTPRINT/X.footprint.csv data/OUTPUT/SITE_X.las -d 100000
-```
