@@ -19,17 +19,19 @@ Options:
 from __future__ import print_function
 from docopt import docopt
 
+from pcl.registration import icp
 import numpy as np
 import time
 import os
 import sys
 from patty.conversions import (load, save, load_csv_polygon,
                                copy_registration, extract_mask, BoundingBox)
-from patty.registration import (get_pointcloud_boundaries, find_rotation,
+from patty.registration import (get_pointcloud_boundaries, find_rotation, register_from_footprint,
                                 register_offset_scale_from_ref, scale_points,
                                 point_in_polygon2d, downsample_random, is_upside_down)
 from patty.segmentation.dbscan import get_largest_dbscan_clusters
 from patty.registration.stickscale import get_preferred_scale_factor
+
 
 
 def log(*args, **kwargs):
@@ -41,6 +43,7 @@ def find_largest_cluster(pointcloud, sample):
     if sample != -1 and len(pointcloud) > sample:
         fraction = float(sample) / len(pointcloud)
         log("downsampling from %d to %d points (%d%%) for registration" % (
+
             len(pointcloud), sample, int(fraction * 100)))
         pc = downsample_random(pointcloud, fraction, random_seed=0)
     else:
@@ -82,6 +85,12 @@ def registration_pipeline(sourcefile, drivemapfile, footprintcsv, f_out,
     log("reading source", sourcefile)
     pointcloud = load(sourcefile)
 
+    #####
+    # set scale and offset of pointcloud and drivemap
+    # as the pointcloud is unregisterd, the coordinate system is undefined,
+    # and we lose nothing if we just copy it
+    
+    copy_registration(pointcloud, drivemap)
 
     #####
     # find all the points in the drivemap along the footprint
@@ -94,34 +103,39 @@ def registration_pipeline(sourcefile, drivemapfile, footprintcsv, f_out,
 
     footprint_boundary = cutout_edge(drivemap, footprint, 1.5)
 
+    ###
+    # TODO: find redstick scale, and use it if possible
 
-    #####
-    # find all the points in the pointcloud that would
-    # correspond to the footprint_boundary
-
-    cluster = find_largest_cluster(pointcloud, sample)
-    boundary = get_pointcloud_boundaries( pointcloud )
-
-    if not boundary:
-        sys.exit()
-
+    allow_scaling=True
+    # scale, confidence = red sticks scaler call to return scale and confidence
+    # if (confident):
+    #    pointcloud.scale( scale )
+    #    allow_scaling=False
+    
     ####
     # match the pointcloud boundary with the footprint boundary
 
-    log("Finding rotation:")
-    transform = find_rotation(boundary, footprint_boundary)
-    log(transform)
+    rot_matrix, rot_center, scale, translation = register_from_footprint(
+                pointcloud, np.asarray(footprint_boundary),
+                allow_scaling=allow_scaling,
+                allow_rotation=True,
+                allow_translation=True)
 
-    if is_upside_down(upfile, transform[:3, :3]):
-        transform = np.dot( np.eye(4)*[1,-1,-1,1], transform)
+    log("Applying transforms to pointcloud" )
+    pointcloud.rotate(rot_matrix, origin=rot_center )
+    pointcloud.scale( scale, origin=rot_center )
+    pointcloud.translate( translation )
 
     ####
-    # apply the rotation
+    # do a ICP step
 
-    log("Rotating pointcloud...")
-    boundary.transform(transform)
-    cluster.transform(transform)
-    pointcloud.transform(transform)
+    log("ICP")
+    converged, transf, estimate, fitness = icp( pointcloud, drivemap )
+
+    log( "converged: %s" % converged )
+    log( "transf : %s" % transf )
+    log( "fitness: %s" % fitness )
+
 
     # construct output file dir/basename
     if f_outdir is None:
@@ -129,59 +143,10 @@ def registration_pipeline(sourcefile, drivemapfile, footprintcsv, f_out,
     else:
         f_out = os.path.join( f_outdir, f_out )
 
-    with open(f_out + '.rotation.csv', 'w') as f:
-        for row in transform:
-            print(','.join(np.char.mod('%f', row)), file=f)
-    with open(f_out + '.rotation_offset.csv', 'w') as f:
-        print(','.join(np.char.mod('%f', pointcloud.offset)), file=f)
+    save(pointcloud, f_out + ".before.icp.las" )
 
-    log("Calculating scale and shift from boundary to footprint")
-    registered_offset, registered_scale = \
-        register_offset_scale_from_ref(boundary, footprint)
-
-    with open(f_out + '.translation.csv', 'w') as f:
-        str_arr = np.char.mod('%f', registered_offset - pointcloud.offset)
-        print(','.join(str_arr), file=f)
-
-    boundary_zmean = np.asarray(boundary)[:, 2].mean()
-    boundary_zmean += boundary.offset[2]
-    footprint_zmean = np.asarray(footprint_boundary)[:, 2].mean()
-    footprint_zmean += footprint_boundary.offset[2]
-    boundary.offset[2] += footprint_zmean - boundary_zmean
-
-    ####
-    # possibly update scalefactor when the redstick detection works
-    registered_scale = get_preferred_scale_factor(pointcloud,
-                                                  registered_scale)
-
-    with open(f_out + '.scaling_factor.csv', 'w') as f:
-        print(registered_scale, file=f)
-
-    log("Scaling pointcloud: %f" % registered_scale)
-    pc_array = np.asarray(pointcloud)
-    pc_array *= registered_scale
-    cluster_array = np.asarray(cluster)
-    cluster_array *= registered_scale
-
-    log("Adding offset:")
-    copy_registration(pointcloud, boundary)
-    copy_registration(cluster, boundary)
-    log(pointcloud.offset)
-
-# TODO: set the right height
-# footprint_drivemap_array = np.asarray(footprint_drivemap)[2]
-# pc_array = np.asarray(cluster)[2]
-# ref_boundary_height = ((footprint_drivemap_array.min()
-#                         + footprint_drivemap_array.max()) / 2.0
-#                        + footprint_drivemap.offset[2])
-# set_registeration(pointcloud, offset=[pointcloud.offset[0], pointcloud.offset[1],
-#          ref_boundary_height])
-
-    log("Writing output")
-    save(pointcloud, f_out)
-    save(cluster, f_out + ".cluster.las")
-    save(boundary, f_out + ".boundary.las")
-    save(footprint_boundary, f_out + ".footboundary.las")
+    pointcloud.transform( transf )
+    save(pointcloud, f_out )
 
 
 if __name__ == '__main__':

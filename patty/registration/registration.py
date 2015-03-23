@@ -132,8 +132,17 @@ def get_pointcloud_boundaries(pointcloud, angle_threshold=0.1,
     return extract_mask(pointcloud, boundary)
 
 
-def register_from_footprint(pc, footprint):
-    '''Register a pointcloud by placing it in footprint. Applies dbscan first.
+def register_from_footprint(pc, footprint, allow_scaling=True, allow_rotation=True, allow_translation=True):
+    '''Register a pointcloud by placing it in footprint.
+
+    Applies dbscan to find the main object, and estimates its footprint
+    by taking the pointcloud boundary.
+    Then the pointcloud footprint is alinged with the reference footprint
+    by rotating its pricipal axis, and translating it so the centers of mass
+    coincide. 
+    Finally, the pointcloud is scaled to have the same extent. The scale factor is
+    is determined by the red meter sticks detection algorithm, or form the fit between
+    pc and footprint if red meter sticks cant be found.
 
     Arguments:
         pc : pcl.PointCloud
@@ -142,8 +151,10 @@ def register_from_footprint(pc, footprint):
             Array of [x,y,z] describing the footprint.
 
     Returns:
-        The original pointcloud, rotated/translated to the footprint.
+        The original pointcloud, rotated/translated to match the footprint.
     '''
+    # find the footprint of the pointcloud: the boundary of its center object
+    # (ie. largest object)
     logging.info("Finding largest cluster")
     pc_main = dbscan.largest_dbscan_cluster(pc, .1, 250)
 
@@ -154,20 +165,34 @@ def register_from_footprint(pc, footprint):
         log("Boundary information could not be retrieved")
         return None
 
-    logging.info("Finding rotation")
-    transform = find_rotation(boundary, footprint)
-    boundary.transform(transform)
+    if allow_rotation:
+        logging.info("Finding rotation")
+        rot_center = boundary.center()
+        rot_matrix = find_rotation(boundary, footprint)
+        boundary.rotate(rot_matrix, origin=rot_center)
+    else:
+        rot_center = np.array( [0.0, 0.0, 0.0] )
+        rot_matrix = np.eye(3)
 
-    logging.info("Registering pointcloud to footprint")
-    registered_offset, registered_scale = register_offset_scale_from_ref(
-        boundary, footprint)
-    copy_registration(pc, boundary)
+    if allow_scaling:
+        logging.info("Finding scale")
+        footprint_bb = BoundingBox( footprint )
+        boundary_bb = BoundingBox( boundary )
+        scale = footprint_bb.size / boundary_bb.size
+        # take the average scale factor for the x and y dimensions
+        scale = np.mean( scale[0:2] )
+    else:
+        scale = 1.0
 
-    # rotate and scale up
-    transform[:3, :3] *= registered_scale
-    pc.transform(transform)
+    if allow_translation:
+        logging.info("Finding translation")
+        fp_center = np.mean( footprint, axis=0 )
+        translation = fp_center - rot_center
+        boundary.translate( translation ) 
+    else:
+        translation = np.array( [0.0,0.0,0.0] )
 
-    return pc
+    return rot_matrix, rot_center, scale, translation
 
 
 def register_from_reference(pc, pc_ref):
