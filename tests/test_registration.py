@@ -5,7 +5,7 @@ from tempfile import mkdtemp
 import numpy as np
 import pcl
 
-from patty import center_boundingbox, conversions
+from patty import conversions
 from patty.registration import (point_in_polygon2d, downsample_voxel,
                                 scale_points, intersect_polygon2d,
                                 get_pointcloud_boundaries, is_upside_down)
@@ -70,33 +70,6 @@ class TestCutoutPointCloud(unittest.TestCase):
                                   err_msg=err_msg)
         err_msg = "offset changed by intersection with polygon"
         assert_array_equal(pc_fp.offset, self.offset, err_msg=err_msg)
-
-
-class TestCenter(unittest.TestCase):
-
-    def setUp(self):
-        data = np.array(
-            [[1, 1, 1, 1, 1, 1], [3, 3, 3, 1, 1, 1]], dtype=np.float32)
-        self.pc = pcl.PointCloudXYZRGB(data)
-
-    def test_center(self):
-        '''test whether pointcloud can be centered around zero'''
-        # Baseline: original center
-        bb = BoundingBox(points=np.asarray(self.pc))
-        assert_array_equal(bb.center, [2., 2., 2.],
-                           "original bounding box center"
-                           " is not center of input")
-
-        # New center
-        center_boundingbox(self.pc)
-        bb_new = BoundingBox(points=np.asarray(self.pc))
-        assert_array_equal(bb_new.center, np.zeros(3),
-                           "after centering, BoundingBox center not in origin")
-        assert_array_equal(self.pc.offset, bb.center,
-                           "offset of centering operation not equal to"
-                           " original center")
-        assert_array_equal(bb.size, bb_new.size,
-                           "bounding box size changed due to translation")
 
 
 def array_in_margin(target, actual, margin, msg):

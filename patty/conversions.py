@@ -380,19 +380,3 @@ class BoundingBox(object):
         ''' Whether the bounding box contains given position. '''
         return np.all((pos >= self.min) & (pos <= self.max))
 
-
-def center_boundingbox(pointcloud):
-    """Center the pointcloud on origin using the center of its bounding box.
-
-    The offset compared to the original location is added to the
-    pointcloud.offset. The pointcloud is registered after use.
-
-    Arguments:
-        pointcloud: pcl.PointCloud
-            input pointcloud
-    """
-    set_registration(pointcloud)
-    pc_array = np.asarray(pointcloud)
-    bbox = BoundingBox(points=pc_array)
-    pc_array -= bbox.center
-    pointcloud.offset += bbox.center
