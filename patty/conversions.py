@@ -123,13 +123,23 @@ def load_las(lasfile):
 
 def is_registered(pointcloud):
     """Returns True when a pointcloud is registered; ie coordinates are relative
-       to a specific spatial reference system."""
+       to a specific spatial reference system and offset."""
     return hasattr(pointcloud, 'is_registered') and pointcloud.is_registered
 
 
 def set_registration(pointcloud, offset=None, precision=None, crs_wkt=None,
              crs_proj4=None, crs_verticalcs=None):
-    """Set spatial reference system metada
+    """Set spatial reference system metada and offset
+
+    Pointclouds in PCL do not have absolute coordinates, ie.
+    latitude / longitude. This functions adds metadata to the pointcloud
+    describing an absolute frame of reference.
+    It is left to the user to make sure pointclouds are in the same reference
+    system, before passing them on to PCL functions.
+
+    NOTE: offset and scale are convenience properties to deal with LAS files
+          Use PointCloud.translate() for translations, and PointCloud.scale()
+          to scale. 
 
     Arguments:
         offset=None
@@ -139,12 +149,11 @@ def set_registration(pointcloud, offset=None, precision=None, crs_wkt=None,
             Subtracting an offset, typically the center of the pointcloud,
             allows us to use floats without losing precision.
             If no offset is set, defaults to [0, 0, 0].
-
+            
         precision=None
-            Precision of the points, used to store into a LAS file. Update
-            when scaling the pointcloud.
-            If no precision is set, defaults to [0.01, 0.01, 0.01].
-
+            Precision of the points, used for compression when writing a
+            LAS file. If no precision is set, defaults to [0.01, 0.01, 0.01].
+            
         crs_wkt=None
             Well Known Text form of the spatial reference system.
 
