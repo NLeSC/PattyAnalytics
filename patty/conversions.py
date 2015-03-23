@@ -47,7 +47,7 @@ def load(path, format=None, load_rgb=True):
             Registered pointcloud.
     """
     if format == 'las' or format is None and path.endswith('.las'):
-        return load_las(path)
+        return _load_las(path)
     else:
         _check_readable(path)
         pointcloud = pcl.load(path, format=format, loadRGB=load_rgb)
@@ -72,7 +72,7 @@ def save(cloud, path, format=None, binary=False):
             Whether PLY and PCD files are saved in binary format.
     """
     if format == 'las' or format is None and path.endswith('.las'):
-        write_las(path, cloud)
+        _write_las(path, cloud)
     else:
         _check_writable(path)
         if is_registered(cloud) and cloud.offset != np.zeros(3):
@@ -81,7 +81,7 @@ def save(cloud, path, format=None, binary=False):
         pcl.save(cloud, path, format=format, binary=binary)
 
 
-def load_las(lasfile):
+def _load_las(lasfile):
     """Read a LAS file
 
     Returns:
@@ -270,7 +270,7 @@ def make_las_header(pointcloud):
     return head
 
 
-def write_las(lasfile, pointcloud, header=None):
+def _write_las(lasfile, pointcloud, header=None):
     """Write a pointcloud to a LAS file
 
     Arguments:
