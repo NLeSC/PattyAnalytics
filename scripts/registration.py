@@ -27,7 +27,7 @@ import sys
 from patty.conversions import (load, save, load_csv_polygon,
                                copy_registration, extract_mask, BoundingBox)
 from patty.registration import (get_pointcloud_boundaries, find_rotation, register_from_footprint,
-                                register_offset_scale_from_ref, scale_points,
+                                scale_points,
                                 point_in_polygon2d, downsample_random, is_upside_down)
 from patty.segmentation.dbscan import get_largest_dbscan_clusters
 from patty.registration.stickscale import get_stick_scale

@@ -61,38 +61,6 @@ def downsample_random(pc, fraction, random_seed=None):
         copy_registration(new_pc, pc)
     return new_pc
 
-
-def register_offset_scale_from_ref(pc, ref_array, ref_offset=np.zeros(3)):
-    '''Returns a 3d-offset and uniform scale value from footprint.
-
-    The scale is immediately applied to the pointcloud. The offset is
-    set to the patty_registration.conversions.RegisteredPointCloud.'''
-    ref_min = ref_array.min(axis=0)
-    ref_max = ref_array.max(axis=0)
-    ref_center = (ref_min + ref_max) / 2.0 + ref_offset
-
-    pc_array = np.asarray(pc)
-    pc_min = pc_array.min(axis=0)
-    pc_max = pc_array.max(axis=0)
-
-    pc_size = pc_max - pc_min
-    ref_size = ref_max - ref_min
-
-    # Take the footprint as the real offset, and correct the z-offset
-    # The z-offset of the footprint will be ground level, the z-offset of the
-    # pointcloud will include the monuments height
-    pc_registration_scale = np.mean(ref_size[0:1] / pc_size[0:1])
-
-    pc_array *= pc_registration_scale
-    pc_min *= pc_registration_scale
-    pc_max *= pc_registration_scale
-
-    set_registration(pc, offset=ref_center - (pc_min + pc_max) / 2.0,
-                     precision=pc.precision * pc_registration_scale)
-
-    return pc.offset, pc_registration_scale
-
-
 def get_pointcloud_boundaries(pointcloud, angle_threshold=0.1,
                               search_radius=None, normal_search_radius=None):
     '''Find the boundary of a pointcloud.

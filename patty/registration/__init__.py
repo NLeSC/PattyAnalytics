@@ -1,5 +1,4 @@
 from .registration import (downsample_random, downsample_voxel,
-                           register_offset_scale_from_ref,
                            register_from_footprint,
                            get_pointcloud_boundaries,
                            find_rotation, point_in_polygon2d,
@@ -16,7 +15,6 @@ __all__ = [
     'intersect_polygon2d',
     'point_in_polygon2d',
     'register_from_footprint',
-    'register_offset_scale_from_ref',
     'scale_points',
     'is_upside_down',
 ]
