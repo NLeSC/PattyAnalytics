@@ -40,6 +40,7 @@ Now set up an environment::
 Install the python packages listed in ``requirements.txt`` using pip::
 
     $ pip install -r requirements.txt
+    $ pip install -U nose  # make sure nose runs in the virtualenv
     $ python setup.py install
 
 To exit the python virtualenv run::

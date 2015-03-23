@@ -40,8 +40,7 @@ def find_largest_cluster(pointcloud, sample):
     if sample != -1 and len(pointcloud) > sample:
         fraction = float(sample) / len(pointcloud)
         log("downsampling from %d to %d points (%d%%) for registration" % (
-            len(pointcloud), sample, int(fraction * 100)
-        ))
+            len(pointcloud), sample, int(fraction * 100)))
         pc = downsample(pointcloud, fraction, random_seed=0)
     else:
         pc = pointcloud
@@ -69,12 +68,12 @@ def cutout_edge(pointcloud, polygon2d, polygon_width):
                         in_large_polygon & np.invert(in_polygon))
 
 
-def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
+def registration_pipeline(sourcefile, drivemapfile, footprintcsv, f_out,
                           f_outdir, upfile=None, sample=-1):
     """Single function wrapping whole script, so it can be unit tested"""
     assert os.path.exists(sourcefile), sourcefile + ' does not exist'
     assert os.path.exists(drivemapfile), drivemapfile + ' does not exist'
-    assert os.path.exists(footprintCsv), footprintCsv + ' does not exist'
+    assert os.path.exists(footprintcsv), footprintcsv + ' does not exist'
 
     log("reading source", sourcefile)
     pointcloud = load(sourcefile)
@@ -87,7 +86,7 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
     if bb.size[2] > bb.size[1] or bb.size[2] > bb.size[0]:
         drivemap = extract_mask(drivemap, drivemap_array[:, 2] < bb.min[2] + 2)
 
-    footprint = load_csv_polygon(footprintCsv)
+    footprint = load_csv_polygon(footprintcsv)
 
     if f_outdir is None:
         f_outdir = os.path.dirname(f_out)
@@ -116,8 +115,8 @@ def registration_pipeline(sourcefile, drivemapfile, footprintCsv, f_out,
         rotate180 = np.eye(4)
         rotate180[1, 1] = rotate180[2, 2] = -1
 
-        upIsDown = is_upside_down(upfile, transform[:3,:3])
-        if upIsDown:
+        up_is_down = is_upside_down(upfile, transform[:3, :3])
+        if up_is_down:
             transform = np.dot(rotate180, transform)
 
         log("Rotating pointcloud...")
@@ -183,10 +182,10 @@ if __name__ == '__main__':
 
     sourcefile = args['<source>']
     drivemapfile = args['<drivemap>']
-    footprintCsv = args['<footprint>']
+    footprintcsv = args['<footprint>']
     foutLas = args['<output>']
     up_file = args['-u']
     sample = int(args['-d'])
 
-    registration_pipeline(sourcefile, drivemapfile, footprintCsv, foutLas,
+    registration_pipeline(sourcefile, drivemapfile, footprintcsv, foutLas,
                           None, up_file, sample)

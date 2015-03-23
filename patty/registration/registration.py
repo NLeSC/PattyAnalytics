@@ -216,18 +216,16 @@ def scale_points(polygon, factor):
 
 def is_upside_down(upfilepath, transform):
     '''Decides if a pointcloud is upside down using its relative up
-    vector and the tranformation (rotation only) matrix.
+    vector and the transformation (rotation only) matrix.
 
     Arguments:
         upfilepath path of the json file containing the relative up vector
         transform  2d array describing the rotation matrix
     Returns:
-        the original pointcloud, but rotated/translated to the footprint
+        true  pointcloud is upside down
+        false pointcloud is right side up
     '''
-    if upfilepath == None:
-        return False
-
-    if upfilepath == '':
+    if upfilepath in (None, ''):
         return False
 
     try:
@@ -236,6 +234,7 @@ def is_upside_down(upfilepath, transform):
     except:
         return False
 
-    up = np.array(dic['estimatedUpDirection'])
-    transformed = np.dot(transform, up)
-    return transformed[1] < 0
+    estimated_up = np.array(dic['estimatedUpDirection'])
+    real_up = transform[:,2]
+
+    return np.dot( estimated_up, real_up ) < 0

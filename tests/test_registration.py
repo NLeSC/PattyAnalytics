@@ -13,7 +13,8 @@ from patty.conversions import BoundingBox
 from scripts.registration import registration_pipeline
 
 from helpers import make_tri_pyramid_with_base
-from nose.tools import assert_equal, assert_greater, assert_less, assert_true
+from nose.tools import (assert_equal, assert_greater, assert_less,
+                        assert_true, assert_false)
 from numpy.testing import (assert_array_equal, assert_array_almost_equal,
                            assert_array_less)
 from sklearn.utils.extmath import cartesian
@@ -223,8 +224,8 @@ class TestRegistrationPipeline(unittest.TestCase):
                         "Middle point of registered cloud does not"
                         " match expectation")
 
-class Test_upside_down(unittest.TestCase):
 
+class TestUpsideDown(unittest.TestCase):
     def setUp(self):
         testdir = 'tests'
         self.down = os.path.join(testdir, 'testdownfile.json')
@@ -233,16 +234,15 @@ class Test_upside_down(unittest.TestCase):
 
     def test_no_file(self):
         '''Without up file path, should return false.'''
-        assert_true(is_upside_down(None, np.identity(3)) == False)
+        assert_false(is_upside_down(None, np.identity(3)))
 
     def test_non_existent_file(self):
         '''Without existing up file, should return false.'''
-        assert_true(
-            is_upside_down('nonexisting1234.json', np.identity(3)) == False)
+        assert_false(is_upside_down('nonexisting1234.json', np.identity(3)))
 
     def test_empty_file(self):
         '''With empty up file path, should return false.'''
-        assert_true(is_upside_down('', np.identity(3)) == False)
+        assert_false(is_upside_down('', np.identity(3)))
 
     def test_down(self):
         '''With down vector, should return true.'''
@@ -250,7 +250,7 @@ class Test_upside_down(unittest.TestCase):
 
     def test_up(self):
         '''With up vector, should return false.'''
-        assert_true(is_upside_down(self.up, np.identity(3)) == False)
+        assert_false(is_upside_down(self.up, np.identity(3)))
 
     def test_rotated_up(self):
         '''With up vector rotated 180, should return true.'''
@@ -258,4 +258,4 @@ class Test_upside_down(unittest.TestCase):
 
     def test_rotated_down(self):
         '''With down vector rotated 180, should return false.'''
-        assert_true(is_upside_down(self.down, self.rotate) == False)
+        assert_false(is_upside_down(self.down, self.rotate))

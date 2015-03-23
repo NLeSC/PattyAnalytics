@@ -244,12 +244,14 @@ def make_las_header(pointcloud):
     head.scale = np.asarray(pointcloud.precision) * 0.5
     head.offset = pointcloud.offset
 
+    lsrs = liblas.srs.SRS()
     if pointcloud.crs_wkt != '':
-        head.srs.set_wkt(pointcloud.crs_wkt)
+        lsrs.set_wkt(pointcloud.crs_wkt)
     if pointcloud.crs_proj4 != '':
-        head.srs.set_proj4(pointcloud.crs_proj4)
+        lsrs.set_proj4(pointcloud.crs_proj4)
     if pointcloud.crs_verticalcs != '':
-        head.srs.set_verticalcs(pointcloud.crs_verticalcs)
+        lsrs.set_verticalcs(pointcloud.crs_verticalcs)
+    head.set_srs(lsrs)
 
     pc_array = np.asarray(pointcloud)
     head.min = pc_array.min(axis=0) + head.offset
