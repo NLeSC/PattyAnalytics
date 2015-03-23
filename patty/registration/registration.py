@@ -195,40 +195,6 @@ def register_from_footprint(pc, footprint, allow_scaling=True, allow_rotation=Tr
     return rot_matrix, rot_center, scale, translation
 
 
-def register_from_reference(pc, pc_ref):
-    '''Register a pointcloud by aligning it with a reference pointcloud.
-
-    Applies dbscan first.
-
-    Arguments:
-        pc : pcl.PointCloud
-            Pointcloud to be registered.
-        pc_ref : pcl.PointCloud
-            Reference pointcloud.
-        footprint : numpy.ndarray
-            Array of [x,y,z] describing the footprint.
-    Returns:
-        pc_trans : pcl.PointCloud
-            The original pointcloud, rotated/translated to the footprint.
-    '''
-    logging.info("Finding largest cluster")
-    pc_main = dbscan.largest_dbscan_cluster(pc, .1, 250)
-
-    logging.info("Finding rotation")
-    transform = find_rotation( pc_main, pc_ref )
-    pc_main.transform(transform)
-
-    logging.info("Registering pointcloud to footprint")
-    registered_offset, registered_scale = register_offset_scale_from_ref(
-        pc_main, np.asarray(pc_ref), pc_ref.offset)
-    copy_registration(pc, pc_main)
-
-    # rotate and scale up
-    transform[:3, :3] *= registered_scale
-    pc.transform(transform)
-
-    return pc
-
 def _find_rotation_helper(pointcloud):
     pca = PCA(n_components=3)
     pca.fit(np.asarray(pointcloud))
