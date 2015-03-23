@@ -64,26 +64,26 @@ def cutout_edge(pointcloud, polygon2d, polygon_width):
                         in_large_polygon & np.invert(in_polygon))
 
 
-def registration_pipeline(sourcefile, drivemapfile, footprintcsv, f_out,
-                          f_outdir, upfile=None, sample=-1):
-    """Single function wrapping whole script, so it can be unit tested"""
-    assert os.path.exists(sourcefile), sourcefile + ' does not exist'
-    assert os.path.exists(drivemapfile), drivemapfile + ' does not exist'
-    assert os.path.exists(footprintcsv), footprintcsv + ' does not exist'
+def registration_pipeline(pointcloud, drivemap, footprint, sample=-1):
+    """Full registration pipeline for the Via Appia pointclouds.
+    Modifies the pointcloud in-place.
 
-    #####
-    # Setup * the low-res drivemap
-    #       * footprint
-    #       * pointcloud
+    Arguments:
+        pointcloud: pcl.PointCloud
+                    The high-res object to register
 
-    log("reading drivemap ", drivemapfile)
-    drivemap = load(drivemapfile)
+        drivemap:   pcl.PointCloud
+                    A small part of the low-res drivemap on which to register 
 
-    log("reading footprint ", footprintcsv )
-    footprint = load_csv_polygon(footprintcsv)
+        footprint:  np.array
+                    Array containing the objects footprint
 
-    log("reading source", sourcefile)
-    pointcloud = load(sourcefile)
+        sample: int, default=-1, no resampling
+                    Downsample the high-res pointcloud before ICP step (UNIMPLEMENTED)
+
+    Returns:
+        Nothing, pointcloud is modified in-place
+    """
 
     #####
     # set scale and offset of pointcloud and drivemap
@@ -141,20 +141,19 @@ def registration_pipeline(sourcefile, drivemapfile, footprintcsv, f_out,
     log( "transf : %s" % transf )
     log( "fitness: %s" % fitness )
 
+    ####
+    # we could do a pointcloud.transform( transf ), but we already have
+    # a transformed pointcloud in memory. Copy metadata and return that one
+    copy_registration(estimate, pointcloud)
+    pointcloud = estimate
 
-    # construct output file dir/basename
-    if f_outdir is None:
-        f_out = os.path.abspath( f_out )
-    else:
-        f_out = os.path.join( f_outdir, f_out )
-
-    save(pointcloud, f_out + ".before.icp.las" )
-
-    pointcloud.transform( transf )
-    save(pointcloud, f_out )
 
 
 if __name__ == '__main__':
+
+    ####
+    # Parse comamnd line arguments
+
     args = docopt(__doc__)
 
     sourcefile = args['<source>']
@@ -164,5 +163,27 @@ if __name__ == '__main__':
     up_file = args['-u']
     sample = int(args['-d'])
 
-    registration_pipeline(sourcefile, drivemapfile, footprintcsv, foutLas,
-                          None, up_file, sample)
+    assert os.path.exists(sourcefile),   sourcefile   + ' does not exist'
+    assert os.path.exists(drivemapfile), drivemapfile + ' does not exist'
+    assert os.path.exists(footprintcsv), footprintcsv + ' does not exist'
+
+
+    #####
+    # Setup * the low-res drivemap
+    #       * footprint
+    #       * pointcloud
+
+    log("reading source", sourcefile)
+    pointcloud = load(sourcefile)
+
+    log("reading drivemap ", drivemapfile)
+    drivemap = load(drivemapfile)
+
+    log("reading footprint ", footprintcsv )
+    footprint = load_csv_polygon(footprintcsv)
+
+    # TODO: use up_file to orient the pointcloud upwards
+
+    registration_pipeline(pointcloud, drivemap, footprint, sample)
+    save(pointcloud, foutLas)
+

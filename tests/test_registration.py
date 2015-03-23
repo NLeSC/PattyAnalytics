@@ -144,7 +144,7 @@ class TestBoundary(unittest.TestCase):
 class TestRegistrationPipeline(unittest.TestCase):
 
     def setUp(self):
-        self.useLocal = False
+        self.useLocal = True
 
         if self.useLocal:
             self.tempdir = tempdir = '.'
@@ -205,10 +205,17 @@ class TestRegistrationPipeline(unittest.TestCase):
             shutil.rmtree(self.tempdir, ignore_errors=True)
 
     def test_pipeline(self):
+        # TODO: should just use shutil to run the registration.py script, and load the result
+
         # Register box on surface
-        registration_pipeline(self.sourcelas, self.drivemapLas,
-                              self.footprint_csv, self.foutlas, self.tempdir)
-        registered_pc = conversions.load(self.foutlas)
+        pc = conversions.load(self.sourcelas)
+        dm = conversions.load(self.drivemapLas)
+        fp = conversions.load_csv_polygon(self.footprint_csv)
+        
+        registration_pipeline(pc, dm, fp)
+        registered_pc = pc 
+
+        conversions.save(registered_pc, self.foutlas )
 
         target = np.asarray(self.source_pc) + self.source_pc.offset
         target -= np.array(self.dense_obj_offset)
