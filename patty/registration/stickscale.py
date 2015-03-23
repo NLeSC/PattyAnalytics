@@ -9,7 +9,7 @@ SEGMENTS_PER_METER = 5.0
 
 
 def get_stick_scale(pointcloud, eps=0.1, min_samples=20):
-    """Takes a point cloud, as a numpy array, containing only the red segments
+    """Takes a point cloud, as a numpy array, looks for red segments
     of scale sticks and returns the scale estimation with most support.
     Method:
     pointcloud --dbscan--> clusters --lengthEstimation-->
@@ -30,8 +30,15 @@ def get_stick_scale(pointcloud, eps=0.1, min_samples=20):
                       than .5, the estimate can be considered useable for
                       further calculations.
     """
+
+    # find the red segments to measure
+    pc_reds = extract_mask(pointcloud, get_red_mask(pointcloud))
+    if len(pc_reds) == 0:
+        # unit scale, zero confidence (ie. any other estimation is better)
+        return 1.0, 0.0 
+
     cluster_generator = segment_dbscan(
-        pointcloud, eps, min_samples, algorithm='kd_tree')
+        pc_reds, eps, min_samples, algorithm='kd_tree')
 
     sizes = [{'len': len(cluster),
               'meter': measure_length(cluster) * SEGMENTS_PER_METER}
@@ -39,22 +46,6 @@ def get_stick_scale(pointcloud, eps=0.1, min_samples=20):
     scale, votes, n_clusters = ransac(sizes)
     confidence = get_confidence_level(votes, n_clusters)
     return scale, confidence
-
-
-def get_preferred_scale_factor(pointcloud, scale_factor):
-    # Get reg_scale_2 from red stick
-    pc_reds = extract_mask(pointcloud, get_red_mask(pointcloud))
-    if len(pc_reds) == 0:
-        return scale_factor
-    # eps and min_samples omitted -- default values
-    red_scale, red_conf = get_stick_scale(pc_reds)
-
-    # Choose best registered scale
-    if red_conf < 0.5:
-        return scale_factor
-    else:
-        return 1.0 / red_scale
-
 
 def ransac(meter_clusters, rel_inlier_margin=0.05):
     """Very simple RANSAC implementation for finding the value with most
