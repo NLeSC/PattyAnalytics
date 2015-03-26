@@ -1,5 +1,5 @@
 tools:
-    external_code_coverage:
+    external_code_coverage: 
         timeout: 3600
 checks:
     python:
