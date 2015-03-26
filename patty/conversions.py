@@ -42,7 +42,7 @@ def clone(pc):
 
     return cp
 
-def load(path, format=None, load_rgb=True):
+def load(path, format=None, load_rgb=True, offset='auto'):
     """Read a pointcloud file.
 
     Supports LAS and CSV files, and lets PCD and PLY files be read by python-pcl.
@@ -56,12 +56,16 @@ def load(path, format=None, load_rgb=True):
         load_rgb : bool
             Whether RGB is loaded for PLY and PCD files. For LAS files, RGB is
             always read.
+        offset : 'auto', np.array([3])
+            Controls the offset of the pointcloud for LAS files.
+            Use 'auto' to center the pointcloud around the origin,
+            or give the center as a vector.
     Returns:
         cloud : pcl.PointCloud
             Registered pointcloud.
     """
     if format == 'las' or format is None and path.endswith('.las'):
-        return _load_las(path)
+        return _load_las(path, offset=offset)
     elif format == 'las' or format is None and path.endswith('.csv'):
         return _load_csv(path)
     else:
@@ -99,8 +103,12 @@ def save(cloud, path, format=None, binary=False):
         pcl.save(cloud, path, format=format, binary=binary)
 
 
-def _load_las(lasfile):
+def _load_las(lasfile, offset='auto'):
     """Read a LAS file
+
+    Arguments:
+        offset: 'auto': center the pointcloud around the origin
+                np.array([3]): center the pointcloud at the given coordinates
 
     Returns:
         registered pointcloudxyzrgb
@@ -122,8 +130,16 @@ def _load_las(lasfile):
             data[i] = (point.x, point.y, point.z, point.color.red /
                        256, point.color.green / 256, point.color.blue / 256)
 
-        bbox = BoundingBox(points=data[:, 0:3])
         # reduce the offset to decrease floating point errors
+        if offset and type(offset)==type("") and offset == 'auto':
+            bbox = BoundingBox(points=data[:, 0:3])
+            center = bbox.center
+        elif offset and type(offset)==type(data) and np.shape(offset) == (3,):
+            center = offset
+        else:
+            # FIXME: nicely throw error
+            sys.exit()
+
         data[:, 0:3] -= bbox.center
 
         pointcloud = pcl.PointCloudXYZRGB(data.astype(np.float32))
