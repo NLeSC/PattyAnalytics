@@ -8,7 +8,7 @@ import liblas
 import pcl
 import os
 import numpy as np
-
+import osgeo.osr as osr
 
 def _check_readable(filepath):
     """ Test whether filepath is readable, raises IOError otherwise """
@@ -159,6 +159,113 @@ def is_registered(pointcloud):
        to a specific spatial reference system and offset."""
     return hasattr(pointcloud, 'is_registered') and pointcloud.is_registered
 
+
+def set_srs(pc, same_as=None, offset=None, srs=None):
+    """Set the spatial reference system (SRS) and offset for a pointcloud.
+    This function transforms all the points to the new reference system, and
+    updates the metadata accordingly.
+
+    Either give a SRS and offset, or a reference pointcloud
+
+    NOTE: To add a SRS to a point cloud, or to update incorrect metadata,
+          use force_srs().
+
+    Example:
+
+        # set the SRS to lat/lon, don't use offset
+        set_srs( pc, srs="EPSG:4326", offset=[0,0,0] )
+
+    Arguments:
+        pc : pcl.Pointcloud
+
+        same_as : pcl.PointCloud
+
+        offset : np.array([3])
+            Must be added to the points to get absolute coordinates,
+            neccesary to retain precision for LAS pointclouds.
+
+        srs : object or osgeo.osr.SpatialReference
+            If it is an SpatialReference, it will be used directly.
+            Otherwise it is passed to osr.SpatialReference.SetFromUserInput()
+
+    Returns:
+        pc : pcl.PointCloud
+            The input pointcloud.
+    
+    """
+    if same_as:
+        newsrs    = same_as.srs
+        newoffset = same_as.offset
+    else:
+        if typeof(srs) == type(osr.SpatialReference()):
+            newsrs = srs
+        else:
+            newsrs = osr.SpatialReference()
+            newsrs.SetFromUserInput(srs)
+        if offset:
+            offset = np.asarray( offset )
+            if len(offset) != 4:
+                raise ValueError("Offset should be an np.array([3])")
+
+    if not pc.srs.IsSame( newsrs ):
+        # FIXME deal with old offset
+        T = osr.CoordinateTransformation( pc.srs, newsrs )
+
+    # FIXME do better comparison
+    if np.max(pc.offset - np.offset) < 1.e-5:
+        pc.translate( offset - pc.offset )
+
+    return pc
+
+def force_srs(pc, same_as=None, offset=None, srs=None):
+    """Set a spatial reference system (SRS) and offset for a pointcloud.
+    This function affects the metadata only, and sets pc.is_registered to True
+
+    Either give a SRS and offset, or a reference pointcloud
+
+    This is the recommended way to turn a python-pcl pointcloud to a 
+    registerd pointcloud with absolute coordiantes.
+
+    NOTE: To change the SRS for an already registered pointcloud, use set_srs()
+
+    Example:
+
+        # set the SRS to lat/lon, don't use offset
+        force_srs( pc, srs="EPSG:4326", offset=[0,0,0] )
+
+    Arguments:
+        pc : pcl.Pointcloud
+
+        same_as : pcl.PointCloud
+
+        offset : np.array([3])
+            Must be added to the points to get absolute coordinates,
+            neccesary to retain precision for LAS pointclouds.
+
+        srs : object or osgeo.osr.SpatialReference
+            If it is an SpatialReference, it will be used directly.
+            Otherwise it is passed to osr.SpatialReference.SetFromUserInput()
+
+    Returns:
+        pc : pcl.PointCloud
+            The input pointcloud.
+    
+    """
+    if same_as:
+        pc.srs = same_as.srs
+        pc.offset = same_as.offset
+    else:
+        if typeof(srs) == type(osr.SpatialReference()):
+            pc.srs = srs
+        else:
+            pc.srs = osr.SpatialReference()
+            pc.srs.SetFromUserInput(srs)
+        if offset:
+            offset = np.asarray( offset )
+            if len(offset) != 4:
+                raise ValueError("Offset should be an np.array([3])")
+            pc.offset = offset
+    return pc
 
 def set_registration(pointcloud, offset=None, precision=None, crs_wkt=None,
              crs_proj4=None, crs_verticalcs=None):
