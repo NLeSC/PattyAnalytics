@@ -4,11 +4,12 @@ from patty.segmentation import get_red_mask
 from patty import load, extract_mask
 from nose_parameterized import parameterized
 
-from nose.tools import assert_greater, assert_less
+from nose.tools import assert_greater, assert_less, assert_equal
 
 from helpers import make_red_stick, _add_noise
 import pcl
 import numpy as np
+import unittest
 
 
 # The ground truths for these tests was defined by measuring stick segments,
@@ -56,7 +57,6 @@ def test_stickscale(noise):
     red_part_length = 0.25 + noise
     assert_with_error(meter, 4*red_part_length/0.8)
     assert_with_error(confidence, 1.0)
-
 
 @parameterized.expand([
     (500, 3, 1.0),
@@ -106,3 +106,16 @@ def assert_with_error(estimated, expected):
                '\nEstimated: %f\nExpected: %f' % (100 * error_ratio,
                                                   margin, estimated, expected))
     assert_less(abs(estimated - expected), margin, message)
+
+class TestStickScale(unittest.TestCase):    
+    def test_stickscale_emptycloud(noise):
+        '''Cloud with zero point should return zero confidence.'''
+        pc = pcl.PointCloudXYZRGB()
+        meter, confidence = get_stick_scale(pc)
+        np.testing.assert_almost_equal(confidence, 0.0)
+
+    def test_stickscale_nocluster(noise):
+        '''Cloud without clusters should return zero confidence.'''
+        pc = pcl.PointCloudXYZRGB([[0, 0, 0], [10000, 10000, 10000]])
+        meter, confidence = get_stick_scale(pc)
+        np.testing.assert_almost_equal(confidence, 0.0)
