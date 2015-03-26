@@ -31,18 +31,18 @@ def get_stick_scale(pointcloud, eps=0.1, min_samples=20):
                       further calculations.
     """
     if pointcloud.size == 0:
-        return 1,0
-    
+        return 1, 0
+
     cluster_generator = segment_dbscan(
         pointcloud, eps, min_samples, algorithm='kd_tree')
 
     sizes = [{'len': len(cluster),
               'meter': measure_length(cluster) * SEGMENTS_PER_METER}
              for cluster in cluster_generator]
-    
+
     if len(sizes) == 0:
-        return 1,0
-    
+        return 1, 0
+
     scale, votes, n_clusters = ransac(sizes)
     confidence = get_confidence_level(votes, n_clusters)
     return scale, confidence
@@ -89,7 +89,7 @@ def ransac(meter_clusters, rel_inlier_margin=0.05):
             best_support = support
 
     estimate = np.mean([supportCluster['meter']
-                       for supportCluster in best_support])
+                        for supportCluster in best_support])
     return estimate, best_vote_count, len(best_support)
 
 

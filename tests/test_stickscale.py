@@ -4,7 +4,7 @@ from patty.segmentation import get_red_mask
 from patty import load, extract_mask
 from nose_parameterized import parameterized
 
-from nose.tools import assert_greater, assert_less, assert_equal
+from nose.tools import assert_greater, assert_less
 
 from helpers import make_red_stick, _add_noise
 import pcl
@@ -55,15 +55,16 @@ def test_stickscale(noise):
     pc = make_pointcloud((s1, s2, s3), noise)
     meter, confidence = get_stick_scale(pc)
     red_part_length = 0.25 + noise
-    assert_with_error(meter, 4*red_part_length/0.8)
+    assert_with_error(meter, 4 * red_part_length / 0.8)
     assert_with_error(confidence, 1.0)
+
 
 @parameterized.expand([
     (500, 3, 1.0),
-    (100, 3, 1.0/5.0),
-    (500, 2, 2.0/3.0),
-    (500, 1, 1.0/3.0),
-    (100, 2, min(1.0/5.0, 2.0/3.0)),
+    (100, 3, 1.0 / 5.0),
+    (500, 2, 2.0 / 3.0),
+    (500, 1, 1.0 / 3.0),
+    (100, 2, min(1.0 / 5.0, 2.0 / 3.0)),
 ])
 def test_confidence(votes, numberOfClusters, expected_confidence):
     confidence = get_confidence_level(votes, numberOfClusters)
@@ -107,7 +108,9 @@ def assert_with_error(estimated, expected):
                                                   margin, estimated, expected))
     assert_less(abs(estimated - expected), margin, message)
 
-class TestStickScale(unittest.TestCase):    
+
+class TestStickScale(unittest.TestCase):
+
     def test_stickscale_emptycloud(noise):
         '''Cloud with zero point should return zero confidence.'''
         pc = pcl.PointCloudXYZRGB()
