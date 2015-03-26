@@ -25,7 +25,7 @@ import time
 import os
 from patty.conversions import (load, save, clone,
                                copy_registration, extract_mask, BoundingBox)
-from patty.registration import (register_from_footprint, auto
+from patty.registration import (register_from_footprint,
                                 point_in_polygon2d, downsample_random)
 from patty.segmentation.dbscan import get_largest_dbscan_clusters
 from patty.registration.stickscale import get_stick_scale
