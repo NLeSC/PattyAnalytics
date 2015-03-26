@@ -9,7 +9,7 @@ from pcl.boundaries import estimate_boundaries
 import numpy as np
 import logging
 import json
-from .. import copy_registration, is_registered, extract_mask, set_registration, BoundingBox
+from .. import copy_registration, is_registered, extract_mask, BoundingBox
 from ..segmentation import dbscan
 from matplotlib import path
 from sklearn.decomposition import PCA
@@ -61,6 +61,7 @@ def downsample_random(pc, fraction, random_seed=None):
         copy_registration(new_pc, pc)
     return new_pc
 
+
 def get_pointcloud_boundaries(pointcloud, angle_threshold=0.1,
                               search_radius=None, normal_search_radius=None):
     '''Find the boundary of a pointcloud.
@@ -81,21 +82,21 @@ def get_pointcloud_boundaries(pointcloud, angle_threshold=0.1,
 
     if search_radius == None:
         bb = BoundingBox(points=pointcloud)
-        logging.info( bb )
-        logging.info( bb.diagonal )
-        search_radius = 0.01 * bb.diagonal 
+        logging.info(bb)
+        logging.info(bb.diagonal)
+        search_radius = 0.01 * bb.diagonal
 
     if normal_search_radius == None:
         normal_search_radius = search_radius
 
-    logging.info("Search radius from bounding box: %f" % search_radius )
+    logging.info("Search radius from bounding box: %f" % search_radius)
 
     boundary = estimate_boundaries(pointcloud, angle_threshold=angle_threshold,
                                    search_radius=search_radius,
                                    normal_search_radius=normal_search_radius)
 
-    logging.info("Found %d out of %d boundary points" 
-                   % (np.count_nonzero(boundary),len(pointcloud)))
+    logging.info("Found %d out of %d boundary points"
+                 % (np.count_nonzero(boundary), len(pointcloud)))
 
     return extract_mask(pointcloud, boundary)
 
@@ -107,7 +108,7 @@ def register_from_footprint(pc, footprint, allow_scaling=True, allow_rotation=Tr
     by taking the pointcloud boundary.
     Then the pointcloud footprint is alinged with the reference footprint
     by rotating its pricipal axis, and translating it so the centers of mass
-    coincide. 
+    coincide.
     Finally, the pointcloud is scaled to have the same extent. The scale factor is
     is determined by the red meter sticks detection algorithm, or form the fit between
     pc and footprint if red meter sticks cant be found.
@@ -130,7 +131,7 @@ def register_from_footprint(pc, footprint, allow_scaling=True, allow_rotation=Tr
     boundary = get_pointcloud_boundaries(pc_main)
 
     if len(boundary) == len(pc_main) or len(boundary) == 0:
-        log("Boundary information could not be retrieved")
+        logging.info("Boundary information could not be retrieved")
         return None
 
     if allow_rotation:
@@ -139,26 +140,26 @@ def register_from_footprint(pc, footprint, allow_scaling=True, allow_rotation=Tr
         rot_matrix = find_rotation(boundary, footprint)
         boundary.rotate(rot_matrix, origin=rot_center)
     else:
-        rot_center = np.array( [0.0, 0.0, 0.0] )
+        rot_center = np.array([0.0, 0.0, 0.0])
         rot_matrix = np.eye(3)
 
     if allow_scaling:
         logging.info("Finding scale")
-        footprint_bb = BoundingBox( footprint )
-        boundary_bb = BoundingBox( boundary )
+        footprint_bb = BoundingBox(footprint)
+        boundary_bb = BoundingBox(boundary)
         scale = footprint_bb.size / boundary_bb.size
         # take the average scale factor for the x and y dimensions
-        scale = np.mean( scale[0:2] )
+        scale = np.mean(scale[0:2])
     else:
         scale = 1.0
 
     if allow_translation:
         logging.info("Finding translation")
-        fp_center = np.mean( footprint, axis=0 )
+        fp_center = np.mean(footprint, axis=0)
         translation = fp_center - rot_center
-        boundary.translate( translation ) 
+        boundary.translate(translation)
     else:
-        translation = np.array( [0.0,0.0,0.0] )
+        translation = np.array([0.0, 0.0, 0.0])
 
     return rot_matrix, rot_center, scale, translation
 
@@ -170,14 +171,15 @@ def _find_rotation_helper(pointcloud):
     rotation = np.array(pca.components_)
 
     # keep the up direction pointing (mostly) upwards
-    if rotation[2,2] < 0.0:
-        rotation[:,2] *= -1.0 # flip the whole vector
+    if rotation[2, 2] < 0.0:
+        rotation[:, 2] *= -1.0  # flip the whole vector
 
     # make sure the rotation is a proper rotation, ie det = +1
-    if np.linalg.det( rotation ) < 0:
-        rotation[:,1] *= -1.0
+    if np.linalg.det(rotation) < 0:
+        rotation[:, 1] *= -1.0
 
-    return rotation 
+    return rotation
+
 
 def find_rotation(pc, ref):
     '''Find the transformation that rotates the principal axis of the
@@ -193,8 +195,8 @@ def find_rotation(pc, ref):
         numpy array of shape [3,3], can be used to rotate pointclouds with pc.rotate()
     '''
 
-    pc_transform  = _find_rotation_helper( pc )
-    ref_transform = _find_rotation_helper( ref )
+    pc_transform = _find_rotation_helper(pc)
+    ref_transform = _find_rotation_helper(ref)
 
     return np.dot(np.linalg.inv(ref_transform), pc_transform)
 
@@ -208,6 +210,7 @@ def point_in_polygon2d(points, polygon):
 def intersect_polygon2d(pc, polygon):
     in_polygon = point_in_polygon2d(np.asarray(pc) + pc.offset, polygon)
     return extract_mask(pc, in_polygon)
+
 
 def is_upside_down(upfilepath, transform):
     '''Decides if a pointcloud is upside down using its relative up
@@ -230,6 +233,6 @@ def is_upside_down(upfilepath, transform):
         return False
 
     estimated_up = np.array(dic['estimatedUpDirection'])
-    real_up = transform[:,2]
+    real_up = transform[:, 2]
 
-    return np.dot( estimated_up, real_up ) < 0
+    return np.dot(estimated_up, real_up) < 0

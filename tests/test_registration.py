@@ -9,7 +9,7 @@ from patty import conversions
 from patty.registration import (point_in_polygon2d, downsample_voxel,
                                 intersect_polygon2d,
                                 get_pointcloud_boundaries, is_upside_down)
-from patty.conversions import BoundingBox, clone
+from patty.conversions import clone
 from scripts.registration import registration_pipeline
 
 from helpers import make_tri_pyramid_with_base
@@ -81,20 +81,22 @@ class TestBoundary(unittest.TestCase):
         boundary = get_pointcloud_boundaries(self.pc, search_radius=0.02)
         assert_equal(self.pc.size, self.num_points)
         assert_less(boundary.size, self.num_points)
-        assert_greater(boundary.size, 0)
+        assert_greater(boundary.size, 0, "Boundary has no points")
 
         center = boundary.center()
-        small_footprint = clone( boundary ).scale(0.9, origin=center)
-        large_footprint = clone( boundary ).scale(0.9, origin=center)
+        small_footprint = clone(boundary).scale(0.9, origin=center)
+        large_footprint = clone(boundary).scale(1.0, origin=center)
 
         print(boundary, large_footprint, small_footprint)
 
-        assert_equal(np.sum(point_in_polygon2d(boundary, small_footprint)), 0)
-        assert_equal(np.sum(point_in_polygon2d(boundary, large_footprint)),
-                     boundary.size)
-        assert_greater(np.sum(point_in_polygon2d(self.pc, small_footprint)), 0)
-        assert_equal(np.sum(point_in_polygon2d(self.pc, large_footprint)),
-                     self.pc.size)
+        assert_equal(np.sum(point_in_polygon2d(boundary, small_footprint)), 0,
+                     "No boundary points should be inside small footprint")
+        assert_greater(np.sum(point_in_polygon2d(self.pc, small_footprint)), 0,
+                       "No pointcloud points were found inside small footprint")
+        assert_greater(np.sum(point_in_polygon2d(boundary, large_footprint)), 0,
+                       "No boundary points were found inside large footprint")
+        assert_greater(np.sum(point_in_polygon2d(self.pc, large_footprint)), 0,
+                       "No pointcloud points were found inside large footprint")
 
     def test_boundaries_too_small_radius(self):
         boundary = get_pointcloud_boundaries(
@@ -166,17 +168,18 @@ class TestRegistrationPipeline(unittest.TestCase):
             shutil.rmtree(self.tempdir, ignore_errors=True)
 
     def test_pipeline(self):
-        # TODO: should just use shutil to run the registration.py script, and load the result
+        # TODO: should just use shutil to run the registration.py script, and
+        # load the result
 
         # Register box on surface
-        pc = conversions.load(self.sourcelas, offset=[0,0,0])
-        dm = conversions.load(self.drivemapLas, offset=[0,0,0])
-        fp = conversions.load(self.footprint_csv, offset=[0,0,0])
-        
-        registration_pipeline(pc, dm, fp)
-        registered_pc = pc 
+        pc = conversions.load(self.sourcelas, offset=[0, 0, 0])
+        dm = conversions.load(self.drivemapLas, offset=[0, 0, 0])
+        fp = conversions.load(self.footprint_csv, offset=[0, 0, 0])
 
-        conversions.save(registered_pc, self.foutlas )
+        registration_pipeline(pc, dm, fp)
+        registered_pc = pc
+
+        conversions.save(registered_pc, self.foutlas)
 
         target = np.asarray(self.source_pc) + self.source_pc.offset
         target -= np.array(self.dense_obj_offset)
@@ -194,6 +197,7 @@ class TestRegistrationPipeline(unittest.TestCase):
 
 
 class TestUpsideDown(unittest.TestCase):
+
     def setUp(self):
         testdir = 'tests'
         self.down = os.path.join(testdir, 'testdownfile.json')

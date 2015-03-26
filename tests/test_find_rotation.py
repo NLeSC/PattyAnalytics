@@ -2,8 +2,7 @@ import numpy as np
 from patty.registration import find_rotation
 import pcl
 
-from numpy.testing import assert_almost_equal, assert_equal
-from nose.tools import assert_true
+from numpy.testing import assert_almost_equal
 import unittest
 
 class TestFindRotation(unittest.TestCase):
@@ -19,7 +18,7 @@ class TestFindRotation(unittest.TestCase):
         self.pc2.rotate( self.rotation )
 
     def test_perfectly_aligned(self):
-        rotation = find_rotation( self.pc1, self.pc1 ) 
+        rotation = find_rotation( self.pc1, self.pc1 )
         assert_almost_equal( rotation, np.eye(3) )
 
     def test_rotated(self):
