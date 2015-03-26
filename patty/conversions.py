@@ -159,6 +159,19 @@ def is_registered(pointcloud):
        to a specific spatial reference system and offset."""
     return hasattr(pointcloud, 'is_registered') and pointcloud.is_registered
 
+def same_srs(pcA, pcB):
+    """True if the two pointclouds have the same coordinate system
+
+    Arguments:
+        pcA : pcl.PointCloud
+        pcB : pc..PointCloud
+    """
+
+    if pcA.is_registered() and pcB.is_registered():
+        if np.mean(pcA.offset - pcB.offset) < 1E-5:
+            if pcA.srs.IsSame( pcB.srs ):
+                return True
+    return False
 
 def set_srs(pc, same_as=None, offset=None, srs=None):
     """Set the spatial reference system (SRS) and offset for a pointcloud.
