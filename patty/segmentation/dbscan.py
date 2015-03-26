@@ -75,45 +75,6 @@ def segment_dbscan(pointcloud, epsilon, minpoints, **kwargs):
             for label in np.unique(labels[labels != -1]))
 
 
-def largest_dbscan_cluster(pointcloud, epsilon=0.1, minpoints=250,
-                           rgb_weight=0):
-    '''
-    Finds the largest cluster found in the pointcloud
-
-    Parameters
-    ----------
-    pointcloud : pcl.PointCloud
-        Input pointcloud.
-    epsilon : float
-        Neighborhood radius for DBSCAN.
-    minpoints : integer
-        Minimum neighborhood density for DBSCAN.
-    rgb_weight : float, optional
-        If non-zero, cluster on color information as well as location;
-        specifies the relative weight of the RGB components to spatial
-        coordinates in distance computations.
-        (RGB values have wildly different scales than spatial coordinates.)
-
-    Returns
-    -------
-    cluster : pcl.PointCloud
-        Registered pointcloud of the largest cluster found by dbscan.
-    '''
-    labels = dbscan_labels(
-        pointcloud, epsilon, minpoints, rgb_weight=rgb_weight)
-
-    # Labels start at -1, so increase all by 1.
-    bins = np.bincount(labels + 1)
-
-    # Pointcloud is the only cluster
-    if len(bins) < 2:
-        return extract_mask(pointcloud, np.ones(len(pointcloud), dtype=bool))
-
-    # Indexes are automatically moved one back by [1:]
-    max_label = np.argmax(bins[1:])
-    return extract_mask(pointcloud, labels == max_label)
-
-
 def get_largest_dbscan_clusters(pointcloud, min_return_fragment=0.7,
                                 epsilon=0.1, minpoints=250, rgb_weight=0):
     '''
