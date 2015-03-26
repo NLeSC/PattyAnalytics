@@ -169,9 +169,9 @@ class TestRegistrationPipeline(unittest.TestCase):
         # TODO: should just use shutil to run the registration.py script, and load the result
 
         # Register box on surface
-        pc = conversions.load(self.sourcelas)
-        dm = conversions.load(self.drivemapLas)
-        fp = conversions.load(self.footprint_csv)
+        pc = conversions.load(self.sourcelas, offset=[0,0,0])
+        dm = conversions.load(self.drivemapLas, offset=[0,0,0])
+        fp = conversions.load(self.footprint_csv, offset=[0,0,0])
         
         registration_pipeline(pc, dm, fp)
         registered_pc = pc 

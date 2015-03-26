@@ -125,7 +125,7 @@ def registration_pipeline(pointcloud, drivemap, footprint, sample=-1):
     # match the pointcloud boundary with the footprint boundary
 
     rot_matrix, rot_center, scale, translation = register_from_footprint(
-                pointcloud, np.asarray(footprint_boundary),
+                pointcloud, footprint_boundary,
                 allow_scaling=allow_scaling,
                 allow_rotation=True,
                 allow_translation=True)
@@ -178,13 +178,13 @@ if __name__ == '__main__':
     #       * pointcloud
 
     log("reading source", sourcefile)
-    pointcloud = load(sourcefile)
+    pointcloud = load(sourcefile, offset=[0,0,0])
 
     log("reading drivemap ", drivemapfile)
-    drivemap = load(drivemapfile)
+    drivemap = load(drivemapfile, offset=[0,0,0])
 
     log("reading footprint ", footprintcsv)
-    footprint = load(footprintcsv)
+    footprint = load(footprintcsv, offset=[0,0,0])
 
     # TODO: use up_file to orient the pointcloud upwards
 

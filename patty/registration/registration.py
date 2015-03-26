@@ -115,8 +115,8 @@ def register_from_footprint(pc, footprint, allow_scaling=True, allow_rotation=Tr
     Arguments:
         pc : pcl.PointCloud
 
-        footprint : np.ndarray
-            Array of [x,y,z] describing the footprint.
+        footprint : pcl.PointCloud
+            Treated as array of [x,y] describing the footprint.
 
     Returns:
         The original pointcloud, rotated/translated to match the footprint.

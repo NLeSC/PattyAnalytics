@@ -131,20 +131,19 @@ def _load_las(lasfile, offset='auto'):
                        256, point.color.green / 256, point.color.blue / 256)
 
         # reduce the offset to decrease floating point errors
-        if offset and type(offset)==type("") and offset == 'auto':
+        if offset == 'auto':
             bbox = BoundingBox(points=data[:, 0:3])
             center = bbox.center
-        elif offset and type(offset)==type(data) and np.shape(offset) == (3,):
-            center = offset
         else:
-            # FIXME: nicely throw error
-            sys.exit()
+            center = np.asarray(offset)
+            if len(center) != 3: 
+                raise ValueError
 
-        data[:, 0:3] -= bbox.center
+        data[:, 0:3] -= center
 
         pointcloud = pcl.PointCloudXYZRGB(data.astype(np.float32))
 
-        set_registration(pointcloud, offset=bbox.center,
+        set_registration(pointcloud, offset=center,
                          precision=las.header.scale,
                          crs_wkt=las.header.srs.get_wkt(),
                          crs_proj4=las.header.srs.get_proj4())
