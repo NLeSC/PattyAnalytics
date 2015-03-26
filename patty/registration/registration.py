@@ -155,8 +155,7 @@ def register_from_footprint(pc, footprint, allow_scaling=True, allow_rotation=Tr
 
     if allow_translation:
         logging.info("Finding translation")
-        fp_center = np.mean(footprint, axis=0)
-        translation = fp_center - rot_center
+        translation = fp.center() - rot_center
         boundary.translate(translation)
     else:
         translation = np.array([0.0, 0.0, 0.0])

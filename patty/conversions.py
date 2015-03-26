@@ -38,7 +38,7 @@ def clone(pc):
 
     cp = pcl.PointCloud( np.asarray(pc) )
     if is_registered(pc):
-        copy_registration(cp, pc)
+        force_srs(cp, same_as=pc)
 
     return cp
 
@@ -210,7 +210,7 @@ def set_srs(pc, same_as=None, offset=None, srs=None):
         newsrs    = same_as.srs
         newoffset = same_as.offset
     else:
-        if typeof(srs) == type(osr.SpatialReference()):
+        if type(srs) == type(osr.SpatialReference()):
             newsrs = srs
         else:
             newsrs = osr.SpatialReference()
@@ -230,7 +230,7 @@ def set_srs(pc, same_as=None, offset=None, srs=None):
 
     return pc
 
-def force_srs(pc, same_as=None, offset=None, srs=None):
+def force_srs(pc, same_as=None, offset=np.array([0,0,0]), srs=None):
     """Set a spatial reference system (SRS) and offset for a pointcloud.
     This function affects the metadata only, and sets pc.is_registered to True
 
@@ -265,19 +265,25 @@ def force_srs(pc, same_as=None, offset=None, srs=None):
     
     """
     if same_as:
-        pc.srs = same_as.srs
-        pc.offset = same_as.offset
+        if is_registered(same_as):
+            pc.srs = same_as.srs
+            pc.offset = same_as.offset
+        else:
+            raise ValueError("Reference pointlcoud is not registered")
     else:
-        if typeof(srs) == type(osr.SpatialReference()):
+        if type(srs) == type(osr.SpatialReference()):
             pc.srs = srs
         else:
             pc.srs = osr.SpatialReference()
             pc.srs.SetFromUserInput(srs)
-        if offset:
+
             offset = np.asarray( offset )
-            if len(offset) != 4:
+            if len(offset) != 3:
                 raise ValueError("Offset should be an np.array([3])")
             pc.offset = offset
+
+    pc.is_registered = True
+
     return pc
 
 def set_registration(pointcloud, offset=None, precision=None, crs_wkt=None,
@@ -396,7 +402,11 @@ def make_las_header(pointcloud):
     """Make a LAS header for given pointcloud.
 
     If the pointcloud is registered, this is taken into account for the
-    header metadata. Has the side-effect of registering the given pointcloud.
+    header metadata.
+
+    LAS rounds the coordinates on writing; this is controlled via the
+    'precision' attribute of the input pointcloud. By default this is
+    0.01 in units of the projection.
 
     Arguments:
         pointcloud : pcl.PointCloud
@@ -415,21 +425,19 @@ def make_las_header(pointcloud):
     head.major_version = 1
     head.minor_version = 2
 
-    set_registration(pointcloud)
+    if is_registered(pointcloud):
+        lsrs = liblas.srs.SRS()
+        lsrs.set_wkt(pointcloud.srs.ExportToWkt())
+        head.set_srs(lsrs)
+
+    if not hasattr(pointcloud, 'precision'):
+        pointcloud.precision = np.array([0.01, 0.01, 0.01], dtype=np.float64)
+
     # FIXME: need extra precision to reduce floating point errors. We don't
     # know exactly why this works. It might reduce precision on the top of
     # the float, but reduces an error of one bit for the last digit.
     head.scale = np.asarray(pointcloud.precision) * 0.5
     head.offset = pointcloud.offset
-
-    lsrs = liblas.srs.SRS()
-    if pointcloud.crs_wkt != '':
-        lsrs.set_wkt(pointcloud.crs_wkt)
-    if pointcloud.crs_proj4 != '':
-        lsrs.set_proj4(pointcloud.crs_proj4)
-    if pointcloud.crs_verticalcs != '':
-        lsrs.set_verticalcs(pointcloud.crs_verticalcs)
-    head.set_srs(lsrs)
 
     pc_array = np.asarray(pointcloud)
     head.min = pc_array.min(axis=0) + head.offset

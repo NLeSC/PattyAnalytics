@@ -24,6 +24,7 @@ import numpy as np
 import time
 import os
 from patty.conversions import (load, save, clone,
+                               set_srs, force_srs, same_srs,
                                copy_registration, extract_mask, BoundingBox)
 from patty.registration import (register_from_footprint,
                                 point_in_polygon2d, downsample_random)
@@ -99,11 +100,11 @@ def registration_pipeline(pointcloud, drivemap, footprint, sample=-1):
     """
 
     #####
-    # set scale and offset of pointcloud and drivemap
+    # set scale and offset of pointcloud, drivemap, and footprint
     # as the pointcloud is unregisterd, the coordinate system is undefined,
     # and we lose nothing if we just copy it
+    force_srs(pointcloud, same_as=drivemap)
 
-    copy_registration(pointcloud, drivemap)
 
     #####
     # find all the points in the drivemap along the footprint
@@ -154,11 +155,7 @@ def registration_pipeline(pointcloud, drivemap, footprint, sample=-1):
     log("transf : %s" % transf)
     log("fitness: %s" % fitness)
 
-    ####
-    # we could do a pointcloud.transform( transf ), but we already have
-    # a transformed pointcloud in memory. Copy metadata and return that one
-    copy_registration(estimate, pointcloud)
-    pointcloud = estimate
+    # pointcloud.transform( transf )
 
 
 if __name__ == '__main__':
@@ -184,14 +181,16 @@ if __name__ == '__main__':
     #       * footprint
     #       * pointcloud
 
-    log("reading source", sourcefile)
-    pointcloud = load(sourcefile, offset=[0, 0, 0])
+    log("reading footprint ", footprintcsv)
+    footprint = load(footprintcsv, offset=[0, 0, 0])
+    force_srs( footprint, srs="EPSG:28992" ) # FIXME: set to via appia projection
 
     log("reading drivemap ", drivemapfile)
     drivemap = load(drivemapfile, offset=[0, 0, 0])
+    force_srs( drivemap, srs="EPSG:28992" ) # FIXME: set to via appia projection
 
-    log("reading footprint ", footprintcsv)
-    footprint = load(footprintcsv, offset=[0, 0, 0])
+    log("reading source", sourcefile)
+    pointcloud = load(sourcefile, offset=[0, 0, 0])
 
     # TODO: use up_file to orient the pointcloud upwards
 
