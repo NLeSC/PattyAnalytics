@@ -43,7 +43,6 @@ class TestCutoutPointCloud(unittest.TestCase):
         data = np.zeros((4, 6), dtype=np.float32)
         data[:, :2] = points
         self.pc = pcl.PointCloudXYZRGB(data)
-        conversions.set_registration(self.pc, offset=self.offset)
 
     def test_cutout_from_footprint(self):
         ''' Test whether a cutout from a pointcloud gets the right points '''
@@ -53,8 +52,6 @@ class TestCutoutPointCloud(unittest.TestCase):
         err_msg = "point that should be matched was modified"
         assert_array_almost_equal(pc_fp[0], [0.5, 0.2, 0., 0., 0., 0.],
                                   err_msg=err_msg)
-        err_msg = "offset changed by intersection with polygon"
-        assert_array_equal(pc_fp.offset, self.offset, err_msg=err_msg)
 
 
 def array_in_margin(target, actual, margin, msg):
@@ -72,7 +69,6 @@ class TestBoundary(unittest.TestCase):
         row = np.linspace(start=0.0, stop=self.max, num=self.num_rows)
         grid[:, 0:2] = cartesian((row, row))
         self.pc = pcl.PointCloudXYZRGB(grid.astype(np.float32))
-        conversions.set_registration(self.pc)
         self.footprint_boundary = np.array(
             [[0.0, 0.0], [0.0, self.max],
              [self.max, self.max], [self.max, 0.0]])
@@ -151,7 +147,7 @@ class TestRegistrationPipeline(unittest.TestCase):
         self.drivemap_pc = pcl.PointCloudXYZRGB(plane_grid)
         self.drivemap_pc = downsample_voxel(self.drivemap_pc,
                                             voxel_size=delta * 20)
-        conversions.set_registration(self.drivemap_pc)
+        # conversions.set_registration(self.drivemap_pc)
         conversions.save(self.drivemap_pc, self.drivemapLas)
 
         # Create a simple pyramid
@@ -160,7 +156,6 @@ class TestRegistrationPipeline(unittest.TestCase):
 
         self.source_pc = pcl.PointCloudXYZRGB(dense_grid)
         self.source_pc = downsample_voxel(self.source_pc, voxel_size=delta * 5)
-        conversions.set_registration(self.source_pc)
         conversions.save(self.source_pc, self.sourcelas)
 
     def tearDown(self):
@@ -170,6 +165,7 @@ class TestRegistrationPipeline(unittest.TestCase):
     def test_pipeline(self):
         # TODO: should just use shutil to run the registration.py script, and
         # load the result
+        # system( 'registration.py self.sourcelas self.drivemapLas self.footprint_csv self.foutlas' )
 
         # Register box on surface
         pc = conversions.load(self.sourcelas, offset=[0, 0, 0])

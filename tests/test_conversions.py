@@ -23,16 +23,17 @@ def test_read_write():
     filename = './testIO.las'
 
     pc = _make_some_points()
-    conversions.set_registration(pc)
-
+    pc = pcl.PointCloudXYZRGB( [[0,0,0],[3,4,5]] )
+    conversions.force_srs(pc, srs="EPSG:28992", offset=[1,2,3])
     conversions.save(pc, filename)
-    pc2 = conversions.load(filename)
+
+    pc2 = conversions.load(filename, same_as=pc)
 
     pc_arr = pc.to_array()
     pc2_arr = pc2.to_array()
-    pc2_arr[:, 0] += pc2.offset[0]
-    pc2_arr[:, 1] += pc2.offset[1]
-    pc2_arr[:, 2] += pc2.offset[2]
+    # pc2_arr[:, 0] += pc2.offset[0]
+    # pc2_arr[:, 1] += pc2.offset[1]
+    # pc2_arr[:, 2] += pc2.offset[2]
     assert_array_almost_equal(pc_arr, pc2_arr, 2,
                               "Written/read point clouds are different!")
     os.remove(filename)

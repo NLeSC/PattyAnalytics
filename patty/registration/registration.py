@@ -9,7 +9,7 @@ from pcl.boundaries import estimate_boundaries
 import numpy as np
 import logging
 import json
-from .. import copy_registration, is_registered, extract_mask, BoundingBox
+from .. import is_registered, extract_mask, BoundingBox
 from ..segmentation import dbscan
 from matplotlib import path
 from sklearn.decomposition import PCA
@@ -155,7 +155,7 @@ def register_from_footprint(pc, footprint, allow_scaling=True, allow_rotation=Tr
 
     if allow_translation:
         logging.info("Finding translation")
-        translation = fp.center() - rot_center
+        translation = footprint.center() - rot_center
         boundary.translate(translation)
     else:
         translation = np.array([0.0, 0.0, 0.0])
@@ -207,7 +207,7 @@ def point_in_polygon2d(points, polygon):
 
 
 def intersect_polygon2d(pc, polygon):
-    in_polygon = point_in_polygon2d(np.asarray(pc) + pc.offset, polygon)
+    in_polygon = point_in_polygon2d(np.asarray(pc), polygon)
     return extract_mask(pc, in_polygon)
 
 

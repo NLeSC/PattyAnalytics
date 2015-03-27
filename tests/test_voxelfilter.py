@@ -19,7 +19,6 @@ def test_filter():
     points, footprint = make_tri_pyramid_with_base(side, delta, offset)
 
     pc = pcl.PointCloudXYZRGB(points.astype(np.float32))
-    patty.set_registration(pc)
 
     # Build Voxel Grid Filter
     vgf = pc.make_voxel_grid_filter()

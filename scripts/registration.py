@@ -25,7 +25,7 @@ import time
 import os
 from patty.conversions import (load, save, clone,
                                set_srs, force_srs, same_srs,
-                               copy_registration, extract_mask, BoundingBox)
+                               extract_mask, BoundingBox)
 from patty.registration import (register_from_footprint,
                                 point_in_polygon2d, downsample_random)
 from patty.segmentation.dbscan import get_largest_dbscan_clusters
@@ -140,7 +140,7 @@ def registration_pipeline(pointcloud, drivemap, footprint, sample=-1):
         allow_rotation=True,
         allow_translation=True)
 
-    log("Applying transforms to pointcloud")
+    log("Applying initial alignment to pointcloud")
     pointcloud.rotate(rot_matrix, origin=rot_center)
     pointcloud.scale(scale, origin=rot_center)
     pointcloud.translate(translation)
@@ -155,7 +155,8 @@ def registration_pipeline(pointcloud, drivemap, footprint, sample=-1):
     log("transf : %s" % transf)
     log("fitness: %s" % fitness)
 
-    # pointcloud.transform( transf )
+    log("Applying ICP transform to pointcloud")
+    pointcloud.transform( transf )
 
 
 if __name__ == '__main__':
@@ -182,15 +183,13 @@ if __name__ == '__main__':
     #       * pointcloud
 
     log("reading footprint ", footprintcsv)
-    footprint = load(footprintcsv, offset=[0, 0, 0])
-    force_srs( footprint, srs="EPSG:28992" ) # FIXME: set to via appia projection
+    footprint = load(footprintcsv, srs="EPSG:32633", offset=[0, 0, 0]) # FIXME: set to via appia projection
 
     log("reading drivemap ", drivemapfile)
-    drivemap = load(drivemapfile, offset=[0, 0, 0])
-    force_srs( drivemap, srs="EPSG:28992" ) # FIXME: set to via appia projection
+    drivemap = load(drivemapfile, same_as=footprint)
 
     log("reading source", sourcefile)
-    pointcloud = load(sourcefile, offset=[0, 0, 0])
+    pointcloud = load(sourcefile )
 
     # TODO: use up_file to orient the pointcloud upwards
 

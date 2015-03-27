@@ -42,7 +42,7 @@ def clone(pc):
 
     return cp
 
-def load(path, format=None, load_rgb=True, offset='auto'):
+def load(path, format=None, load_rgb=True, same_as=None, offset=None, srs=None):
     """Read a pointcloud file.
 
     Supports LAS and CSV files, and lets PCD and PLY files be read by python-pcl.
@@ -56,23 +56,36 @@ def load(path, format=None, load_rgb=True, offset='auto'):
         load_rgb : bool
             Whether RGB is loaded for PLY and PCD files. For LAS files, RGB is
             always read.
-        offset : 'auto', np.array([3])
-            Controls the offset of the pointcloud for LAS files.
-            Use 'auto' to center the pointcloud around the origin,
-            or give the center as a vector.
+
+    Optional Arguments. These are passed to set_srs() if the pointcloud has a
+    reference system (LAS), or to force_srs() if not.
+
+        same_as : pcl.pointcloud
+        offset : np.array([3])
+        srs : object or osgeo.osr.SpatialReference
+
     Returns:
-        cloud : pcl.PointCloud
-            Registered pointcloud.
+        pc : pcl.PointCloud
     """
     if format == 'las' or format is None and path.endswith('.las'):
-        return _load_las(path, offset=offset)
+        pc = _load_las(path)
     elif format == 'las' or format is None and path.endswith('.csv'):
-        return _load_csv(path)
+        pc = _load_csv(path)
     else:
         _check_readable(path)
-        pointcloud = pcl.load(path, format=format, loadRGB=load_rgb)
-        set_registration(pointcloud)
-        return pointcloud
+        pc = pcl.load(path, format=format, loadRGB=load_rgb)
+
+    # Set SRS and offset
+    if same_as or (offset and srs):
+        if is_registered(pc):
+            set_srs(pc, offset=offset, srs=srs, same_as=same_as )
+        else:
+            force_srs(pc, offset=offset, srs=srs, same_as=same_as )
+    else:
+        if not is_registered(pc):
+            pc.offset = [0,0,0]
+
+    return pc
 
 
 def save(cloud, path, format=None, binary=False):
@@ -103,12 +116,8 @@ def save(cloud, path, format=None, binary=False):
         pcl.save(cloud, path, format=format, binary=binary)
 
 
-def _load_las(lasfile, offset='auto'):
+def _load_las(lasfile):
     """Read a LAS file
-
-    Arguments:
-        offset: 'auto': center the pointcloud around the origin
-                np.array([3]): center the pointcloud at the given coordinates
 
     Returns:
         registered pointcloudxyzrgb
@@ -123,6 +132,8 @@ def _load_las(lasfile, offset='auto'):
     las = None
     try:
         las = liblas.file.File(lasfile)
+        lsrs = las.header.get_srs()
+
         n_points = las.header.get_count()
         data = np.zeros((n_points, 6), dtype=np.float64)
 
@@ -131,28 +142,18 @@ def _load_las(lasfile, offset='auto'):
                        256, point.color.green / 256, point.color.blue / 256)
 
         # reduce the offset to decrease floating point errors
-        if offset == 'auto':
-            bbox = BoundingBox(points=data[:, 0:3])
-            center = bbox.center
-        else:
-            center = np.asarray(offset)
-            if len(center) != 3: 
-                raise ValueError
-
+        bbox = BoundingBox(points=data[:, 0:3])
+        center = bbox.center
         data[:, 0:3] -= center
 
         pointcloud = pcl.PointCloudXYZRGB(data.astype(np.float32))
+        force_srs( pointcloud, srs=lsrs.get_wkt(), offset=center )
 
-        set_registration(pointcloud, offset=center,
-                         precision=las.header.scale,
-                         crs_wkt=las.header.srs.get_wkt(),
-                         crs_proj4=las.header.srs.get_proj4())
-
-        return pointcloud
     finally:
         if las is not None:
             las.close()
 
+    return pointcloud
 
 def is_registered(pointcloud):
     """Returns True when a pointcloud is registered; ie coordinates are relative
@@ -173,19 +174,26 @@ def same_srs(pcA, pcB):
                 return True
     return False
 
-def set_srs(pc, same_as=None, offset=None, srs=None):
+def set_srs(pc, srs=None, offset=None, same_as=None):
     """Set the spatial reference system (SRS) and offset for a pointcloud.
     This function transforms all the points to the new reference system, and
     updates the metadata accordingly.
 
     Either give a SRS and offset, or a reference pointcloud
 
+    NOTE: Pointclouds in PCL do not have absolute coordinates, ie.
+          latitude / longitude. This function adds metadata to the pointcloud
+          describing an absolute frame of reference.
+          It is left to the user to make sure pointclouds are in the same
+          reference system, before passing them on to PCL functions. This
+          can be checked with patty.conversions.same_srs().
+
     NOTE: To add a SRS to a point cloud, or to update incorrect metadata,
           use force_srs().
 
     Example:
 
-        # set the SRS to lat/lon, don't use offset
+        # set the SRS to lat/lon, don't use an offset
         set_srs( pc, srs="EPSG:4326", offset=[0,0,0] )
 
     Arguments:
@@ -206,6 +214,9 @@ def set_srs(pc, same_as=None, offset=None, srs=None):
             The input pointcloud.
     
     """
+    if not hasattr(pc, 'is_registered'):
+        raise ValueError
+
     if same_as:
         newsrs    = same_as.srs
         newoffset = same_as.offset
@@ -215,22 +226,26 @@ def set_srs(pc, same_as=None, offset=None, srs=None):
         else:
             newsrs = osr.SpatialReference()
             newsrs.SetFromUserInput(srs)
+
         if offset:
-            offset = np.asarray( offset )
-            if len(offset) != 4:
+            newoffset = np.asarray( offset )
+            if len(newoffset) != 4:
                 raise ValueError("Offset should be an np.array([3])")
+        else:
+            newoffset = np.zeros([3])
 
     if not pc.srs.IsSame( newsrs ):
         # FIXME deal with old offset
         T = osr.CoordinateTransformation( pc.srs, newsrs )
 
     # FIXME do better comparison
-    if np.max(pc.offset - np.offset) < 1.e-5:
-        pc.translate( offset - pc.offset )
+    if np.max(pc.offset - newoffset) > 1.e-5:
+        pc.translate( pc.offset - newoffset )
+        pc.offset = newoffset
 
     return pc
 
-def force_srs(pc, same_as=None, offset=np.array([0,0,0]), srs=None):
+def force_srs(pc, srs=None, offset=np.array([0,0,0]), same_as=None):
     """Set a spatial reference system (SRS) and offset for a pointcloud.
     This function affects the metadata only, and sets pc.is_registered to True
 
@@ -266,13 +281,13 @@ def force_srs(pc, same_as=None, offset=np.array([0,0,0]), srs=None):
     """
     if same_as:
         if is_registered(same_as):
-            pc.srs = same_as.srs
+            pc.srs = same_as.srs.Clone()
             pc.offset = same_as.offset
         else:
-            raise ValueError("Reference pointlcoud is not registered")
+            raise ValueError("Reference pointcloud is not registered")
     else:
         if type(srs) == type(osr.SpatialReference()):
-            pc.srs = srs
+            pc.srs = srs.Clone()
         else:
             pc.srs = osr.SpatialReference()
             pc.srs.SetFromUserInput(srs)
@@ -285,79 +300,6 @@ def force_srs(pc, same_as=None, offset=np.array([0,0,0]), srs=None):
     pc.is_registered = True
 
     return pc
-
-def set_registration(pointcloud, offset=None, precision=None, crs_wkt=None,
-             crs_proj4=None, crs_verticalcs=None):
-    """Set spatial reference system metada and offset
-
-    Pointclouds in PCL do not have absolute coordinates, ie.
-    latitude / longitude. This functions adds metadata to the pointcloud
-    describing an absolute frame of reference.
-    It is left to the user to make sure pointclouds are in the same reference
-    system, before passing them on to PCL functions.
-
-    NOTE: offset and scale are convenience properties to deal with LAS files
-          Use PointCloud.translate() for translations, and PointCloud.scale()
-          to scale. 
-
-    Arguments:
-        offset=None
-            Offset [dx, dy, dz] for the pointcloud.
-            Pointclouds often use double precision coordinates, this is
-            necessary for some spatial reference systems like standard lat/lon.
-            Subtracting an offset, typically the center of the pointcloud,
-            allows us to use floats without losing precision.
-            If no offset is set, defaults to [0, 0, 0].
-            
-        precision=None
-            Precision of the points, used for compression when writing a
-            LAS file. If no precision is set, defaults to [0.01, 0.01, 0.01].
-            
-        crs_wkt=None
-            Well Known Text form of the spatial reference system.
-
-        crs_proj4=None
-            PROJ4 projection string for the spatial reference system.
-
-        crs_verticalcs=None
-            Well Known Text form of the vertical coordinate system.
-    """
-    if not is_registered(pointcloud):
-        pointcloud.is_registered = True
-        pointcloud.offset = np.array([0., 0., 0.], dtype=np.float64)
-        pointcloud.precision = np.array([0.01, 0.01, 0.01], dtype=np.float64)
-        pointcloud.crs_wkt = ''
-        pointcloud.crs_proj4 = ''
-        pointcloud.crs_verticalcs = ''
-
-    if offset is not None:
-        pointcloud.offset = np.asarray(offset, dtype=np.float64)
-    if precision is not None:
-        pointcloud.precision = np.asarray(precision, dtype=np.float64)
-    if crs_wkt is not None:
-        pointcloud.crs_wkt = crs_wkt
-    if crs_proj4 is not None:
-        pointcloud.crs_proj4 = crs_proj4
-    if crs_verticalcs is not None:
-        pointcloud.crs_verticalcs = crs_verticalcs
-
-
-def copy_registration(target, src):
-    """Copy spatial reference system metadata from src to target.
-
-    Arguments:
-        pointcloud_target: pcl.PointCloud
-            pointcloud to copy registration to
-        pointcloud_src: pcl.PointCloud
-            registered pointcloud to copy registration from
-    """
-    target.is_registered = True
-    target.offset = src.offset
-    target.precision = src.precision
-    target.crs_wkt = src.crs_wkt
-    target.crs_proj4 = src.crs_proj4
-    target.crs_verticalcs = src.crs_verticalcs
-
 
 def _load_csv(path, delimiter=','):
     """Load a set of points from a CSV file as 
@@ -379,7 +321,12 @@ def _write_csv(path, pc, delimiter=', '):
             Field delimiter to use, see np.savetxt documentation.
 
     """
-    np.savetxt(path, np.asarray(pc), delimiter=delimiter )
+    if not hasattr(pc, 'offset'):
+        offset = np.zeros(3)
+    else:
+        offset = pc.offset
+
+    np.savetxt(path, np.asarray(pc) + offset, delimiter=delimiter )
 
 
 def extract_mask(pointcloud, mask):
@@ -394,7 +341,7 @@ def extract_mask(pointcloud, mask):
         pointcloud with the same registration (if any) as the original one."""
     pointcloud_new = pointcloud.extract(np.where(mask)[0])
     if is_registered(pointcloud):
-        copy_registration(pointcloud_new, pointcloud)
+        force_srs(pointcloud_new, same_as=pointcloud)
     return pointcloud_new
 
 
@@ -427,17 +374,24 @@ def make_las_header(pointcloud):
 
     if is_registered(pointcloud):
         lsrs = liblas.srs.SRS()
+        print ( type(pointcloud.srs) )
+        print( "SETTING SRS:" ,pointcloud.srs.ExportToWkt(), "XX" )
         lsrs.set_wkt(pointcloud.srs.ExportToWkt())
         head.set_srs(lsrs)
 
-    if not hasattr(pointcloud, 'precision'):
-        pointcloud.precision = np.array([0.01, 0.01, 0.01], dtype=np.float64)
+    if hasattr(pointcloud, 'offset'):
+        head.offset = pointcloud.offset
+    else:
+        head.offset = np.zeros(3)
 
     # FIXME: need extra precision to reduce floating point errors. We don't
     # know exactly why this works. It might reduce precision on the top of
     # the float, but reduces an error of one bit for the last digit.
-    head.scale = np.asarray(pointcloud.precision) * 0.5
-    head.offset = pointcloud.offset
+    if not hasattr(pointcloud, 'precision'):
+        precision = np.array([0.01, 0.01, 0.01], dtype=np.float64)
+    else:
+        precision = np.array( pointcloud.precision, dtype=np.float64)
+    head.scale = precision * 0.5
 
     pc_array = np.asarray(pointcloud)
     head.min = pc_array.min(axis=0) + head.offset
