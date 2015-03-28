@@ -42,7 +42,8 @@ def clone(pc):
 
     return cp
 
-def load(path, format=None, load_rgb=True, same_as=None, offset=None, srs=None):
+def load(path, format=None, load_rgb=True, same_as=None,
+         offset=np.array([0,0,0], dtype=np.float64 ), srs=None):
     """Read a pointcloud file.
 
     Supports LAS and CSV files, and lets PCD and PLY files be read by python-pcl.
@@ -61,7 +62,7 @@ def load(path, format=None, load_rgb=True, same_as=None, offset=None, srs=None):
     reference system (LAS), or to force_srs() if not.
 
         same_as : pcl.pointcloud
-        offset : np.array([3])
+        offset : np.array([3], dtype=np.float64 )
         srs : object or osgeo.osr.SpatialReference
 
     Returns:
@@ -83,7 +84,7 @@ def load(path, format=None, load_rgb=True, same_as=None, offset=None, srs=None):
             force_srs(pc, offset=offset, srs=srs, same_as=same_as )
     else:
         if not is_registered(pc):
-            pc.offset = [0,0,0]
+            pc.offset = np.array( [0,0,0], dtype=np.float64 )
 
     return pc
 
@@ -174,7 +175,8 @@ def same_srs(pcA, pcB):
                 return True
     return False
 
-def set_srs(pc, srs=None, offset=None, same_as=None):
+def set_srs(pc, srs=None, offset=np.array( [0,0,0], dtype=np.float64),
+            same_as=None):
     """Set the spatial reference system (SRS) and offset for a pointcloud.
     This function transforms all the points to the new reference system, and
     updates the metadata accordingly.
@@ -193,15 +195,15 @@ def set_srs(pc, srs=None, offset=None, same_as=None):
 
     Example:
 
-        # set the SRS to lat/lon, don't use an offset
-        set_srs( pc, srs="EPSG:4326", offset=[0,0,0] )
+        # set the SRS to lat/lon, don't use an offset, so it defaults to [0,0,0]
+        set_srs( pc, srs="EPSG:4326" )
 
     Arguments:
         pc : pcl.Pointcloud, with pcl.is_registered() == True
 
         same_as : pcl.PointCloud
 
-        offset : np.array([3])
+        offset : np.array([3], dtype=np.float64 )
             Must be added to the points to get absolute coordinates,
             neccesary to retain precision for LAS pointclouds.
 
@@ -215,7 +217,7 @@ def set_srs(pc, srs=None, offset=None, same_as=None):
     
     """
     if not is_registered(pc):
-        raise TypeError( "Pointcloud is not registerd" )
+        raise TypeError( "Pointcloud is not registered" )
 
     if same_as:
         newsrs    = same_as.srs
@@ -228,24 +230,38 @@ def set_srs(pc, srs=None, offset=None, same_as=None):
             newsrs.SetFromUserInput(srs)
 
         if offset:
-            newoffset = np.asarray( offset )
+            newoffset = np.array( offset, dtype=np.float64 )
             if len(newoffset) != 4:
                 raise TypeError("Offset should be an np.array([3])")
         else:
-            newoffset = np.zeros([3])
+            newoffset = np.zeros([3], dtype=np.float64 )
 
     if not pc.srs.IsSame( newsrs ):
-        # FIXME deal with old offset
         T = osr.CoordinateTransformation( pc.srs, newsrs )
 
+        data =  np.asarray( pc )
+
+        # add old offset, do transformation, substract new offset
+        precise_points = np.array(data, dtype=np.float64) + pc.offset
+        precise_points = np.array( T.TransformPoints( precise_points ), dtype=np.float64 )
+        precise_points -=- newoffset
+
+        # copy the float64 to pointcloud
+        data[...] = precise_points[...]
+
+        # fix metadata
+        pc.srs = newsrs.Clone()
+        pc.offset = np.array( newoffset, dtype=np.float64 )
+
     # FIXME do better comparison
-    if np.max(pc.offset - newoffset) > 1.e-5:
+    elif np.max(pc.offset - newoffset) > 1.e-5:
         pc.translate( pc.offset - newoffset )
-        pc.offset = newoffset
+        pc.offset = np.array( newoffset, dtype=np.float)
 
     return pc
 
-def force_srs(pc, srs=None, offset=np.array([0,0,0]), same_as=None):
+def force_srs(pc, srs=None, offset=np.array([0,0,0], dtype=np.float64),
+              same_as=None):
     """Set a spatial reference system (SRS) and offset for a pointcloud.
     This function affects the metadata only, and sets pc.is_registered to True
 
@@ -282,7 +298,7 @@ def force_srs(pc, srs=None, offset=np.array([0,0,0]), same_as=None):
     if same_as:
         if is_registered(same_as):
             pc.srs = same_as.srs.Clone()
-            pc.offset = same_as.offset
+            pc.offset = np.array( same_as.offset, dtype=np.float64 )
         else:
             raise TypeError("Reference pointcloud is not registered")
     else:
@@ -292,7 +308,7 @@ def force_srs(pc, srs=None, offset=np.array([0,0,0]), same_as=None):
             pc.srs = osr.SpatialReference()
             pc.srs.SetFromUserInput(srs)
 
-            offset = np.asarray( offset )
+            offset = np.asarray( offset, dtype=np.float64 )
             if len(offset) != 3:
                 raise TypeError("Offset should be an np.array([3])")
             pc.offset = offset
