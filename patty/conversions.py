@@ -168,7 +168,7 @@ def same_srs(pcA, pcB):
         pcB : pc..PointCloud
     """
 
-    if pcA.is_registered() and pcB.is_registered():
+    if is_registered(pcA) and is_registered(pcB):
         if np.mean(pcA.offset - pcB.offset) < 1E-5:
             if pcA.srs.IsSame( pcB.srs ):
                 return True
@@ -182,7 +182,7 @@ def set_srs(pc, srs=None, offset=None, same_as=None):
     Either give a SRS and offset, or a reference pointcloud
 
     NOTE: Pointclouds in PCL do not have absolute coordinates, ie.
-          latitude / longitude. This function adds metadata to the pointcloud
+          latitude / longitude. This function sets metadata to the pointcloud
           describing an absolute frame of reference.
           It is left to the user to make sure pointclouds are in the same
           reference system, before passing them on to PCL functions. This
@@ -197,7 +197,7 @@ def set_srs(pc, srs=None, offset=None, same_as=None):
         set_srs( pc, srs="EPSG:4326", offset=[0,0,0] )
 
     Arguments:
-        pc : pcl.Pointcloud
+        pc : pcl.Pointcloud, with pcl.is_registered() == True
 
         same_as : pcl.PointCloud
 
@@ -214,8 +214,8 @@ def set_srs(pc, srs=None, offset=None, same_as=None):
             The input pointcloud.
     
     """
-    if not hasattr(pc, 'is_registered'):
-        raise ValueError
+    if not is_registered(pc):
+        raise TypeError( "Pointcloud is not registerd" )
 
     if same_as:
         newsrs    = same_as.srs
@@ -230,7 +230,7 @@ def set_srs(pc, srs=None, offset=None, same_as=None):
         if offset:
             newoffset = np.asarray( offset )
             if len(newoffset) != 4:
-                raise ValueError("Offset should be an np.array([3])")
+                raise TypeError("Offset should be an np.array([3])")
         else:
             newoffset = np.zeros([3])
 
@@ -284,7 +284,7 @@ def force_srs(pc, srs=None, offset=np.array([0,0,0]), same_as=None):
             pc.srs = same_as.srs.Clone()
             pc.offset = same_as.offset
         else:
-            raise ValueError("Reference pointcloud is not registered")
+            raise TypeError("Reference pointcloud is not registered")
     else:
         if type(srs) == type(osr.SpatialReference()):
             pc.srs = srs.Clone()
@@ -294,7 +294,7 @@ def force_srs(pc, srs=None, offset=np.array([0,0,0]), same_as=None):
 
             offset = np.asarray( offset )
             if len(offset) != 3:
-                raise ValueError("Offset should be an np.array([3])")
+                raise TypeError("Offset should be an np.array([3])")
             pc.offset = offset
 
     pc.is_registered = True
@@ -457,7 +457,7 @@ class BoundingBox(object):
             self._min = points_array.min(axis=0)
             self._max = points_array.max(axis=0)
         else:
-            raise ValueError("Need to give min and max or matrix")
+            raise TypeError("Need to give min and max or matrix")
 
         self._reset()
 
