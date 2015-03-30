@@ -119,5 +119,13 @@ def test_set_srs():
     conversions.set_srs( pcA, same_as=pcB )
 
     assert_less( np.max( np.square( np.asarray( pcA ) ) ), 1e-3 ** 2, 
-        "Coordinate transform not accurate to 1 mm" )
+        "Coordinate transform not accurate to 1 mm %s" % np.asarray(pcA) )
+
+    conversions.set_srs( pcA, srs=latlon,
+        offset=np.array([4.904153991281891, 52.372337993959924, 42.97214563656598], dtype=np.float64) )
+
+    assert_less( np.max( np.square( np.asarray( pcA ) ) ), 1e-3 ** 2, 
+        "Coordinate transform not accurate to 0.001 degree %s" % np.asarray(pcA) )
+
+
     

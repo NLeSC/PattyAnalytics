@@ -233,9 +233,9 @@ def set_srs(pc, srs=None, offset=np.array( [0,0,0], dtype=np.float64),
             newsrs = osr.SpatialReference()
             newsrs.SetFromUserInput(srs)
 
-        if offset:
+        if offset is not None:
             newoffset = np.array( offset, dtype=np.float64 )
-            if len(newoffset) != 4:
+            if len(newoffset) != 3:
                 raise TypeError("Offset should be an np.array([3])")
         else:
             newoffset = np.zeros([3], dtype=np.float64 )
