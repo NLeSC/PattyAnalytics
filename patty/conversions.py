@@ -77,7 +77,7 @@ def load(path, format=None, load_rgb=True, same_as=None,
         pc = pcl.load(path, format=format, loadRGB=load_rgb)
 
     # Set SRS and offset
-    if same_as or (offset and srs):
+    if same_as or ((offset is not None) and (srs is not None)):
         if is_registered(pc):
             set_srs(pc, offset=offset, srs=srs, same_as=same_as )
         else:
@@ -220,8 +220,12 @@ def set_srs(pc, srs=None, offset=np.array( [0,0,0], dtype=np.float64),
         raise TypeError( "Pointcloud is not registered" )
 
     if same_as:
-        newsrs    = same_as.srs
-        newoffset = same_as.offset
+        if is_registered(same_as):
+            newsrs    = same_as.srs
+            newoffset = same_as.offset
+        else:
+            raise TypeError("Reference pointcloud is not registered")
+
     else:
         if type(srs) == type(osr.SpatialReference()):
             newsrs = srs
@@ -244,10 +248,10 @@ def set_srs(pc, srs=None, offset=np.array( [0,0,0], dtype=np.float64),
         # add old offset, do transformation, substract new offset
         precise_points = np.array(data, dtype=np.float64) + pc.offset
         precise_points = np.array( T.TransformPoints( precise_points ), dtype=np.float64 )
-        precise_points -=- newoffset
+        precise_points -= newoffset
 
         # copy the float64 to pointcloud
-        data[...] = precise_points[...]
+        data[...] = np.asarray( precise_points, dtype=np.float32 )
 
         # fix metadata
         pc.srs = newsrs.Clone()
@@ -256,7 +260,7 @@ def set_srs(pc, srs=None, offset=np.array( [0,0,0], dtype=np.float64),
     # FIXME do better comparison
     elif np.max(pc.offset - newoffset) > 1.e-5:
         pc.translate( pc.offset - newoffset )
-        pc.offset = np.array( newoffset, dtype=np.float)
+        pc.offset = np.array( newoffset, dtype=np.float64)
 
     return pc
 
@@ -308,10 +312,10 @@ def force_srs(pc, srs=None, offset=np.array([0,0,0], dtype=np.float64),
             pc.srs = osr.SpatialReference()
             pc.srs.SetFromUserInput(srs)
 
-            offset = np.asarray( offset, dtype=np.float64 )
-            if len(offset) != 3:
-                raise TypeError("Offset should be an np.array([3])")
-            pc.offset = offset
+        offset = np.asarray( offset, dtype=np.float64 )
+        if len(offset) != 3:
+            raise TypeError("Offset should be an np.array([3])")
+        pc.offset = offset
 
     pc.is_registered = True
 
