@@ -105,27 +105,37 @@ def test_set_srs():
     latlon = osr.SpatialReference()
     latlon.SetFromUserInput( "EPSG:4326" )
 
-    # rdnew   122104             487272              0 
-    # latlon: 4.904153991281891, 52.372337993959924, 42.97214563656598)
+    adam_latlon = np.array(
+        [4.904153991281891, 52.372337993959924, 42.97214563656598],
+        dtype=np.float64)
+
+    adam_rdnew = np.array([122104.0, 487272.0, 0.0], dtype=np.float64)
 
     pcA = pcl.PointCloud ( [[0.,0.,0.]] )
-    conversions.force_srs( pcA, srs=latlon,
-        offset=np.array([4.904153991281891, 52.372337993959924, 42.97214563656598], dtype=np.float64) )
+    conversions.force_srs( pcA, srs=latlon, offset=adam_latlon )
 
     pcB = pcl.PointCloud ( [[0., 0., 0.]] )
-    conversions.force_srs( pcB, srs=rdnew,
-        offset=np.array([122104.0, 487272.0, 0.0], dtype=np.float64) )
+    conversions.force_srs( pcB, srs=rdnew, offset=adam_rdnew )
     
+    # latlon [degrees] -> rdnew [m]
     conversions.set_srs( pcA, same_as=pcB )
 
     assert_less( np.max( np.square( np.asarray( pcA ) ) ), 1e-3 ** 2, 
         "Coordinate transform not accurate to 1 mm %s" % np.asarray(pcA) )
 
-    conversions.set_srs( pcA, srs=latlon,
-        offset=np.array([4.904153991281891, 52.372337993959924, 42.97214563656598], dtype=np.float64) )
 
-    assert_less( np.max( np.square( np.asarray( pcA ) ) ), 1e-3 ** 2, 
-        "Coordinate transform not accurate to 0.001 degree %s" % np.asarray(pcA) )
+    # rdnew [m] -> latlon [degrees]
+    conversions.set_srs( pcB, srs=latlon, offset=[0,0,0] )
 
+    # check horizontal error [degrees]
+    error = np.asarray(pcB)[0] - adam_latlon
 
-    
+    assert_less( np.max( np.square(error[0:2]) ), (1e-6) ** 2, 
+        "Coordinate transform rdnew->latlon not accurate to 1e-6 degree %s"
+         % error[0:2] )
+
+    # check vertical error [m]
+    assert_less( abs(error[2]) , (1e-6) , 
+        "Vertical Coordinate in of transform not accurate to 1e-6 meter %s"
+         % abs(error[2]) )
+

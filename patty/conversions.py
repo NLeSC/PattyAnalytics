@@ -394,8 +394,6 @@ def make_las_header(pointcloud):
 
     if is_registered(pointcloud):
         lsrs = liblas.srs.SRS()
-        print ( type(pointcloud.srs) )
-        print( "SETTING SRS:" ,pointcloud.srs.ExportToWkt(), "XX" )
         lsrs.set_wkt(pointcloud.srs.ExportToWkt())
         head.set_srs(lsrs)
 
