@@ -9,6 +9,7 @@ import pcl
 import os
 import numpy as np
 import osgeo.osr as osr
+import time
 
 def _check_readable(filepath):
     """ Test whether filepath is readable, raises IOError otherwise """
@@ -127,8 +128,6 @@ def _load_las(lasfile):
     set.
     """
     _check_readable(lasfile)
-
-    print("--READING--", lasfile, "---------")
 
     las = None
     try:
@@ -432,7 +431,6 @@ def _write_las(lasfile, pointcloud, header=None):
     """
     _check_writable(lasfile)
 
-    print("--WRITING--", lasfile, "--------")
     if header is None:
         header = make_las_header(pointcloud)
 
@@ -526,4 +524,8 @@ class BoundingBox(object):
     def contains(self, pos):
         ''' Whether the bounding box contains given position. '''
         return np.all((pos >= self.min) & (pos <= self.max))
+
+def log(*args, **kwargs):
+    """Simple logging function that prints to stdout"""
+    print(time.strftime("[%F %H:%M:%S]", time.gmtime()), *args, **kwargs)
 

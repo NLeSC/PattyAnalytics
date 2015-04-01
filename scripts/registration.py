@@ -21,19 +21,14 @@ from docopt import docopt
 
 from pcl.registration import icp
 import numpy as np
-import time
 import os
 from patty.conversions import (load, save, clone,
                                set_srs, force_srs, same_srs,
-                               extract_mask, BoundingBox)
+                               extract_mask, BoundingBox,log)
 from patty.registration import (register_from_footprint,
                                 point_in_polygon2d, downsample_random)
 from patty.segmentation.dbscan import get_largest_dbscan_clusters
 from patty.registration.stickscale import get_stick_scale
-
-
-def log(*args, **kwargs):
-    print(time.strftime("[%H:%M:%S]"), *args, **kwargs)
 
 
 def find_largest_cluster(pointcloud, sample):
@@ -41,8 +36,8 @@ def find_largest_cluster(pointcloud, sample):
     if sample != -1 and len(pointcloud) > sample:
         fraction = float(sample) / len(pointcloud)
         log("downsampling from %d to %d points (%d%%) for registration" % (
-
             len(pointcloud), sample, int(fraction * 100)))
+
         pc = downsample_random(pointcloud, fraction, random_seed=0)
     else:
         pc = pointcloud
@@ -99,12 +94,17 @@ def registration_pipeline(pointcloud, drivemap, footprint, sample=-1):
         Nothing, pointcloud is modified in-place
     """
 
+    log("Aligning footprints")
     #####
     # set scale and offset of pointcloud, drivemap, and footprint
     # as the pointcloud is unregisterd, the coordinate system is undefined,
     # and we lose nothing if we just copy it
+    if( hasattr(pointcloud, "offset") ):
+        log( "Dropping initial offset, was: %s" % pointcloud.offset)
+    else:
+        log( "No initial offset" )
     force_srs(pointcloud, same_as=drivemap)
-
+    log( "New offset forced to: %s" % pointcloud.offset )
 
     #####
     # find all the points in the drivemap along the footprint
@@ -140,7 +140,11 @@ def registration_pipeline(pointcloud, drivemap, footprint, sample=-1):
         allow_rotation=True,
         allow_translation=True)
 
-    log("Applying initial alignment to pointcloud")
+    log("Applying initial alignment to pointcloud:")
+    log("rotate_center:                   %s" % rot_center )
+    log("rotate_matrix:\n%s" % rot_matrix )
+    log("scale (around rotate_center):    %s" % scale )
+    log("scale:                           %s" % scale )
     pointcloud.rotate(rot_matrix, origin=rot_center)
     pointcloud.scale(scale, origin=rot_center)
     pointcloud.translate(translation)
@@ -148,12 +152,12 @@ def registration_pipeline(pointcloud, drivemap, footprint, sample=-1):
     ####
     # do a ICP step
 
-    log("ICP")
+    log("Starting ICP")
     converged, transf, estimate, fitness = icp(pointcloud, drivemap)
 
     log("converged: %s" % converged)
-    log("transf : %s" % transf)
     log("fitness: %s" % fitness)
+    log("transf :\n%s" % transf)
 
     log("Applying ICP transform to pointcloud")
     pointcloud.transform( transf )
@@ -182,10 +186,10 @@ if __name__ == '__main__':
     #       * footprint
     #       * pointcloud
 
-    log("reading footprint ", footprintcsv)
+    log("reading footprint", footprintcsv)
     footprint = load(footprintcsv, srs="EPSG:32633", offset=[0, 0, 0]) # FIXME: set to via appia projection
 
-    log("reading drivemap ", drivemapfile)
+    log("reading drivemap", drivemapfile)
     drivemap = load(drivemapfile, same_as=footprint)
 
     log("reading source", sourcefile)
@@ -194,4 +198,8 @@ if __name__ == '__main__':
     # TODO: use up_file to orient the pointcloud upwards
 
     registration_pipeline(pointcloud, drivemap, footprint, sample)
+
+    log( "Saving to", foutLas)
     save(pointcloud, foutLas)
+
+    log("Finished")

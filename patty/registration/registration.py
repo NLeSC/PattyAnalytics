@@ -7,15 +7,11 @@ Registration algorithms and utility functions
 from __future__ import print_function
 from pcl.boundaries import estimate_boundaries
 import numpy as np
-import logging
 import json
-from .. import is_registered, extract_mask, BoundingBox
+from .. import is_registered, extract_mask, BoundingBox, log
 from ..segmentation import dbscan
 from matplotlib import path
 from sklearn.decomposition import PCA
-
-logging.basicConfig(level=logging.INFO)
-
 
 def downsample_voxel(pointcloud, voxel_size=0.01):
     '''Downsample a pointcloud using a voxel grid filter.
@@ -82,21 +78,21 @@ def get_pointcloud_boundaries(pointcloud, angle_threshold=0.1,
 
     if search_radius == None:
         bb = BoundingBox(points=pointcloud)
-        logging.info(bb)
-        logging.info(bb.diagonal)
+        log(bb)
+        log(bb.diagonal)
         search_radius = 0.01 * bb.diagonal
 
     if normal_search_radius == None:
         normal_search_radius = search_radius
 
-    logging.info("Search radius from bounding box: %f" % search_radius)
+    log("Search radius from bounding box: %f" % search_radius)
 
     boundary = estimate_boundaries(pointcloud, angle_threshold=angle_threshold,
                                    search_radius=search_radius,
                                    normal_search_radius=normal_search_radius)
 
-    logging.info("Found %d out of %d boundary points"
-                 % (np.count_nonzero(boundary), len(pointcloud)))
+    log("Found %d out of %d boundary points"
+             % (np.count_nonzero(boundary), len(pointcloud)))
 
     return extract_mask(pointcloud, boundary)
 
@@ -124,40 +120,43 @@ def register_from_footprint(pc, footprint, allow_scaling=True, allow_rotation=Tr
     '''
     # find the footprint of the pointcloud: the boundary of its center object
     # (ie. largest object)
-    logging.info("Finding largest cluster")
+    log("Finding largest cluster")
     pc_main = dbscan.largest_dbscan_cluster(pc, .1, 250)
 
-    logging.info("Detecting boundary")
+    log("Detecting boundary")
     boundary = get_pointcloud_boundaries(pc_main)
 
     if len(boundary) == len(pc_main) or len(boundary) == 0:
-        logging.info("Boundary information could not be retrieved")
+        log("Boundary information could not be retrieved")
         return None
 
     if allow_rotation:
-        logging.info("Finding rotation")
+        log("Finding rotation")
         rot_center = boundary.center()
         rot_matrix = find_rotation(boundary, footprint)
         boundary.rotate(rot_matrix, origin=rot_center)
     else:
+        log("Skipping rotation")
         rot_center = np.array([0.0, 0.0, 0.0])
         rot_matrix = np.eye(3)
 
     if allow_scaling:
-        logging.info("Finding scale")
+        log("Finding scale")
         footprint_bb = BoundingBox(footprint)
         boundary_bb = BoundingBox(boundary)
         scale = footprint_bb.size / boundary_bb.size
         # take the average scale factor for the x and y dimensions
         scale = np.mean(scale[0:2])
     else:
+        log("Skipping scale")
         scale = 1.0
 
     if allow_translation:
-        logging.info("Finding translation")
+        log("Finding translation")
         translation = footprint.center() - rot_center
         boundary.translate(translation)
     else:
+        log("Skipping translation")
         translation = np.array([0.0, 0.0, 0.0])
 
     return rot_matrix, rot_center, scale, translation
