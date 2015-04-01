@@ -392,9 +392,12 @@ def make_las_header(pointcloud):
     head.minor_version = 2
 
     if is_registered(pointcloud):
-        lsrs = liblas.srs.SRS()
-        lsrs.set_wkt(pointcloud.srs.ExportToWkt())
-        head.set_srs(lsrs)
+        try:
+            lsrs = liblas.srs.SRS()
+            lsrs.set_wkt(pointcloud.srs.ExportToWkt())
+            head.set_srs(lsrs)
+        except liblas.core.LASException:
+            pass
 
     if hasattr(pointcloud, 'offset'):
         head.offset = pointcloud.offset
