@@ -7,8 +7,9 @@ Registration algorithms and utility functions
 from __future__ import print_function
 from pcl.boundaries import estimate_boundaries
 import numpy as np
-from .. import is_registered, extract_mask, BoundingBox, log
+from .. import is_registered, extract_mask, BoundingBox, log, save
 from ..segmentation import dbscan
+from patty import conversions
 from matplotlib import path
 from sklearn.decomposition import PCA
 
@@ -54,7 +55,7 @@ def downsample_random(pc, fraction, random_seed=None):
     sample = rng.choice(len(pc), k, replace=False)
     new_pc = pc.extract(sample)
     if is_registered(pc):
-        copy_registration(new_pc, pc)
+        conversions.force_srs(new_pc, same_as=pc)
     return new_pc
 
 
@@ -126,6 +127,22 @@ def register_from_footprint(pc, footprint, allow_scaling=True, allow_rotation=Tr
     log("Detecting boundary")
     boundary = get_pointcloud_boundaries(pc_main)
 
+
+    # We are looking for the main axes to orient the bounding boxes,
+    # however, high objects (pillars), the z directions will be the main axis,
+    # turning the object to its side.
+    # Prevent this by squashing the object to very small z-extent.
+    log( "Squashing z axis" )
+    avgz = boundary.center()[2]
+    squash = np.array ( [[ 1.0, 0.0, 0.0, 0.0 ],
+                         [ 0.0, 1.0, 0.0, 0.0 ],
+                         [ 0.0, 0.0, 0.0, avgz],
+                         [ 0.0, 0.0, 0.0, 1.0 ]] )
+    boundary.transform( squash )
+
+    # FIXME: debug output
+    save( boundary, "object_boundary.las" )
+
     if len(boundary) == len(pc_main) or len(boundary) == 0:
         log("Boundary information could not be retrieved")
         return None
@@ -176,6 +193,23 @@ def _find_rotation_helper(pointcloud):
     if np.linalg.det(rotation) < 0:
         rotation[:, 1] *= -1.0
 
+    # Apply extra constraints
+
+    # Z should point up
+    newz = np.array( [0,0,1] )
+
+    # X should point in x,y plane
+    newx = rotation[:,0]
+    newx[2] = 0.0
+    newx /= np.dot( newx, newx ) ** 0.5
+
+    # Y in x,y plane, perpendicular to x and z
+    newy = np.cross( newz, newx )
+
+    rotation[:,0] = newx
+    rotation[:,1] = newy
+    rotation[:,2] = newz
+
     return rotation
 
 
@@ -208,4 +242,3 @@ def point_in_polygon2d(points, polygon):
 def intersect_polygon2d(pc, polygon):
     in_polygon = point_in_polygon2d(np.asarray(pc), polygon)
     return extract_mask(pc, in_polygon)
-

@@ -11,7 +11,7 @@ Positional arguments:
   output       file to write output LAS to
 
 Options:
-  -d <sample>  Downsample source pointcloud to a maximum of <sample> points
+  -d <sample>  Downsample source pointcloud to a percentage of number of points
                [default: -1].
   -u <upfile>  Json file containing the up vector relative to the pointcloud.
 """
@@ -42,7 +42,7 @@ def fix_upside_down(up_file, pc):
 
     Returns:
         pc : pcl.PointCloud the input pointcloud, for convenience.
-        
+
     '''
     if up_file in (None, ''):
         log( "No upfile, aborting" )
@@ -63,7 +63,7 @@ def fix_upside_down(up_file, pc):
     # np.cross(y,z) = x
     # np.cross(z,x) = y
 
-    # normalize 
+    # normalize
     newz /= ( np.dot( newz, newz ) ) ** 0.5
 
     # find two orthogonal vectors to represent x and y,
@@ -207,8 +207,17 @@ def registration_pipeline(pointcloud, drivemap, footprint, sample=-1):
     ####
     # match the pointcloud boundary with the footprint boundary
 
+    # Use downsampled pointcloud to speed up computation.
+    if sample>0:
+        log("Downsampling %f" % (sample/100.0))
+        pc_sampled = downsample_random(pointcloud, sample / 100.0)
+        log('  Points: %d -> %d'%(len(pointcloud),len(pc_sampled)))
+    else:
+        log("No downsampling")
+        pc_sampled = pointcloud
+
     rot_matrix, rot_center, scale, translation = register_from_footprint(
-        pointcloud, footprint_boundary,
+        pc_sampled, footprint_boundary,
         allow_scaling=allow_scaling,
         allow_rotation=True,
         allow_translation=True)
@@ -222,6 +231,9 @@ def registration_pipeline(pointcloud, drivemap, footprint, sample=-1):
     pointcloud.scale(scale, origin=rot_center)
     pointcloud.translate(translation)
 
+    # FIXME: debug output
+    save( pointcloud, 'pre_icp.las' )
+
     ####
     # do a ICP step
 
@@ -233,19 +245,40 @@ def registration_pipeline(pointcloud, drivemap, footprint, sample=-1):
     log("fitness: %s" % fitnessA)
     log("transf :\n%s" % transfA)
 
+    # dont accept large translations
+    transA = transfA[1:3,3]
+    if np.dot( transA, transA ) > 10 ** 2:
+        is_good_transA = False
+    else:
+        is_good_transB = True
+
+
     rot=np.array([[-1,0,0],[0,-1,0],[0,0,1]])
     log("Trying rotated around z-axes, rotation:\n%s" % rot )
-    
+
     pointcloud.rotate( rot )
     convergedB, transfB, estimateB, fitnessB = icp(pointcloud, drivemap)
     log("converged: %s" % convergedB)
     log("fitness: %s" % fitnessB)
     log("transf :\n%s" % transfB)
 
-    if fitnessB < fitnessA:
-        return estimateB
+    # dont accept large translations
+    transB = transfB[1:3,3]
+    if np.dot( transB, transB ) > 10 ** 2:
+        is_good_transB = False
     else:
+        is_good_transB = True
+
+
+    if fitnessB < fitnessA and is_good_transB:
+        return estimateB
+
+    if fitnessA < fitnessB and is_good_transA:
         return estimateA
+
+    # undo rotation, and return the pointcloud with just footprints aligned
+    pointcloud.rotate( rot )
+    return pointcloud
 
 
 if __name__ == '__main__':
@@ -275,7 +308,9 @@ if __name__ == '__main__':
     footprint = load(footprintcsv, srs="EPSG:32633", offset=[0, 0, 0]) # FIXME: set to via appia projection
 
     log("Reading drivemap", drivemapfile)
-    drivemap = load(drivemapfile, same_as=footprint)
+    drivemap = load(drivemapfile)
+    force_srs(drivemap, srs="EPSG:32633")
+    set_srs( drivemap, same_as=footprint)
 
     log("Reading object", sourcefile)
     pointcloud = load(sourcefile)

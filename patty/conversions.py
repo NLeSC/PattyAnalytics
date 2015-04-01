@@ -133,6 +133,7 @@ def _load_las(lasfile):
     try:
         las = liblas.file.File(lasfile)
         lsrs = las.header.get_srs()
+        lsrs = lsrs.get_wkt()
 
         n_points = las.header.get_count()
         data = np.zeros((n_points, 6), dtype=np.float64)
@@ -147,7 +148,7 @@ def _load_las(lasfile):
         data[:, 0:3] -= center
 
         pointcloud = pcl.PointCloudXYZRGB(data.astype(np.float32))
-        force_srs( pointcloud, srs=lsrs.get_wkt(), offset=center )
+        force_srs( pointcloud, srs=lsrs, offset=center )
 
     finally:
         if las is not None:
@@ -240,17 +241,21 @@ def set_srs(pc, srs=None, offset=np.array( [0,0,0], dtype=np.float64),
             newoffset = np.zeros([3], dtype=np.float64 )
 
     if not pc.srs.IsSame( newsrs ):
-        T = osr.CoordinateTransformation( pc.srs, newsrs )
+        try:
+           T = osr.CoordinateTransformation( pc.srs, newsrs )
+           print("From: '%s'" % pc.srs)
+           print("To: '%s'" % newsrs)
+           data =  np.asarray( pc )
 
-        data =  np.asarray( pc )
+           # add old offset, do transformation, substract new offset
+           precise_points = np.array(data, dtype=np.float64) + pc.offset
+           precise_points = np.array( T.TransformPoints( precise_points ), dtype=np.float64 )
+           precise_points -= newoffset
 
-        # add old offset, do transformation, substract new offset
-        precise_points = np.array(data, dtype=np.float64) + pc.offset
-        precise_points = np.array( T.TransformPoints( precise_points ), dtype=np.float64 )
-        precise_points -= newoffset
-
-        # copy the float64 to pointcloud
-        data[...] = np.asarray( precise_points, dtype=np.float32 )
+           # copy the float64 to pointcloud
+           data[...] = np.asarray( precise_points, dtype=np.float32 )
+        except:
+           pass
 
         # fix metadata
         pc.srs = newsrs.Clone()
@@ -263,7 +268,7 @@ def set_srs(pc, srs=None, offset=np.array( [0,0,0], dtype=np.float64),
 
     return pc
 
-def force_srs(pc, srs=None, offset=np.array([0,0,0], dtype=np.float64),
+def force_srs(pc, srs=None, offset=None, dtype=np.float64,
               same_as=None):
     """Set a spatial reference system (SRS) and offset for a pointcloud.
     This function affects the metadata only, and sets pc.is_registered to True
@@ -277,8 +282,8 @@ def force_srs(pc, srs=None, offset=np.array([0,0,0], dtype=np.float64),
 
     Example:
 
-        # set the SRS to lat/lon, don't use offset
-        force_srs( pc, srs="EPSG:4326", offset=[0,0,0] )
+        # set the SRS to lat/lon, leave offset unchanged
+        force_srs( pc, srs="EPSG:4326" )
 
     Arguments:
         pc : pcl.Pointcloud
@@ -311,10 +316,12 @@ def force_srs(pc, srs=None, offset=np.array([0,0,0], dtype=np.float64),
             pc.srs = osr.SpatialReference()
             pc.srs.SetFromUserInput(srs)
 
-        offset = np.asarray( offset, dtype=np.float64 )
-        if len(offset) != 3:
-            raise TypeError("Offset should be an np.array([3])")
-        pc.offset = offset
+        if offset is not None:
+            offset = np.asarray( offset, dtype=np.float64 )
+            if len(offset) != 3:
+               raise TypeError("Offset should be an np.array([3])")
+            else:
+               pc.offset = offset
 
     pc.is_registered = True
 
