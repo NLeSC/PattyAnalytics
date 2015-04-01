@@ -8,9 +8,8 @@ import pcl
 from patty import conversions
 from patty.registration import (point_in_polygon2d, downsample_voxel,
                                 intersect_polygon2d,
-                                get_pointcloud_boundaries, is_upside_down)
+                                get_pointcloud_boundaries)
 from patty.conversions import clone
-from scripts.registration import registration_pipeline
 
 from helpers import make_tri_pyramid_with_base
 from nose.tools import (assert_equal, assert_greater, assert_less,
@@ -163,23 +162,21 @@ class TestRegistrationPipeline(unittest.TestCase):
             shutil.rmtree(self.tempdir, ignore_errors=True)
 
     def test_pipeline(self):
+        pass
         # TODO: should just use shutil to run the registration.py script, and
         # load the result
-        # system( 'registration.py self.sourcelas self.drivemapLas self.footprint_csv self.foutlas' )
 
-        # Register box on surface
-        pc = conversions.load(self.sourcelas, offset=[0, 0, 0])
-        dm = conversions.load(self.drivemapLas, offset=[0, 0, 0])
-        fp = conversions.load(self.footprint_csv, offset=[0, 0, 0])
+        os.system( './scripts/registration.py -u testupfile.json'
+            " " + self.sourcelas +
+            " " + self.drivemapLas +
+            " " + self.footprint_csv +
+            " " + self.foutlas )
 
-        registration_pipeline(pc, dm, fp)
-        registered_pc = pc
+        goal   = conversions.load( self.sourcelas)
+        actual = np.asarray( start )
 
-        conversions.save(registered_pc, self.foutlas)
-
-        target = np.asarray(self.source_pc) + self.source_pc.offset
-        target -= np.array(self.dense_obj_offset)
-        actual = np.asarray(registered_pc) + registered_pc.offset
+        result = conversions.load( self.foutlas )
+        target = np.asarray( result )
 
         array_in_margin(target.min(axis=0), actual.min(axis=0), [1, 1, 1],
                         "Lower bound of registered cloud does not"
@@ -191,39 +188,3 @@ class TestRegistrationPipeline(unittest.TestCase):
                         "Middle point of registered cloud does not"
                         " match expectation")
 
-
-class TestUpsideDown(unittest.TestCase):
-
-    def setUp(self):
-        testdir = 'tests'
-        self.down = os.path.join(testdir, 'testdownfile.json')
-        self.up = os.path.join(testdir, 'testupfile.json')
-        self.rotate = np.array([[1., 0., 0.], [0., -1., 0.], [0., 0., -1.]])
-
-    def test_no_file(self):
-        '''Without up file path, should return false.'''
-        assert_false(is_upside_down(None, np.identity(3)))
-
-    def test_non_existent_file(self):
-        '''Without existing up file, should return false.'''
-        assert_false(is_upside_down('nonexisting1234.json', np.identity(3)))
-
-    def test_empty_file(self):
-        '''With empty up file path, should return false.'''
-        assert_false(is_upside_down('', np.identity(3)))
-
-    def test_down(self):
-        '''With down vector, should return true.'''
-        assert_true(is_upside_down(self.down, np.identity(3)))
-
-    def test_up(self):
-        '''With up vector, should return false.'''
-        assert_false(is_upside_down(self.up, np.identity(3)))
-
-    def test_rotated_up(self):
-        '''With up vector rotated 180, should return true.'''
-        assert_true(is_upside_down(self.up, self.rotate))
-
-    def test_rotated_down(self):
-        '''With down vector rotated 180, should return false.'''
-        assert_false(is_upside_down(self.down, self.rotate))
