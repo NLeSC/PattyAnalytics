@@ -22,6 +22,7 @@ from docopt import docopt
 from pcl.registration import icp
 import numpy as np
 import os
+import json
 from patty.conversions import (load, save, clone,
                                set_srs, force_srs, same_srs,
                                extract_mask, BoundingBox,log)
@@ -30,6 +31,77 @@ from patty.registration import (register_from_footprint,
 from patty.segmentation.dbscan import get_largest_dbscan_clusters
 from patty.registration.stickscale import get_stick_scale
 
+
+def fix_upside_down(up_file, pc):
+    '''Rotates a pointcloud such that the given vector is up, ie. along [0,0,1].
+    The pointcloud is flipped in-place.
+
+    Arguments:
+        up_file filename of the json file containing the relative up vector
+        pc : pcl.PointCloud
+
+    Returns:
+        pc : pcl.PointCloud the input pointcloud, for convenience.
+        
+    '''
+    if up_file in (None, ''):
+        log( "No upfile, aborting" )
+        return pc
+
+    newz = np.array([0,0,1])
+    try:
+        with open(up_file) as f:
+            dic = json.load(f)
+        newz = np.array(dic['estimatedUpDirection'])
+        log( "Up vector is: %s" % newz )
+    except:
+        log( "Cannot parse upfile, aborting" )
+        return pc
+
+    # Right-handed coordiante system:
+    # np.cross(x,y) = z
+    # np.cross(y,z) = x
+    # np.cross(z,x) = y
+
+    # normalize 
+    newz /= ( np.dot( newz, newz ) ) ** 0.5
+
+    # find two orthogonal vectors to represent x and y,
+    # randomly choose a vector, and take cross product. If we're unlucky,
+    # this ones is parallel to z, so cross pruduct is zero.
+    # In that case, try another one
+    try:
+        newx = np.cross( np.array([0,1,0]), newz )
+        newx /= ( np.dot( newx, newx ) ) ** 0.5
+
+        newy = np.cross( newz, newx )
+        newy /= ( np.dot( newy, newy ) ) ** 0.5
+    except:
+        newy = np.cross( newz, np.array([1,0,0]) )
+        newy /= ( np.dot( newy, newy ) ) ** 0.5
+
+        newx = np.cross( newy, newz )
+        newx /= ( np.dot( newx, newx ) ) ** 0.5
+
+    rotation = np.zeros([3,3])
+    rotation[0,0] = newx[0]
+    rotation[1,0] = newx[1]
+    rotation[2,0] = newx[2]
+
+    rotation[0,1] = newy[0]
+    rotation[1,1] = newy[1]
+    rotation[2,1] = newy[2]
+
+    rotation[0,2] = newz[0]
+    rotation[1,2] = newz[1]
+    rotation[2,2] = newz[2]
+
+    rotation = np.linalg.inv(rotation)
+
+    pc.rotate( rotation, origin=pc.center() )
+    log( "Rotating pointcloud around origin, using:\n%s" % rotation )
+
+    return pc
 
 def find_largest_cluster(pointcloud, sample):
     log("Finding largest cluster")
@@ -75,7 +147,7 @@ def cutout_edge(pointcloud, polygon2d, edge_width):
 
 def registration_pipeline(pointcloud, drivemap, footprint, sample=-1):
     """Full registration pipeline for the Via Appia pointclouds.
-    Modifies the pointcloud in-place.
+    Modifies the input pointcloud in-place, and leaves it in a undefined state.
 
     Arguments:
         pointcloud: pcl.PointCloud
@@ -91,7 +163,8 @@ def registration_pipeline(pointcloud, drivemap, footprint, sample=-1):
                     Downsample the high-res pointcloud before ICP step (UNIMPLEMENTED)
 
     Returns:
-        Nothing, pointcloud is modified in-place
+        pc : pcl.PointCloud
+                    The input pointcloud, but now registered.
     """
 
     log("Aligning footprints")
@@ -153,14 +226,26 @@ def registration_pipeline(pointcloud, drivemap, footprint, sample=-1):
     # do a ICP step
 
     log("Starting ICP")
-    converged, transf, estimate, fitness = icp(pointcloud, drivemap)
 
-    log("converged: %s" % converged)
-    log("fitness: %s" % fitness)
-    log("transf :\n%s" % transf)
+    log("Trying original orientation")
+    convergedA, transfA, estimateA, fitnessA = icp(pointcloud, drivemap)
+    log("converged: %s" % convergedA)
+    log("fitness: %s" % fitnessA)
+    log("transf :\n%s" % transfA)
 
-    log("Applying ICP transform to pointcloud")
-    pointcloud.transform( transf )
+    rot=np.array([[-1,0,0],[0,-1,0],[0,0,1]])
+    log("Trying rotated around z-axes, rotation:\n%s" % rot )
+    
+    pointcloud.rotate( rot )
+    convergedB, transfB, estimateB, fitnessB = icp(pointcloud, drivemap)
+    log("converged: %s" % convergedB)
+    log("fitness: %s" % fitnessB)
+    log("transf :\n%s" % transfB)
+
+    if fitnessB < fitnessA:
+        return estimateB
+    else:
+        return estimateA
 
 
 if __name__ == '__main__':
@@ -186,18 +271,22 @@ if __name__ == '__main__':
     #       * footprint
     #       * pointcloud
 
-    log("reading footprint", footprintcsv)
+    log("Reading footprint", footprintcsv)
     footprint = load(footprintcsv, srs="EPSG:32633", offset=[0, 0, 0]) # FIXME: set to via appia projection
 
-    log("reading drivemap", drivemapfile)
+    log("Reading drivemap", drivemapfile)
     drivemap = load(drivemapfile, same_as=footprint)
 
-    log("reading source", sourcefile)
-    pointcloud = load(sourcefile )
+    log("Reading object", sourcefile)
+    pointcloud = load(sourcefile)
 
-    # TODO: use up_file to orient the pointcloud upwards
+    if up_file is not None:
+        log("Orient object right side up using '%s'" % up_file )
+        fix_upside_down( up_file, pointcloud )
+    else:
+        log("No up-file given.")
 
-    registration_pipeline(pointcloud, drivemap, footprint, sample)
+    pointcloud = registration_pipeline(pointcloud, drivemap, footprint, sample)
 
     log( "Saving to", foutLas)
     save(pointcloud, foutLas)

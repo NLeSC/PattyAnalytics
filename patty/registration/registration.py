@@ -7,11 +7,11 @@ Registration algorithms and utility functions
 from __future__ import print_function
 from pcl.boundaries import estimate_boundaries
 import numpy as np
-import json
 from .. import is_registered, extract_mask, BoundingBox, log
 from ..segmentation import dbscan
 from matplotlib import path
 from sklearn.decomposition import PCA
+
 
 def downsample_voxel(pointcloud, voxel_size=0.01):
     '''Downsample a pointcloud using a voxel grid filter.
@@ -209,28 +209,3 @@ def intersect_polygon2d(pc, polygon):
     in_polygon = point_in_polygon2d(np.asarray(pc), polygon)
     return extract_mask(pc, in_polygon)
 
-
-def is_upside_down(upfilepath, transform):
-    '''Decides if a pointcloud is upside down using its relative up
-    vector and the transformation (rotation only) matrix.
-
-    Arguments:
-        upfilepath path of the json file containing the relative up vector
-        transform  2d array describing the rotation matrix
-    Returns:
-        true  pointcloud is upside down
-        false pointcloud is right side up
-    '''
-    if upfilepath in (None, ''):
-        return False
-
-    try:
-        with open(upfilepath) as upfile:
-            dic = json.load(upfile)
-    except:
-        return False
-
-    estimated_up = np.array(dic['estimatedUpDirection'])
-    real_up = transform[:, 2]
-
-    return np.dot(estimated_up, real_up) < 0
