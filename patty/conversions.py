@@ -375,7 +375,12 @@ def _load_csv(path, delimiter=','):
     Returns:
         pc : pcl.PointCloud
     """
-    return pcl.PointCloud( np.genfromtxt(path, delimiter=delimiter).astype( np.float32 ) )
+    precise_points = np.genfromtxt(path, delimiter=delimiter, dtype=np.float64 )
+    offset = np.avg( precise_points, axis=0, dtype=np.float64 )
+    pc = pcl.PointCloud(  np.array( precise_points - offset, dtype=np.float32 ) )
+
+    force_srs(pc, offset=offset)
+    return pc    
 
 def _write_csv(path, pc, delimiter=', '):
     """Write a pointcloud to a CSV file.
