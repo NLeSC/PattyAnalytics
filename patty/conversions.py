@@ -118,18 +118,18 @@ def _load_las(lasfile):
         lsrs = lsrs.get_wkt()
 
         n_points = las.header.get_count()
-        data = np.zeros((n_points, 6), dtype=np.float64)
+        precise_points = np.zeros((n_points, 6), dtype=np.float64)
 
         for i, point in enumerate(las):
-            data[i] = (point.x, point.y, point.z, point.color.red /
+            precise_points[i] = (point.x, point.y, point.z, point.color.red /
                        256, point.color.green / 256, point.color.blue / 256)
 
         # reduce the offset to decrease floating point errors
-        bbox = BoundingBox(points=data[:, 0:3])
+        bbox = BoundingBox(points=precise_points[:, 0:3])
         center = bbox.center
-        data[:, 0:3] -= center
+        precise_points[:, 0:3] -= center
 
-        pointcloud = pcl.PointCloudXYZRGB(data.astype(np.float32))
+        pointcloud = pcl.PointCloudXYZRGB(precise_points.astype(np.float32))
         force_srs( pointcloud, srs=lsrs, offset=center )
 
     finally:
