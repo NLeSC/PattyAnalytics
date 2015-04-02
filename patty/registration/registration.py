@@ -128,18 +128,6 @@ def register_from_footprint(pc, footprint, allow_scaling=True, allow_rotation=Tr
     boundary = get_pointcloud_boundaries(pc_main)
 
 
-    # We are looking for the main axes to orient the bounding boxes,
-    # however, high objects (pillars), the z directions will be the main axis,
-    # turning the object to its side.
-    # Prevent this by squashing the object to very small z-extent.
-    log( "Squashing z axis" )
-    avgz = boundary.center()[2]
-    squash = np.array ( [[ 1.0, 0.0, 0.0, 0.0 ],
-                         [ 0.0, 1.0, 0.0, 0.0 ],
-                         [ 0.0, 0.0, 0.0, avgz],
-                         [ 0.0, 0.0, 0.0, 1.0 ]] )
-    boundary.transform( squash )
-
     # FIXME: debug output
     save( boundary, "object_boundary.las" )
 
@@ -176,39 +164,28 @@ def register_from_footprint(pc, footprint, allow_scaling=True, allow_rotation=Tr
         log("Skipping translation")
         translation = np.array([0.0, 0.0, 0.0])
 
+    # FIXME: debug output
+    save( boundary, "object_boundary_aligned.las" )
+    
     return rot_matrix, rot_center, scale, translation
 
 
 def _find_rotation_helper(pointcloud):
-    pca = PCA(n_components=3)
-    pca.fit(np.asarray(pointcloud))
+    pca = PCA(n_components=2)
 
-    rotation = np.array(pca.components_)
+    points = np.asarray(pointcloud)
+    print(points)
+    pca.fit( points[:,0:2] )
 
-    # keep the up direction pointing (mostly) upwards
-    if rotation[2, 2] < 0.0:
-        rotation[:, 2] *= -1.0  # flip the whole vector
+    rotxy = np.array(pca.components_)
 
     # make sure the rotation is a proper rotation, ie det = +1
-    if np.linalg.det(rotation) < 0:
-        rotation[:, 1] *= -1.0
+    if np.linalg.det(rotxy) < 0:
+        rotxy[:, 1] *= -1.0
 
-    # Apply extra constraints
-
-    # Z should point up
-    newz = np.array( [0,0,1] )
-
-    # X should point in x,y plane
-    newx = rotation[:,0]
-    newx[2] = 0.0
-    newx /= np.dot( newx, newx ) ** 0.5
-
-    # Y in x,y plane, perpendicular to x and z
-    newy = np.cross( newz, newx )
-
-    rotation[:,0] = newx
-    rotation[:,1] = newy
-    rotation[:,2] = newz
+    # create a 3D rotation around the z-axis
+    rotation = np.eye(3)
+    rotation[0:2,0:2] = rotxy
 
     return rotation
 
