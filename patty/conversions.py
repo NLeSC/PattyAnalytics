@@ -140,8 +140,13 @@ def _load_las(lasfile):
 
 def is_registered(pointcloud):
     """Returns True when a pointcloud is registered; ie coordinates are relative
-       to a specific spatial reference system and offset."""
-    return hasattr(pointcloud, 'is_registered') and pointcloud.is_registered
+       to a specific spatial reference system or offset.
+    
+    In that case, first transform one pointcloud to the reference system of the other,
+    before doing processing on the points:
+    set_srs(pcA, same_as=pcB)
+    """
+    return hasattr(pointcloud, 'srs') or hasattr(pointcloud, 'offset')
 
 def same_srs(pcA, pcB):
     """True if the two pointclouds have the same coordinate system
@@ -151,11 +156,45 @@ def same_srs(pcA, pcB):
         pcB : pc..PointCloud
     """
 
-    if is_registered(pcA) and is_registered(pcB):
-        if np.mean(pcA.offset - pcB.offset) < 1E-5:
-            if pcA.srs.IsSame( pcB.srs ):
-                return True
-    return False
+    a = is_registered(pcA)
+    b = is_registered(pcB)
+
+    # both pointcloud are pure pcl: no offset nor SRS
+    if not a and not b:
+        return True
+
+    # only one of the pointclouds is registered
+    if ((not a) and b) or ((not b) and a):
+        return False
+
+    a = None
+    b = None
+    try:
+        a = pcA.srs
+        b = pcB.srs
+
+        if not a.IsSame(b):
+            # SRS present, but different
+            return False        
+    except:
+        # one of the pointclouds does not have a SRS
+        return False 
+
+    a = None
+    b = None
+    try:
+        a = pcA.offset
+        b = pcB.offset
+    except:
+        # one of the pointclouds does not have an offset
+        return False
+
+    # absolute(a - b) <= (atol + rtol * absolute(b))
+    if not np.allclose(a, b, rtol=1e-06, atol=1e-08):
+        return False
+
+    return True
+
 
 def set_srs(pc, srs=None, offset=np.array( [0,0,0], dtype=np.float64),
             same_as=None):
@@ -200,58 +239,77 @@ def set_srs(pc, srs=None, offset=np.array( [0,0,0], dtype=np.float64),
     """
     if not is_registered(pc):
         raise TypeError( "Pointcloud is not registered" )
+        return None
+
+    update_offset = False
+    update_srs    = False
 
     if same_as:
+
+        # take offset and SRS from reference pointcloud
+        update_offset = True
+        update_srs    = True
         if is_registered(same_as):
             newsrs    = same_as.srs
             newoffset = same_as.offset
         else:
             raise TypeError("Reference pointcloud is not registered")
-
     else:
-        if type(srs) == type(osr.SpatialReference()):
-            newsrs = srs
-        else:
-            newsrs = osr.SpatialReference()
-            newsrs.SetFromUserInput(srs)
 
-        if offset is not None:
+        # take offset and SRS from arguments
+
+        # sanitize offset
+        if offset is not None: 
+            update_offset = True
+
             newoffset = np.array( offset, dtype=np.float64 )
             if len(newoffset) != 3:
                 raise TypeError("Offset should be an np.array([3])")
-        else:
-            newoffset = np.zeros([3], dtype=np.float64 )
 
-    if not pc.srs.IsSame( newsrs ):
+        # sanitize SRS 
+        if srs is not None:
+
+            # argument is a SRS, use it
+            if type(srs) == type(osr.SpatialReference()):
+                update_srs    = True
+                newsrs = srs
+
+            # argument is not an SRS, try to convert it to one
+            elif type(srs) == type(""):
+                newsrs = osr.SpatialReference()
+                if newsrs.SetFromUserInput(srs) == 0:
+                    update_srs    = True
+
+            # illegal input
+            else:
+                raise TypeError("SRS should be an osr.SpatialReference or a string")
+    # Apply
+
+    # add old offset
+    data =  np.asarray( pc )
+    precise_points = np.array(data, dtype=np.float64) + pc.offset
+
+    # do transformation, this resets the offset to 0
+    if update_srs and not pc.srs.IsSame( newsrs ):
         try:
            T = osr.CoordinateTransformation( pc.srs, newsrs )
-           print("From: '%s'" % pc.srs)
-           print("To: '%s'" % newsrs)
-           data =  np.asarray( pc )
-
-           # add old offset, do transformation, substract new offset
-           precise_points = np.array(data, dtype=np.float64) + pc.offset
            precise_points = np.array( T.TransformPoints( precise_points ), dtype=np.float64 )
-           precise_points -= newoffset
-
-           # copy the float64 to pointcloud
-           data[...] = np.asarray( precise_points, dtype=np.float32 )
+           pc.srs = newsrs.Clone()
+           pc.offset = np.array( [0,0,0], dtype=np.float64 )
         except:
-           pass
+           print("WARNING, CAN'T DO COORDINATE TRANSFORMATION")
 
-        # fix metadata
-        pc.srs = newsrs.Clone()
+    # substract new offset
+    if update_offset:
+        precise_points -= newoffset
         pc.offset = np.array( newoffset, dtype=np.float64 )
 
-    # FIXME do better comparison
-    elif np.max(pc.offset - newoffset) > 1.e-5:
-        pc.translate( pc.offset - newoffset )
-        pc.offset = np.array( newoffset, dtype=np.float64)
+    # copy the float64 to the pointcloud
+    data[...] = np.asarray( precise_points, dtype=np.float32 )
 
     return pc
 
-def force_srs(pc, srs=None, offset=None, dtype=np.float64,
-              same_as=None):
+def force_srs(pc, srs=None, offset=None, same_as=None):
     """Set a spatial reference system (SRS) and offset for a pointcloud.
     This function affects the metadata only, and sets pc.is_registered to True
 
@@ -294,9 +352,11 @@ def force_srs(pc, srs=None, offset=None, dtype=np.float64,
     else:
         if type(srs) == type(osr.SpatialReference()):
             pc.srs = srs.Clone()
-        else:
+        elif srs is not None:
             pc.srs = osr.SpatialReference()
             pc.srs.SetFromUserInput(srs)
+        else:
+            pc.srs = osr.SpatialReference()
 
         if offset is not None:
             offset = np.asarray( offset, dtype=np.float64 )
