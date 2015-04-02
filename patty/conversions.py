@@ -43,8 +43,7 @@ def clone(pc):
 
     return cp
 
-def load(path, format=None, load_rgb=True, same_as=None,
-         offset=np.array([0,0,0], dtype=np.float64 ), srs=None):
+def load(path, format=None, load_rgb=True ):
     """Read a pointcloud file.
 
     Supports LAS and CSV files, and lets PCD and PLY files be read by python-pcl.
@@ -59,13 +58,6 @@ def load(path, format=None, load_rgb=True, same_as=None,
             Whether RGB is loaded for PLY and PCD files. For LAS files, RGB is
             always read.
 
-    Optional Arguments. These are passed to set_srs() if the pointcloud has a
-    reference system (LAS), or to force_srs() if not.
-
-        same_as : pcl.pointcloud
-        offset : np.array([3], dtype=np.float64 )
-        srs : object or osgeo.osr.SpatialReference
-
     Returns:
         pc : pcl.PointCloud
     """
@@ -76,16 +68,6 @@ def load(path, format=None, load_rgb=True, same_as=None,
     else:
         _check_readable(path)
         pc = pcl.load(path, format=format, loadRGB=load_rgb)
-
-    # Set SRS and offset
-    if same_as or ((offset is not None) and (srs is not None)):
-        if is_registered(pc):
-            set_srs(pc, offset=offset, srs=srs, same_as=same_as )
-        else:
-            force_srs(pc, offset=offset, srs=srs, same_as=same_as )
-    else:
-        if not is_registered(pc):
-            pc.offset = np.array( [0,0,0], dtype=np.float64 )
 
     return pc
 
