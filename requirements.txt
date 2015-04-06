@@ -2,6 +2,6 @@ Cython>=0.21.2
 liblas
 docopt
 nose_parameterized
-matplotlib
 git+https://github.com/NLeSC/python-pcl.git
 scikit-learn>=0.15.2
+shapely
