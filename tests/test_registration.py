@@ -6,9 +6,7 @@ import numpy as np
 import pcl
 
 from patty import conversions
-from patty.registration import (point_in_polygon2d, downsample_voxel,
-                                intersect_polygon2d,
-                                get_pointcloud_boundaries)
+from patty.registration import (downsample_voxel)
 from patty.conversions import clone
 
 from helpers import make_tri_pyramid_with_base
@@ -19,84 +17,6 @@ from numpy.testing import (assert_array_equal, assert_array_almost_equal,
 from sklearn.utils.extmath import cartesian
 import unittest
 
-
-class TestPolygon(unittest.TestCase):
-
-    def setUp(self):
-        self.poly = [[0., 0.], [1., 0.], [0.4, 0.4], [1., 1.], [0., 1.]]
-        self.points = [[0., 0.], [0.5, 0.2], [1.1, 1.1], [0.2, 1.1]]
-
-    def test_in_polygon(self):
-        ''' Test whether the point_in_polygon2d behaves as expected. '''
-        in_polygon = point_in_polygon2d(self.points, self.poly)
-        assert_array_equal(in_polygon, [False, True, False, False],
-                           "points expected in polygon not matched")
-
-
-class TestCutoutPointCloud(unittest.TestCase):
-
-    def setUp(self):
-        self.footprint = [[0., 0.], [1., 0.], [0.4, 0.4], [1., 1.], [0., 1.]]
-        self.offset = [-0.01, -0.01, -0.01]
-        points = np.array([[0., 0.], [0.5, 0.2], [1.1, 1.1], [0.2, 1.1]])
-        data = np.zeros((4, 6), dtype=np.float32)
-        data[:, :2] = points
-        self.pc = pcl.PointCloudXYZRGB(data)
-
-    def test_cutout_from_footprint(self):
-        ''' Test whether a cutout from a pointcloud gets the right points '''
-        pc_fp = intersect_polygon2d(self.pc, self.footprint)
-        assert_equal(pc_fp.size, 1,
-                     "number of points expected in polygon not matched")
-        err_msg = "point that should be matched was modified"
-        assert_array_almost_equal(pc_fp[0], [0.5, 0.2, 0., 0., 0., 0.],
-                                  err_msg=err_msg)
-
-
-def array_in_margin(target, actual, margin, msg):
-    assert_array_less(target, actual + np.asarray(margin), msg)
-    assert_array_less(actual, target + np.asarray(margin), msg)
-
-
-class TestBoundary(unittest.TestCase):
-
-    def setUp(self):
-        self.num_rows = 50
-        self.max = 0.1
-        self.num_points = self.num_rows * self.num_rows
-        grid = np.zeros((self.num_points, 6))
-        row = np.linspace(start=0.0, stop=self.max, num=self.num_rows)
-        grid[:, 0:2] = cartesian((row, row))
-        self.pc = pcl.PointCloudXYZRGB(grid.astype(np.float32))
-        self.footprint_boundary = np.array(
-            [[0.0, 0.0], [0.0, self.max],
-             [self.max, self.max], [self.max, 0.0]])
-
-    def test_boundaries(self):
-        boundary = get_pointcloud_boundaries(self.pc, search_radius=0.02)
-        assert_equal(self.pc.size, self.num_points)
-        assert_less(boundary.size, self.num_points)
-        assert_greater(boundary.size, 0, "Boundary has no points")
-
-        center = boundary.center()
-        small_footprint = clone(boundary).scale(0.9, origin=center)
-        large_footprint = clone(boundary).scale(1.0, origin=center)
-
-        print(boundary, large_footprint, small_footprint)
-
-        assert_equal(np.sum(point_in_polygon2d(boundary, small_footprint)), 0,
-                     "No boundary points should be inside small footprint")
-        assert_greater(np.sum(point_in_polygon2d(self.pc, small_footprint)), 0,
-                       "No pointcloud points were found inside small footprint")
-        assert_greater(np.sum(point_in_polygon2d(boundary, large_footprint)), 0,
-                       "No boundary points were found inside large footprint")
-        assert_greater(np.sum(point_in_polygon2d(self.pc, large_footprint)), 0,
-                       "No pointcloud points were found inside large footprint")
-
-    def test_boundaries_too_small_radius(self):
-        boundary = get_pointcloud_boundaries(
-            self.pc, search_radius=0.0001, normal_search_radius=0.0001)
-        assert_equal(boundary.size, 0)
 
 
 class TestRegistrationPipeline(unittest.TestCase):

@@ -5,34 +5,48 @@ Registration algorithms and utility functions
 """
 
 from __future__ import print_function
+from pcl import PointCloud
 from pcl.boundaries import estimate_boundaries
 import numpy as np
 from .. import is_registered, extract_mask, BoundingBox, log, save
-from ..segmentation import dbscan
+from ..segmentation import get_largest_dbscan_clusters
 from patty import conversions
-from matplotlib import path
+
 from sklearn.decomposition import PCA
 
+from shapely.geometry.polygon import LinearRing
+from shapely.geometry import Point
 
-def downsample_voxel(pointcloud, voxel_size=0.01):
+
+
+
+def downsample_voxel(pc, voxel_size=0.01):
     '''Downsample a pointcloud using a voxel grid filter.
+    Resulting pointcloud has the same SRS and offset as the input.
 
     Arguments:
-        pointcloud    Original pointcloud
-        voxel_size    Grid spacing for the voxel grid
+        pc         : pcl.PointCloud
+                     Original pointcloud
+        float      : voxel_size
+                     Grid spacing for the voxel grid
     Returns:
-        filtered_pointcloud
+        pc : pcl.PointCloud
+             filtered pointcloud
     '''
-    pc_filter = pointcloud.make_voxel_grid_filter()
+    pc_filter = pc.make_voxel_grid_filter()
     pc_filter.set_leaf_size(voxel_size, voxel_size, voxel_size)
-    return pc_filter.filter()
+    newpc = pc_filter.filter()
+
+    conversions.force_srs(newpc, same_as=pc)
+
+    return newpc
 
 
 def downsample_random(pc, fraction, random_seed=None):
     """Randomly downsample pointcloud to a fraction of its size.
 
     Returns a pointcloud of size fraction * len(pc), rounded to the nearest
-    integer.
+    integer.  Resulting pointcloud has the same SRS and offset as the input.
 
     Use random_seed=k for some integer k to get reproducible results.
     Arguments:
@@ -54,123 +68,205 @@ def downsample_random(pc, fraction, random_seed=None):
     k = max(int(round(fraction * len(pc))), 1)
     sample = rng.choice(len(pc), k, replace=False)
     new_pc = pc.extract(sample)
-    if is_registered(pc):
-        conversions.force_srs(new_pc, same_as=pc)
+
+    conversions.force_srs(new_pc, same_as=pc)
+
     return new_pc
 
 
-def get_pointcloud_boundaries(pointcloud, angle_threshold=0.1,
-                              search_radius=None, normal_search_radius=None):
-    '''Find the boundary of a pointcloud.
+
+def boundary_of_drivemap(drivemap, footprint, height=1.0, edge_width=0.25):
+    '''
+    Construct an object boundary using the manually recorded corner points.
+    Do this by finding all the points in the drivemap along the footprint.
+    Use the bottom 'height' meters of the drivemap (not trees).
+    Resulting pointcloud has the same SRS and offset as the input.
+
+    Arguments:
+        drivemap   : pcl.PointCloud
+        footprint  : pcl.PointCloud
+        height     : Cut-off height, points more than this value above the
+                     lowest point of the drivemap are considered trees,
+                     and dropped. default 1 m.
+        edge_width : Points belong to the boundary when they are within
+                     this distance from the footprint. default 0.25
+
+    Returns:
+        boundary   : pcl.PointCloud
+    '''
+
+    # construct basemap as the bottom 'height' meters of the drivemap
+
+    drivemap_array = np.asarray(drivemap)
+    bb = BoundingBox(points=drivemap_array)
+    basemap = extract_mask(drivemap, drivemap_array[:, 2] < bb.min[2] + height)
+
+    # Cut band between +- edge_width around the footprint
+    edge = LinearRing( np.asarray(footprint) ).buffer( edge_width )
+
+    points = [point for point in basemap if edge.contains( Point(point) )]
+    boundary = PointCloud( np.asarray( points, dtype=np.float32) )
+    
+    conversions.force_srs(boundary, same_as=basemap)
+
+    return boundary
+
+
+def boundary_via_lowest_points(pc, height_fraction=0.01):
+    '''
+    Construct an object boundary by taking the lowest (ie. min z coordinate)
+    fraction of points.
+    Resulting pointcloud has the same SRS and offset as the input.
+
+    Arguments:
+        pc               : pcl.PointCloud
+        height_fraction  : float
+
+    Returns:
+        boundary   : pcl.PointCloud
+    '''
+    array = np.asarray(pc)
+    bb = BoundingBox(points=array)
+    maxh = bb.min[2] + (bb.max[2] - bb.min[2]) * height_fraction
+
+    newpc = extract_mask(pc, array[:, 2] < maxh)
+    
+    conversions.force_srs(newpc, same_as=pc)
+
+    return newpc
+
+
+def boundary_of_center_object(pc,
+                              downsample=None,
+                              angle_threshold=0.1,
+                              search_radius=0.1,
+                              normal_search_radius=0.1):
+    '''Find the boundary of the main object.
+    First applies dbscan to find the main object,
+    then estimates its footprint by taking the pointcloud boundary.
+    Resulting pointcloud has the same SRS and offset as the input.
 
     Arguments:
         pointcloud : pcl.PointCloud
 
-        angle_threshold : float
+        downsample : If given, reduce the pointcloud to given percentage 
+                     values should be in [0,1]
 
-        search_radius : float defaults to 1 percent of pointcloud size as
-                        determined by the diagonal of the boundingbox
+        angle_threshold : float defaults to 0.1
 
-        normal_search_radius : float defaults to search_radius
+        search_radius : float defaults to 0.1
+
+        normal_search_radius : float defaults to 0.1
 
     Returns:
-        a pointcloud
+        boundary : pcl.PointCloud
     '''
 
-    if search_radius == None:
-        bb = BoundingBox(points=pointcloud)
-        log(bb)
-        log(bb.diagonal)
-        search_radius = 0.01 * bb.diagonal
+    if downsample is not None:
+        log( ' - Downsampling factor:', downsample )
+        pc = downsample_random(pc, downsample)
+    else:
+        log( ' - Not downsampling' )
+    save( pc, 'downsampled.las' )
 
-    if normal_search_radius == None:
-        normal_search_radius = search_radius
+    # find largest cluster, it should be the main object
+    log( ' - Starting dbscan' )
+    mainobject = get_largest_dbscan_clusters(pc, 0.7, .15, 250) # if this doesnt work, try 2.0
 
-    log("Search radius from bounding box: %f" % search_radius)
+    save( mainobject, 'mainobject.las' )
+    log( ' - Finished dbscan' )
 
-    boundary = estimate_boundaries(pointcloud, angle_threshold=angle_threshold,
+    boundary = estimate_boundaries(mainobject,
+                                   angle_threshold=angle_threshold,
                                    search_radius=search_radius,
                                    normal_search_radius=normal_search_radius)
 
-    log("Found %d out of %d boundary points"
-             % (np.count_nonzero(boundary), len(pointcloud)))
+    boundary = extract_mask(mainobject, boundary)
 
-    return extract_mask(pointcloud, boundary)
+    if len(boundary) == len(mainobject) or len(boundary) == 0:
+        log( 'Cannot find boundary' )
+        return None
+
+    # project on the xy plane 
+    points = np.asarray( boundary )
+    zmin = np.min( points, axis=0 )[2]
+    points[:,2] = zmin
+    
+    conversions.force_srs(boundary, same_as=pc)
+
+    return boundary
 
 
-def register_from_footprint(pc, footprint, allow_scaling=True, allow_rotation=True, allow_translation=True):
-    '''Register a pointcloud by placing it in footprint.
 
-    Applies dbscan to find the main object, and estimates its footprint
-    by taking the pointcloud boundary.
-    Then the pointcloud footprint is alinged with the reference footprint
-    by rotating its pricipal axis, and translating it so the centers of mass
-    coincide.
-    Finally, the pointcloud is scaled to have the same extent. The scale factor is
-    is determined by the red meter sticks detection algorithm, or form the fit between
-    pc and footprint if red meter sticks cant be found.
+def register_from_footprint(loose_pc, fixed_pc,
+                            allow_scaling=True,
+                            allow_rotation=True,
+                            allow_translation=True):
+    '''
+    Align a pointcloud 'loose_pc' by placing it on top of
+    'fixed_pc' as good as poosible. Done by aligning the 
+    principle axis of both pointclouds.
+
+    NOTE: Both pointclouds are assumed to be the footprint (or projection)
+    on the xy plane, with basically zero extent along the z-axis.
+
+    (allow_rotation=True)
+        The pointcloud boundary is alinged with the footprint
+        by rotating its pricipal axis in the (x,y) plane. 
+
+    (allow_translation=True)
+        Then, it is translated so the centers of mass coincide.
+
+    (allow_scaling=True)
+        Finally, the pointcloud is scaled to have the same extent.
 
     Arguments:
-        pc : pcl.PointCloud
+        loose_pc          : pcl.PointCloud
+        fixed_pc          : pcl.PointCloud
 
-        footprint : pcl.PointCloud
-            Treated as array of [x,y] describing the footprint.
+        allow_scaling     : Bolean
+        allow_rotation    : Bolean
+        allow_translation : Bolean
 
     Returns:
-        The original pointcloud, rotated/translated to match the footprint.
+        rot_matrix, rot_center, scale, translation : np.array()
+
     '''
-    # find the footprint of the pointcloud: the boundary of its center object
-    # (ie. largest object)
-    log("Finding largest cluster")
-    pc_main = dbscan.largest_dbscan_cluster(pc, .1, 250)
 
-    log("Detecting boundary")
-    boundary = get_pointcloud_boundaries(pc_main)
-
-
-    # FIXME: debug output
-    save( boundary, "object_boundary.las" )
-
-    if len(boundary) == len(pc_main) or len(boundary) == 0:
-        log("Boundary information could not be retrieved")
-        return None
+    rot_center = loose_pc.center()
 
     if allow_rotation:
         log("Finding rotation")
-        rot_center = boundary.center()
-        rot_matrix = find_rotation(boundary, footprint)
-        boundary.rotate(rot_matrix, origin=rot_center)
+        rot_matrix = find_rotation_xy(loose_pc, fixed_pc)
+        loose_pc.rotate(rot_matrix, origin=rot_center)
     else:
         log("Skipping rotation")
-        rot_center = np.array([0.0, 0.0, 0.0])
         rot_matrix = np.eye(3)
 
     if allow_scaling:
         log("Finding scale")
-        footprint_bb = BoundingBox(footprint)
-        boundary_bb = BoundingBox(boundary)
-        scale = footprint_bb.size / boundary_bb.size
+        loose_bb = BoundingBox(loose_pc)
+        fixed_bb = BoundingBox(fixed_pc)
+        scale = fixed_bb.size[0:2] / loose_bb.size[0:2]
+
         # take the average scale factor for the x and y dimensions
-        scale = np.mean(scale[0:2])
+        scale = np.mean(scale)
     else:
         log("Skipping scale")
         scale = 1.0
 
     if allow_translation:
         log("Finding translation")
-        translation = footprint.center() - rot_center
-        boundary.translate(translation)
+        translation = fixed_pc.center() - rot_center
+        loose_pc.translate(translation)
     else:
         log("Skipping translation")
         translation = np.array([0.0, 0.0, 0.0])
 
-    # FIXME: debug output
-    save( boundary, "object_boundary_aligned.las" )
-    
     return rot_matrix, rot_center, scale, translation
 
 
-def _find_rotation_helper(pointcloud):
+def _find_rotation_xy_helper(pointcloud):
     pca = PCA(n_components=2)
 
     points = np.asarray(pointcloud)
@@ -190,7 +286,7 @@ def _find_rotation_helper(pointcloud):
     return rotation
 
 
-def find_rotation(pc, ref):
+def find_rotation_xy(pc, ref):
     '''Find the transformation that rotates the principal axis of the
     pointcloud onto those of the reference.
     Keep the z-axis pointing upwards.
@@ -204,18 +300,69 @@ def find_rotation(pc, ref):
         numpy array of shape [3,3], can be used to rotate pointclouds with pc.rotate()
     '''
 
-    pc_transform = _find_rotation_helper(pc)
-    ref_transform = _find_rotation_helper(ref)
+    pc_transform = _find_rotation_xy_helper(pc)
+    ref_transform = _find_rotation_xy_helper(ref)
 
     return np.dot(np.linalg.inv(ref_transform), pc_transform)
 
 
-def point_in_polygon2d(points, polygon):
-    p = path.Path(np.asarray(polygon)[:, :2])
-    return np.array([p.contains_point(point[:2]) for point in points],
-                    dtype=np.bool)
+def rotate_upwards(pc, up):
+    '''
+    Rotate the pointcloud in-place around its center, such that the
+    'up' vector points along [0,0,1]
 
+    Arguments:
+        pc : pcl.PointCloud
+        up : np.array([3]) 
 
-def intersect_polygon2d(pc, polygon):
-    in_polygon = point_in_polygon2d(np.asarray(pc), polygon)
-    return extract_mask(pc, in_polygon)
+    Returns:
+        pc : pcl.PointCloud the input pointcloud, for convenience.
+
+    '''
+
+    newz = np.array( up )
+
+    # Right-handed coordiante system:
+    # np.cross(x,y) = z
+    # np.cross(y,z) = x
+    # np.cross(z,x) = y
+
+    # normalize
+    newz /= ( np.dot( newz, newz ) ) ** 0.5
+
+    # find two orthogonal vectors to represent x and y,
+    # randomly choose a vector, and take cross product. If we're unlucky,
+    # this ones is parallel to z, so cross pruduct is zero.
+    # In that case, try another one
+    try:
+        newx = np.cross( np.array([0,1,0]), newz )
+        newx /= ( np.dot( newx, newx ) ) ** 0.5
+
+        newy = np.cross( newz, newx )
+        newy /= ( np.dot( newy, newy ) ) ** 0.5
+    except:
+        newy = np.cross( newz, np.array([1,0,0]) )
+        newy /= ( np.dot( newy, newy ) ) ** 0.5
+
+        newx = np.cross( newy, newz )
+        newx /= ( np.dot( newx, newx ) ) ** 0.5
+
+    rotation = np.zeros([3,3])
+    rotation[0,0] = newx[0]
+    rotation[1,0] = newx[1]
+    rotation[2,0] = newx[2]
+
+    rotation[0,1] = newy[0]
+    rotation[1,1] = newy[1]
+    rotation[2,1] = newy[2]
+
+    rotation[0,2] = newz[0]
+    rotation[1,2] = newz[1]
+    rotation[2,2] = newz[2]
+
+    rotation = np.linalg.inv(rotation)
+
+    log( "Rotating pointcloud around origin, using:\n%s" % rotation )
+    pc.rotate( rotation, origin=pc.center() )
+
+    return pc 

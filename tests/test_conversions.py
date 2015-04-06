@@ -29,7 +29,8 @@ def test_read_write():
     conversions.force_srs(pc, srs="EPSG:28992", offset=[1,2,3])
     conversions.save(pc, filename)
 
-    pc2 = conversions.load(filename, same_as=pc)
+    pc2 = conversions.load(filename)
+    conversions.set_srs( pc2, same_as=pc )
 
     pc_arr = pc.to_array()
     pc2_arr = pc2.to_array()
@@ -84,9 +85,8 @@ def test_force_srs():
 
     conversions.force_srs( pcC, srs=rdnew )
 
-    assert_array_almost_equal( pcC.offset, np.zeros(3, dtype=np.float64), 15,
-        "Offset not zero to 15 decimals" )
     assert_true( pcC.srs.IsSame( rdnew ) )
+    assert_false( hasattr( pcC, "offset" ) )
 
     # testing if no actual transform occurs on the points
     conversions.force_srs(pcC, srs=latlon )
