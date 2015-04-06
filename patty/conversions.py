@@ -439,6 +439,7 @@ def make_las_header(pointcloud):
     schema.time = False
     schema.color = True
 
+    # FIXME: this format version assumes color is present
     head = liblas.header.Header()
     head.schema = schema
     head.dataformat_id = 3
@@ -491,6 +492,12 @@ def _write_las(lasfile, pointcloud, header=None):
     if header is None:
         header = make_las_header(pointcloud)
 
+    # deal with color
+    if len(pointcloud[0]) > 3:
+        do_RGB = True
+    else:
+        do_RGB = False
+
     precise_points = np.array(pointcloud, dtype=np.float64)
     precise_points /= header.scale
 
@@ -501,9 +508,10 @@ def _write_las(lasfile, pointcloud, header=None):
         for i in xrange(pointcloud.size):
             point = liblas.point.Point()
             point.x, point.y, point.z = precise_points[i]
-            red, grn, blu = pointcloud[i][3:6]
-            point.color = liblas.color.Color(
-                red=int(red) * 256, green=int(grn) * 256, blue=int(blu) * 256)
+            if do_RGB:
+                red, grn, blu = pointcloud[i][3:6]
+                point.color = liblas.color.Color(
+                    red=int(red) * 256, green=int(grn) * 256, blue=int(blu) * 256)
             las.write(point)
     finally:
         if las is not None:
