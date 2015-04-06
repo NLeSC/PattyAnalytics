@@ -27,7 +27,7 @@ def _check_writable(filepath):
             not os.path.isfile(filepath) or
             not os.access(filepath, os.W_OK)
             )) or not os.access(os.path.dirname(filepath), os.W_OK | os.X_OK):
-        raise IOError("Cannot write to " + filepath)
+        raise IOError("Cannot save to " + filepath)
 
 def clone(pc):
     """Return a copy of a pointcloud, including registration metadata
@@ -73,7 +73,7 @@ def load(path, format=None, load_rgb=True ):
     return pc
 
 
-def save(cloud, path, format=None, binary=False):
+def save(cloud, path, format=None, binary=False, las_header=None):
     """Save a pointcloud to file.
 
     Supports LAS and CSV files, and lets PCD and PLY files be saved by python-pcl.
@@ -88,11 +88,14 @@ def save(cloud, path, format=None, binary=False):
              from the file extension.
         binary : boolean
             Whether PLY and PCD files are saved in binary format.
+        las_header: liblas.header.Header
+            LAS header to use. When none, a default header is created by
+            make_las_header(). Default: None
     """
     if format == 'las' or format is None and path.endswith('.las'):
-        _write_las(path, cloud)
+        _save_las(path, cloud, header=las_header)
     elif format == 'csv' or format is None and path.endswith('.csv'):
-        _write_csv(path, cloud)
+        _save_csv(path, cloud)
     else:
         _check_writable(path)
         if is_registered(cloud) and cloud.offset != np.zeros(3):
@@ -151,14 +154,14 @@ def _load_csv(path, delimiter=','):
     force_srs(pc, offset=offset)
     return pc    
 
-def _write_csv(path, pc, delimiter=', '):
+def _save_csv(path, pc, delimiter=', '):
     """Write a pointcloud to a CSV file.
 
     Arguments:
         path: string
             Output filename
         pc: pcl.PointCloud
-            Pointcloud to write
+            Pointcloud to save
         delimiter: string
             Field delimiter to use, see np.savetxt documentation.
 
@@ -243,7 +246,7 @@ def make_las_header(pointcloud):
     return head
 
 
-def _write_las(lasfile, pointcloud, header=None):
+def _save_las(lasfile, pointcloud, header=None):
     """Write a pointcloud to a LAS file
 
     Arguments:
