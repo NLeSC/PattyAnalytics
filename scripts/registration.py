@@ -25,8 +25,8 @@ from pcl.registration import icp
 import numpy as np
 import os
 import json
-from patty.conversions import (load, save, log, BoundingBox,
-                               set_srs, force_srs, same_srs)
+from patty.conversions import (load, save, log, BoundingBox)
+from patty.srs import (set_srs, force_srs, same_srs)
 from patty.registration import (boundary_of_drivemap,
                                 boundary_of_center_object,
                                 boundary_via_lowest_points,
