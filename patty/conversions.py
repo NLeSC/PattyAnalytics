@@ -350,8 +350,6 @@ def force_srs(pc, srs=None, offset=None, same_as=None):
         if is_registered(same_as):
             pc.srs = same_as.srs.Clone()
             pc.offset = np.array( same_as.offset, dtype=np.float64 )
-        else:
-            raise TypeError("Reference pointcloud is not registered")
     else:
         if type(srs) == type(osr.SpatialReference()):
             pc.srs = srs.Clone()
