@@ -366,8 +366,6 @@ def force_srs(pc, srs=None, offset=None, same_as=None):
             else:
                pc.offset = offset
 
-    pc.is_registered = True
-
     return pc
 
 def _load_csv(path, delimiter=','):
