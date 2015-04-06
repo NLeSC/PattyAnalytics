@@ -376,7 +376,7 @@ def _load_csv(path, delimiter=','):
         pc : pcl.PointCloud
     """
     precise_points = np.genfromtxt(path, delimiter=delimiter, dtype=np.float64 )
-    offset = np.avg( precise_points, axis=0, dtype=np.float64 )
+    offset = np.mean( precise_points, axis=0, dtype=np.float64 )
     pc = pcl.PointCloud(  np.array( precise_points - offset, dtype=np.float32 ) )
 
     force_srs(pc, offset=offset)
