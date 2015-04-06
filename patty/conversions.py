@@ -139,17 +139,20 @@ def _load_las(lasfile):
     return pointcloud
 
 def is_registered(pointcloud):
-    """Returns True when a pointcloud is registered; ie coordinates are relative
-       to a specific spatial reference system or offset.
+    """
+    Returns True when a pointcloud is registered; ie coordinates are relative
+    to a specific spatial reference system or offset.
     
     In that case, first transform one pointcloud to the reference system of the other,
     before doing processing on the points:
-    set_srs(pcA, same_as=pcB)
+
+       set_srs(pcA, same_as=pcB)
     """
     return hasattr(pointcloud, 'srs') or hasattr(pointcloud, 'offset')
 
 def same_srs(pcA, pcB):
-    """True if the two pointclouds have the same coordinate system
+    """
+    True if the two pointclouds have the same coordinate system
 
     Arguments:
         pcA : pcl.PointCloud
@@ -310,10 +313,10 @@ def set_srs(pc, srs=None, offset=np.array( [0,0,0], dtype=np.float64),
     return pc
 
 def force_srs(pc, srs=None, offset=None, same_as=None):
-    """Set a spatial reference system (SRS) and offset for a pointcloud.
-    This function affects the metadata only, and sets pc.is_registered to True
-
+    """
+    Set a spatial reference system (SRS) and offset for a pointcloud.
     Either give a SRS and offset, or a reference pointcloud
+    This function affects the metadata only.
 
     This is the recommended way to turn a python-pcl pointcloud to a 
     registerd pointcloud with absolute coordiantes.
