@@ -1,5 +1,5 @@
 import numpy as np
-from patty.segmentation.pointCloudMeasurer import measure_length
+from patty.conversions import measure_length
 from numpy.testing import assert_almost_equal
 
 
