@@ -18,63 +18,6 @@ from shapely.geometry.polygon import LinearRing
 from shapely.geometry import Point
 
 
-
-
-def downsample_voxel(pc, voxel_size=0.01):
-    '''Downsample a pointcloud using a voxel grid filter.
-    Resulting pointcloud has the same SRS and offset as the input.
-
-    Arguments:
-        pc         : pcl.PointCloud
-                     Original pointcloud
-        float      : voxel_size
-                     Grid spacing for the voxel grid
-    Returns:
-        pc : pcl.PointCloud
-             filtered pointcloud
-    '''
-    pc_filter = pc.make_voxel_grid_filter()
-    pc_filter.set_leaf_size(voxel_size, voxel_size, voxel_size)
-    newpc = pc_filter.filter()
-
-    utils.force_srs(newpc, same_as=pc)
-
-    return newpc
-
-
-def downsample_random(pc, fraction, random_seed=None):
-    """Randomly downsample pointcloud to a fraction of its size.
-
-    Returns a pointcloud of size fraction * len(pc), rounded to the nearest
-    integer.  Resulting pointcloud has the same SRS and offset as the input.
-
-    Use random_seed=k for some integer k to get reproducible results.
-    Arguments:
-        pc : pcl.PointCloud
-            Input pointcloud.
-        fraction : float
-            Fraction of points to include.
-        random_seed : int, optional
-            Seed to use in random number generator.
-
-    Returns:
-        pcl.Pointcloud
-    """
-    if not 0 < fraction <= 1:
-        raise ValueError("Expected fraction in (0,1], got %r" % fraction)
-
-    rng = np.random.RandomState(random_seed)
-
-    k = max(int(round(fraction * len(pc))), 1)
-    sample = rng.choice(len(pc), k, replace=False)
-    new_pc = pc.extract(sample)
-
-    utils.force_srs(new_pc, same_as=pc)
-
-    return new_pc
-
-
-
 def boundary_of_drivemap(drivemap, footprint, height=1.0, edge_width=0.25):
     '''
     Construct an object boundary using the manually recorded corner points.
@@ -164,7 +107,7 @@ def boundary_of_center_object(pc,
 
     if downsample is not None:
         log( ' - Downsampling factor:', downsample )
-        pc = downsample_random(pc, downsample)
+        pc = utils.downsample_random(pc, downsample)
     else:
         log( ' - Not downsampling' )
     save( pc, 'downsampled.las' )

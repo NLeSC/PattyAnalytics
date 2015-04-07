@@ -1,5 +1,4 @@
-from .registration import (downsample_random, downsample_voxel,
-                           register_from_footprint,
+from .registration import (register_from_footprint,
                            find_rotation_xy,
                            rotate_upwards,
                            boundary_of_drivemap,
@@ -9,8 +8,6 @@ from .registration import (downsample_random, downsample_voxel,
 from .stickscale import get_stick_scale
 
 __all__ = [
-    'downsample_random',
-    'downsample_voxel',
     'get_stick_scale',
     'register_from_footprint',
     'boundary_of_drivemap',

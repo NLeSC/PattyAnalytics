@@ -6,8 +6,7 @@ import numpy as np
 import pcl
 
 from patty import utils
-from patty.registration import (downsample_voxel)
-from patty.utils import clone
+from patty.utils import (clone, downsample_voxel) 
 
 from helpers import make_tri_pyramid_with_base
 from nose.tools import (assert_equal, assert_greater, assert_less,

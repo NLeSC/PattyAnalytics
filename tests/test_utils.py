@@ -10,8 +10,6 @@ from helpers import make_tri_pyramid_with_base
 from numpy.testing import assert_array_almost_equal
 from nose.tools import assert_equal, assert_raises
 
-from patty.registration import downsample_random
-
 def _compare( pcA, pcB ):
     ''' compare two pointclouds point-by-point''' 
 
@@ -80,8 +78,8 @@ def test_downsample_random():
     a = np.asarray(pc)
     a[:] = np.random.randn(*a.shape)
 
-    assert_raises(ValueError, downsample_random, pc, 0)
-    assert_raises(ValueError, downsample_random, pc, 2)
+    assert_raises(ValueError, utils.downsample_random, pc, 0)
+    assert_raises(ValueError, utils.downsample_random, pc, 2)
 
-    assert_equal(len(downsample_random(pc, .39)), 4)
+    assert_equal(len(utils.downsample_random(pc, .39)), 4)
 
