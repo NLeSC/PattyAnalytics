@@ -2,7 +2,7 @@
 """Registration script.
 
 Usage:
-  registration.py [-h] [-d <sample>] [-u <upfile>] [-c <camfile>] <source> <drivemap> <footprint> <output>
+  registration.py [-h] [-d <sample>] [-U] [-u <upfile>] [-c <camfile>] <source> <drivemap> <footprint> <output>
 
 Positional arguments:
   source       Source LAS file
@@ -13,8 +13,10 @@ Positional arguments:
 Options:
   -d <sample>  Downsample source pointcloud to a percentage of number of points
                [default: 1.0].
+  -U           Trust the upvector completely and dont estimate it in this script, too
   -u <upfile>  Json file containing the up vector relative to the pointcloud.
   -c <camfile> CSV file containing all the camera postionions.
+  
 
 """
 
@@ -31,12 +33,13 @@ from patty.registration import (boundary_of_drivemap,
                                 boundary_of_center_object,
                                 boundary_via_lowest_points,
                                 register_from_footprint,
-                                rotate_upwards)
+                                rotate_upwards,
+                                estimate_pancake_up)
 from patty.registration.stickscale import get_stick_scale
 
 
 
-def registration_pipeline(pointcloud, up, drivemap, footprint, downsample=None):
+def registration_pipeline(pointcloud, up, drivemap, footprint, downsample=None, trust_up=False):
     """Full registration pipeline for the Via Appia pointclouds.
 
     Arguments:
@@ -79,7 +82,16 @@ def registration_pipeline(pointcloud, up, drivemap, footprint, downsample=None):
 
     if up is not None:
         log( "Rotating the pointcloud so up points along [0,0,1]" )
-        rotate_upwards(pointcloud, up)
+        # rotate_upwards(pointcloud, up)
+
+        if trust_up:
+            rotate_upwards(pointcloud, up)
+        else:
+            ourup = estimate_pancake_up(pointcloud)
+            if np.dot( up, ourup ) < 0.0:
+                ourup *= -1.0
+            rotate_upwards(pointcloud, ourup)
+
     else:
         log( "No upvector, skipping" )
 
@@ -93,7 +105,7 @@ def registration_pipeline(pointcloud, up, drivemap, footprint, downsample=None):
     allow_scaling = True
     if (confidence > 0.5):
         log("Applying red stick scale")
-        pointcloud.scale(scale)  # dont care about origin of scaling
+        pointcloud.scale(1.0 / scale)  # dont care about origin of scaling
         allow_scaling = False
     else:
         log("Not applying red stick scale, confidence too low")
@@ -130,9 +142,6 @@ def registration_pipeline(pointcloud, up, drivemap, footprint, downsample=None):
 
     log(" - Number of boundary points found: %d" % len(loose_boundary) )
 
-    save( loose_boundary, "loose_bound.las" )
-
-
     ####
     # match the pointcloud boundary with the footprint boundary
 
@@ -153,6 +162,11 @@ def registration_pipeline(pointcloud, up, drivemap, footprint, downsample=None):
     pointcloud.translate(translation)
 
     # FIXME: debug output
+    #loose_boundary.rotate(rot_matrix, origin=rot_center)
+    #loose_boundary.scale(scale, origin=rot_center)
+    #loose_boundary.translate(translation)
+    save( loose_boundary, "aligned_bound.las" )
+
     save( pointcloud, 'pre_icp.las' )
 
     ####
@@ -226,6 +240,7 @@ if __name__ == '__main__':
     foutLas = args['<output>']
     up_file = args['-u']
     cam_file = args['-c']
+    trust_up = args['-U']
     downsample = float(args['-d'])
 
     assert os.path.exists(sourcefile),   sourcefile + ' does not exist'
@@ -264,7 +279,7 @@ if __name__ == '__main__':
         log( "Cannot parse upfile, aborting" )
 
 
-    pointcloud = registration_pipeline(pointcloud, up, drivemap, footprint, downsample)
+    pointcloud = registration_pipeline(pointcloud, up, drivemap, footprint, downsample, trust_up=trust_up)
 
     log( "Saving to", foutLas)
     save(pointcloud, foutLas)

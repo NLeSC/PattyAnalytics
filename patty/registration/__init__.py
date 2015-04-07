@@ -1,6 +1,7 @@
 from .registration import (register_from_footprint,
                            find_rotation_xy,
                            rotate_upwards,
+                           estimate_pancake_up,
                            boundary_of_drivemap,
                            boundary_via_lowest_points,
                            boundary_of_center_object )
@@ -15,4 +16,5 @@ __all__ = [
     'boundary_via_lowest_points',
     'find_rotation_xy',
     'rotate_upwards'
+    'estimate_pancake_up',
 ]

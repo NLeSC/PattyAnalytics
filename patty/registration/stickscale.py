@@ -43,6 +43,10 @@ def get_stick_scale(pointcloud, eps=0.1, min_samples=20):
     sizes = [{'len': len(cluster),
               'meter': measure_length(cluster) * SEGMENTS_PER_METER}
              for cluster in cluster_generator]
+
+    if len(sizes) == 0:
+        return 1.0, 0.0
+
     scale, votes, n_clusters = ransac(sizes)
     confidence = get_confidence_level(votes, n_clusters)
     return scale, confidence

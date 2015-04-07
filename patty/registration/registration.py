@@ -104,18 +104,16 @@ def boundary_of_center_object(pc,
     Returns:
         boundary : pcl.PointCloud
     '''
-
+ 
     if downsample is not None:
         log( ' - Downsampling factor:', downsample )
         pc = utils.downsample_random(pc, downsample)
     else:
         log( ' - Not downsampling' )
-    save( pc, 'downsampled.las' )
 
     # find largest cluster, it should be the main object
     log( ' - Starting dbscan' )
-    mainobject = get_largest_dbscan_clusters(pc, 0.7, .15, 250) # if this doesnt work, try 2.0
-
+    mainobject = get_largest_dbscan_clusters(pc, 0.7, .075, 250) # if this doesnt work, try 2.0
     save( mainobject, 'mainobject.las' )
     log( ' - Finished dbscan' )
 
@@ -179,11 +177,11 @@ def register_from_footprint(loose_pc, fixed_pc,
     rot_center = loose_pc.center()
 
     if allow_rotation:
-        log("Finding rotation")
+        log(" - Finding rotation")
         rot_matrix = find_rotation_xy(loose_pc, fixed_pc)
         loose_pc.rotate(rot_matrix, origin=rot_center)
     else:
-        log("Skipping rotation")
+        log(" - Skipping rotation")
         rot_matrix = np.eye(3)
 
     if allow_scaling:
@@ -195,25 +193,36 @@ def register_from_footprint(loose_pc, fixed_pc,
         # take the average scale factor for the x and y dimensions
         scale = np.mean(scale)
     else:
-        log("Skipping scale")
+        log(" - Skipping scale")
         scale = 1.0
 
     if allow_translation:
-        log("Finding translation")
+        log(" - Finding translation")
         translation = fixed_pc.center() - rot_center
         loose_pc.translate(translation)
     else:
-        log("Skipping translation")
+        log(" - Skipping translation")
         translation = np.array([0.0, 0.0, 0.0])
 
     return rot_matrix, rot_center, scale, translation
+
+
+def estimate_pancake_up(pointcloud):
+    '''
+    Assuming a pancake like pointcloud, the up direction is the third PCA.
+    '''
+    pca = PCA(n_components=3)
+
+    points = np.asarray(pointcloud)
+    pca.fit( points[:,0:3] )
+
+    return pca.components_[2]
 
 
 def _find_rotation_xy_helper(pointcloud):
     pca = PCA(n_components=2)
 
     points = np.asarray(pointcloud)
-    print(points)
     pca.fit( points[:,0:2] )
 
     rotxy = np.array(pca.components_)
@@ -284,6 +293,7 @@ def rotate_upwards(pc, up):
         newy = np.cross( newz, newx )
         newy /= ( np.dot( newy, newy ) ) ** 0.5
     except:
+        print("Alternative")
         newy = np.cross( newz, np.array([1,0,0]) )
         newy /= ( np.dot( newy, newy ) ) ** 0.5
 
@@ -305,7 +315,7 @@ def rotate_upwards(pc, up):
 
     rotation = np.linalg.inv(rotation)
 
-    log( "Rotating pointcloud around origin, using:\n%s" % rotation )
+    log( " - Rotating pointcloud around origin, using:\n%s" % rotation )
     pc.rotate( rotation, origin=pc.center() )
 
     return pc 
