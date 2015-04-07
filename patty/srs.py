@@ -75,7 +75,7 @@ def set_srs(pc, srs=None, offset=np.array( [0,0,0], dtype=np.float64),
           describing an absolute frame of reference.
           It is left to the user to make sure pointclouds are in the same
           reference system, before passing them on to PCL functions. This
-          can be checked with patty.conversions.same_srs().
+          can be checked with patty.utils.same_srs().
 
     NOTE: To add a SRS to a point cloud, or to update incorrect metadata,
           use force_srs().

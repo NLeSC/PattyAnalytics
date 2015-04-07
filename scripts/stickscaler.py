@@ -15,7 +15,7 @@ Options:
 
 from __future__ import print_function
 from docopt import docopt
-from patty.conversions import load
+from patty.utils import load
 from patty.registration.stickscale import get_stick_scale
 
 # Takes a point cloud containing only the red segments of scale sticks and

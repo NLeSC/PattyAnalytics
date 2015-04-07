@@ -1,5 +1,5 @@
 import numpy as np
-from patty.conversions import measure_length
+from patty.utils import measure_length
 from numpy.testing import assert_almost_equal
 
 

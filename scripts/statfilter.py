@@ -11,7 +11,7 @@ Description:
 """
 
 from docopt import docopt
-from patty.conversions import load, save
+from patty.utils import load, save
 
 
 def statfilter(pc, k, s):

@@ -10,7 +10,7 @@ from pcl.boundaries import estimate_boundaries
 import numpy as np
 from .. import is_registered, extract_mask, BoundingBox, log, save
 from ..segmentation import get_largest_dbscan_clusters
-from patty import conversions
+from patty import utils
 
 from sklearn.decomposition import PCA
 
@@ -37,7 +37,7 @@ def downsample_voxel(pc, voxel_size=0.01):
     pc_filter.set_leaf_size(voxel_size, voxel_size, voxel_size)
     newpc = pc_filter.filter()
 
-    conversions.force_srs(newpc, same_as=pc)
+    utils.force_srs(newpc, same_as=pc)
 
     return newpc
 
@@ -69,7 +69,7 @@ def downsample_random(pc, fraction, random_seed=None):
     sample = rng.choice(len(pc), k, replace=False)
     new_pc = pc.extract(sample)
 
-    conversions.force_srs(new_pc, same_as=pc)
+    utils.force_srs(new_pc, same_as=pc)
 
     return new_pc
 
@@ -107,7 +107,7 @@ def boundary_of_drivemap(drivemap, footprint, height=1.0, edge_width=0.25):
     points = [point for point in basemap if edge.contains( Point(point) )]
     boundary = PointCloud( np.asarray( points, dtype=np.float32) )
     
-    conversions.force_srs(boundary, same_as=basemap)
+    utils.force_srs(boundary, same_as=basemap)
 
     return boundary
 
@@ -131,7 +131,7 @@ def boundary_via_lowest_points(pc, height_fraction=0.01):
 
     newpc = extract_mask(pc, array[:, 2] < maxh)
     
-    conversions.force_srs(newpc, same_as=pc)
+    utils.force_srs(newpc, same_as=pc)
 
     return newpc
 
@@ -192,7 +192,7 @@ def boundary_of_center_object(pc,
     zmin = np.min( points, axis=0 )[2]
     points[:,2] = zmin
     
-    conversions.force_srs(boundary, same_as=pc)
+    utils.force_srs(boundary, same_as=pc)
 
     return boundary
 

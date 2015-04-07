@@ -5,9 +5,9 @@ from tempfile import mkdtemp
 import numpy as np
 import pcl
 
-from patty import conversions
+from patty import utils
 from patty.registration import (downsample_voxel)
-from patty.conversions import clone
+from patty.utils import clone
 
 from helpers import make_tri_pyramid_with_base
 from nose.tools import (assert_equal, assert_greater, assert_less,
@@ -22,7 +22,7 @@ import unittest
 class TestRegistrationPipeline(unittest.TestCase):
 
     def setUp(self):
-        self.useLocal = True
+        self.useLocal = False
 
         if self.useLocal:
             self.tempdir = tempdir = '.'
@@ -66,8 +66,8 @@ class TestRegistrationPipeline(unittest.TestCase):
         self.drivemap_pc = pcl.PointCloudXYZRGB(plane_grid)
         self.drivemap_pc = downsample_voxel(self.drivemap_pc,
                                             voxel_size=delta * 20)
-        # conversions.set_registration(self.drivemap_pc)
-        conversions.save(self.drivemap_pc, self.drivemapLas)
+        # utils.set_registration(self.drivemap_pc)
+        utils.save(self.drivemap_pc, self.drivemapLas)
 
         # Create a simple pyramid
         dense_grid = np.zeros((shape_points.shape[0], 6), dtype=np.float32)
@@ -75,7 +75,7 @@ class TestRegistrationPipeline(unittest.TestCase):
 
         self.source_pc = pcl.PointCloudXYZRGB(dense_grid)
         self.source_pc = downsample_voxel(self.source_pc, voxel_size=delta * 5)
-        conversions.save(self.source_pc, self.sourcelas)
+        utils.save(self.source_pc, self.sourcelas)
 
     def tearDown(self):
         if not self.useLocal:
@@ -92,10 +92,10 @@ class TestRegistrationPipeline(unittest.TestCase):
         #     " " + self.footprint_csv +
         #     " " + self.foutlas )
 
-        # goal   = conversions.load( self.sourcelas)
+        # goal   = utils.load( self.sourcelas)
         # actual = np.asarray( start )
 
-        # result = conversions.load( self.foutlas )
+        # result = utils.load( self.foutlas )
         # target = np.asarray( result )
 
         # array_in_margin(target.min(axis=0), actual.min(axis=0), [1, 1, 1],

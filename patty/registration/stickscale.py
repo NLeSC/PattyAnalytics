@@ -1,7 +1,7 @@
 import numpy as np
 from patty.segmentation import segment_dbscan
-from patty.conversions import extract_mask
-from patty.conversions import measure_length
+from patty.utils import extract_mask
+from patty.utils import measure_length
 from patty.segmentation.segRedStick import get_red_mask
 
 # according to Rens, sticks are .8m and contain 4 segments:
