@@ -8,7 +8,7 @@ from __future__ import print_function
 import numpy as np
 from pcl.boundaries import estimate_boundaries
 from shapely.geometry.polygon import LinearRing
-from shapely.geometry import Point
+from shapely.geometry import asPoint
 
 from patty import utils
 from .dbscan import get_largest_dbscan_clusters
@@ -42,9 +42,7 @@ def boundary_of_drivemap(drivemap, footprint, height=1.0, edge_width=0.25):
 
     # Cut band between +- edge_width around the footprint
     edge = LinearRing( np.asarray(footprint) ).buffer( edge_width )
-
-    points = [point for point in basemap if edge.contains( Point(point) )]
-    boundary = PointCloud( np.asarray( points, dtype=np.float32) )
+    boundary = extract_mask(basemap, [edge.contains( asPoint(point) ) for point in basemap])
     
     utils.force_srs(boundary, same_as=basemap)
 
