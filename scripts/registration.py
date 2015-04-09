@@ -29,14 +29,19 @@ import os
 import json
 from patty.utils import (load, save, log, BoundingBox)
 from patty.srs import (set_srs, force_srs, same_srs)
-from patty.registration import (boundary_of_drivemap,
-                                boundary_of_center_object,
-                                boundary_via_lowest_points,
-                                register_from_footprint,
-                                rotate_upwards,
-                                estimate_pancake_up)
-from patty.registration.stickscale import get_stick_scale
 
+from patty.segmentation import (
+    boundary_of_center_object,
+    boundary_of_drivemap,
+    boundary_of_lowest_points,
+    )
+
+from patty.registration import (
+    estimate_pancake_up,
+    get_stick_scale,
+    register_from_footprint,
+    rotate_upwards,
+    )
 
 
 def registration_pipeline(pointcloud, up, drivemap, footprint, downsample=None, trust_up=False):
@@ -138,7 +143,7 @@ def registration_pipeline(pointcloud, up, drivemap, footprint, downsample=None, 
 
     if loose_boundary is None:
         log(" - boundary estimation failed, using lowest 30 percent of points" )
-        loose_boundary = boundary_via_lowest_points(pointcloud, height_fraction=0.3 )
+        loose_boundary = boundary_of_lowest_points(pointcloud, height_fraction=0.3 )
 
     log(" - Number of boundary points found: %d" % len(loose_boundary) )
 

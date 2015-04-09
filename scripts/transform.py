@@ -26,7 +26,7 @@ from docopt import docopt
 
 import numpy as np
 import time
-from patty import load, save, set_registeration
+from patty.utils import load, save, set_srs
 
 
 def log(*args, **kwargs):
