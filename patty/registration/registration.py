@@ -11,10 +11,10 @@ from patty import utils
 
 from sklearn.decomposition import PCA
 
-def register_from_footprint(loose_pc, fixed_pc,
-                            allow_scaling=True,
-                            allow_rotation=True,
-                            allow_translation=True):
+def align_footprints(loose_pc, fixed_pc,
+                     allow_scaling=True,
+                     allow_rotation=True,
+                     allow_translation=True):
     '''
     Align a pointcloud 'loose_pc' by placing it on top of
     'fixed_pc' as good as poosible. Done by aligning the 
