@@ -6,13 +6,15 @@ Registration algorithms and utility functions
 
 from __future__ import print_function
 import numpy as np
-from .. import BoundingBox, log, force_srs
+from .. import BoundingBox, log, force_srs, extract_mask, clone
 from .stickscale import get_stick_scale
-from pcl.registration import pcl
+from pcl.registration import gicp, icp, icp_nl, ia_ransac
 
 from patty.utils import (
     log,
     save,
+    downsample_random,
+    downsample_voxel,
 )
 
 from patty.segmentation import (
