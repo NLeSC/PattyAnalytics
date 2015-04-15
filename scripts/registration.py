@@ -92,17 +92,17 @@ if __name__ == '__main__':
     log("Reading object", sourcefile)
     pointcloud = load(sourcefile)
 
-    log("Reading up_file", up_file)
     up = None
     try:
         with open(up_file) as f:
             dic = json.load(f)
         up = np.array(dic['estimatedUpDirection'])
-        log( "Up vector is: %s" % up)
+        log("Reading up_file", up_file)
     except:
-        log( "Cannot parse upfile, aborting" )
+        log( "Cannot parse upfile, skipping" )
 
     initial_registration(pointcloud, up, drivemap, trust_up=trust_up, initial_scale=initial_scale)
+    save( pointcloud, "initial.las" )
     center = coarse_registration(pointcloud, drivemap, footprint, downsample)
     save( pointcloud, "coarse.las" )
     fine_registration(pointcloud, drivemap, center, voxelsize=voxel)

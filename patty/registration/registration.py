@@ -72,7 +72,6 @@ def align_footprints(loose_pc, fixed_pc,
 
 
     if allow_scaling:
-        log(" - Finding scale")
         fixed_bb = BoundingBox(fixed_pc) # used 2x below
         loose_bb = BoundingBox(loose_pc)
         scale = fixed_bb.size[0:2] / loose_bb.size[0:2]
@@ -80,14 +79,16 @@ def align_footprints(loose_pc, fixed_pc,
         # take the average scale factor for the x and y dimensions
         scale = np.mean(scale)
         loose_pc.scale(scale, origin=rot_center)
+        log(" - Scale: %s" % scale )
     else:
         log(" - Skipping scale")
         scale = 1.0
 
+
     if allow_translation:
-        log(" - Finding translation")
         translation = fixed_pc.center() - rot_center
         loose_pc.translate(translation)
+        log(" - Translation: %s" % translation )
     else:
         log(" - Skipping translation")
         translation = np.array([0.0, 0.0, 0.0])
@@ -202,8 +203,6 @@ def rotate_upwards(pc, up):
     rotation[2,2] = newz[2]
 
     rotation = np.linalg.inv(rotation)
-
-    log( " - Rotating pointcloud around origin, using:\n%s" % rotation )
     pc.rotate( rotation, origin=pc.center() )
 
     return pc 
@@ -249,26 +248,28 @@ def initial_registration(pointcloud, up, drivemap, initial_scale=None, trust_up=
     # and we lose nothing if we just copy it
 
     if( hasattr(pointcloud, "offset") ):
-        log( "Dropping initial offset, was: %s" % pointcloud.offset)
+        log( " - Dropping initial offset, was: %s" % pointcloud.offset)
     else:
-        log( "No initial offset" )
+        log( " - No initial offset" )
     force_srs(pointcloud, same_as=drivemap)
-    log( "New offset forced to: %s" % pointcloud.offset )
+    log( " - New offset forced to: %s" % pointcloud.offset )
 
     if up is not None:
-        log( "Rotating the pointcloud so up points along [0,0,1]" )
+        log( " - Rotating the pointcloud so up points along [0,0,1]" )
 
         if trust_up:
             rotate_upwards(pointcloud, up)
+            log( " - Using trusted up: %s" % up )
         else:
             pancake_up = estimate_pancake_up(pointcloud)
             if np.dot( up, pancake_up ) < 0.0:
                 pancake_up *= -1.0
-            log( "Using estimated up: %s" % pancake_up )
+            log( " - Using estimated up: %s" % pancake_up )
             rotate_upwards(pointcloud, pancake_up)
 
     else:
-        log( "No upvector, skipping" )
+        log( " - No upvector, skipping" )
+
     if initial_scale is None:
         bbDrivemap = BoundingBox( points=np.asarray( drivemap ) )
         bbObject   = BoundingBox( points=np.asarray( pointcloud ) )
@@ -279,6 +280,8 @@ def initial_registration(pointcloud, up, drivemap, initial_scale=None, trust_up=
     else:
         # use user provided scale
         scale = initial_scale
+
+    log(" - Applying rough estimation of scale factor", scale )
     pointcloud.scale(scale)  # dont care about origin of scaling
 
 
@@ -301,20 +304,23 @@ def coarse_registration(pointcloud, drivemap, footprint, downsample=None):
         downsample: float, default=None, no resampling
                     Downsample the high-res pointcloud before footprint calculation.
     """
+    log( "Starting coarse registration" )
+
     ###
     # find redstick scale, and use it if possible
-    log("Redstick scaling")
+    log(" - Redstick scaling")
+
     allow_scaling = True
 
     scale, confidence = get_stick_scale(pointcloud)
-    log("Red stick scale=%s confidence=%s" % (scale, confidence))
+    log(" - Red stick scale=%s confidence=%s" % (scale, confidence))
 
     if (confidence > 0.5):
-        log("Applying red stick scale")
+        log(" - Applying red stick scale")
         pointcloud.scale(1.0 / scale)  # dont care about origin of scaling
         allow_scaling = False
     else:
-        log("Not applying red stick scale, confidence too low")
+        log(" - Not applying red stick scale, confidence too low")
 
     #####
     # find all the points in the drivemap along the footprint
@@ -342,12 +348,14 @@ def coarse_registration(pointcloud, drivemap, footprint, downsample=None):
     ####
     # match the pointcloud boundary with the footprint boundary
 
-    log( "Aligning footprints" )
+    log( " - Aligning footprints:" )
     rot_matrix, rot_center, scale, translation = align_footprints(
         loose_boundary, fixed_boundary,
         allow_scaling=allow_scaling,
         allow_rotation=True,
         allow_translation=True)
+
+    save( loose_boundary, "aligned_bound.las" )
 
     ####
     # Apply to the main pointcloud
@@ -357,8 +365,6 @@ def coarse_registration(pointcloud, drivemap, footprint, downsample=None):
     pointcloud.translate(translation)
     rot_center += translation
 
-    save( loose_boundary, "aligned_bound.las" )
-    save( pointcloud, 'pre_icp.las' )
     return rot_center
 
 
@@ -438,6 +444,7 @@ def fine_registration(pointcloud, drivemap, center, voxelsize=0.05):
         voxelsize: float default : 0.05
                     Size in [m] of the voxel grid used for downsampling
     '''
+    log( "Starting fine registration" )
 
     # for rotation around z-axis
     rot=np.array([[0,-1,0],[1,0,0],[0,0,1]])

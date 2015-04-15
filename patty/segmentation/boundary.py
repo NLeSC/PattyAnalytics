@@ -100,19 +100,17 @@ def boundary_of_center_object(pc,
     '''
  
     if downsample is not None:
-        log( ' - Downsampling factor:', downsample )
+        log( ' - Random downsampling factor:', downsample )
         pc = utils.downsample_random(pc, downsample)
     else:
         log( ' - Not downsampling' )
 
-    log( ' - Starting dbscan' )
     # Main noise supression step
     # Find largest clusters, accounting for at least 70% of the pointcloud.
     # Presumably, this is the main object.
     log( ' - Starting dbscan on downsampled pointcloud' )
     mainobject = get_largest_dbscan_clusters(pc, 0.7, .075, 250) 
     save( mainobject, 'mainobject.las' )
-    log( ' - Finished dbscan' )
 
     boundary = estimate_boundaries(mainobject,
                                    angle_threshold=angle_threshold,
@@ -122,7 +120,7 @@ def boundary_of_center_object(pc,
     boundary = extract_mask(mainobject, boundary)
 
     if len(boundary) == len(mainobject) or len(boundary) == 0:
-        log( 'Cannot find boundary' )
+        log( ' - Cannot find boundary' )
         return None
 
     # project on the xy plane, take 2th percentile height
