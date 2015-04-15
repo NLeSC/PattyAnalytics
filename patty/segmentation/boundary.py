@@ -105,9 +105,12 @@ def boundary_of_center_object(pc,
     else:
         log( ' - Not downsampling' )
 
-    # find largest cluster, it should be the main object
     log( ' - Starting dbscan' )
-    mainobject = get_largest_dbscan_clusters(pc, 0.7, .075, 250) # if this doesnt work, try 2.0
+    # Main noise supression step
+    # Find largest clusters, accounting for at least 70% of the pointcloud.
+    # Presumably, this is the main object.
+    log( ' - Starting dbscan on downsampled pointcloud' )
+    mainobject = get_largest_dbscan_clusters(pc, 0.7, .075, 250) 
     save( mainobject, 'mainobject.las' )
     log( ' - Finished dbscan' )
 
