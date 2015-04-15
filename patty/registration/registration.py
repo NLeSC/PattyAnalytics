@@ -68,14 +68,16 @@ def align_footprints(loose_pc, fixed_pc,
         log(" - Skipping rotation")
         rot_matrix = np.eye(3)
 
+
     if allow_scaling:
         log(" - Finding scale")
+        fixed_bb = BoundingBox(fixed_pc) # used 2x below
         loose_bb = BoundingBox(loose_pc)
-        fixed_bb = BoundingBox(fixed_pc)
         scale = fixed_bb.size[0:2] / loose_bb.size[0:2]
 
         # take the average scale factor for the x and y dimensions
         scale = np.mean(scale)
+        loose_pc.scale(scale, origin=rot_center)
     else:
         log(" - Skipping scale")
         scale = 1.0
