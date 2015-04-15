@@ -318,7 +318,15 @@ def coarse_registration(pointcloud, drivemap, footprint, downsample=None):
     # find all the points in the drivemap along the footprint
     # use bottom two meters of drivemap (not trees)
 
-    fixed_boundary = boundary_of_drivemap(drivemap, footprint)
+    dm_boundary = boundary_of_drivemap(drivemap, footprint)
+    dm_bb = BoundingBox( dm_boundary )
+
+    # set footprint height from minimum value,
+    # as trees, or high object make the pc.center() too high
+    fixed_boundary = clone(footprint)
+    fp_array = np.asarray( fixed_boundary )
+    fp_array[:,2] = dm_bb.min[2]
+    
     save( fixed_boundary, "fixed_bound.las" )
 
     #####
