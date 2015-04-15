@@ -362,7 +362,7 @@ class BoundingBox(object):
 
     def contains(self, pos):
         ''' Whether the bounding box contains given position. '''
-        return np.all((pos >= self.min) & (pos <= self.max))
+        return np.all((pos[0:3] >= self.min) & (pos[0:3] <= self.max))
 
 def log(*args, **kwargs):
     """Simple logging function that prints to stdout"""
