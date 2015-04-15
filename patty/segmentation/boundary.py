@@ -125,12 +125,19 @@ def boundary_of_center_object(pc,
         log( 'Cannot find boundary' )
         return None
 
-    # project on the xy plane 
+    # project on the xy plane, take 2th percentile height
     points = np.asarray( boundary )
-    zmin = np.min( points, axis=0 )[2]
-    points[:,2] = zmin
-    
-    utils.force_srs(boundary, same_as=pc)
+    points[:,2] = np.percentile( points[:,2], 2 )
 
-    return boundary
+    # Secondary noise supression step
+    # some cases have multiple objects close to eachother, and we need to filter some out.
+    # assume the object is a single item; perform another dbscan to select the footprint of the main item
+    log( ' - Starting dbscan on boundary' )
+    mainboundary = get_largest_dbscan_clusters(boundary, 0.5, .1, 10 )
+   
+    # Evenly space out the points
+    mainboundary = utils.downsample_voxel( mainboundary, voxel_size=0.1 )
+ 
+    utils.force_srs(mainboundary, same_as=pc)
 
+    return mainboundary
