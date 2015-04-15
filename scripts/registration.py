@@ -82,8 +82,9 @@ if __name__ == '__main__':
         log( "Cannot parse upfile, aborting" )
 
     initial_registration(pointcloud, up, drivemap, trust_up=trust_up)
-    coarse_registration(pointcloud, drivemap, footprint, downsample)
     fine_registration(pointcloud, drivemap)
+    center = coarse_registration(pointcloud, drivemap, footprint, downsample)
+    fine_registration(pointcloud, drivemap, center, voxelsize=voxel)
 
     save( pointcloud, foutLas )
 

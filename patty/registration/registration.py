@@ -353,14 +353,16 @@ def coarse_registration(pointcloud, drivemap, footprint, downsample=None):
     pointcloud.rotate(rot_matrix, origin=rot_center)
     pointcloud.scale(scale, origin=rot_center)
     pointcloud.translate(translation)
+    rot_center += translation
 
     save( loose_boundary, "aligned_bound.las" )
     save( pointcloud, 'pre_icp.las' )
+    return rot_center
 
 
-def _fine_registration_helper(pointcloud, basemap):
+def _fine_registration_helper(pointcloud, drivemap, voxelsize=0.05, attempt=0):
     '''
-    Perform ICP on pointcloud with basemap, and return convergence indicator.
+    Perform ICP on pointcloud with drivemap, and return convergence indicator.
     Reject large translatoins.
 
     Returns:
@@ -372,17 +374,47 @@ def _fine_registration_helper(pointcloud, basemap):
             sort of sum of square differences, ie. smaller is better 
             
     ''' 
-    converged, transf, estimate, fitness = icp(pointcloud, drivemap)
 
-    # dont accept large translations
-    translation = transf[1:3,3]
-    if np.dot( translation, translation ) > 10 ** 2:
+    ####
+    # Downsample to speed up
+    # use voxel filter to keep evenly distributed spatial extent
+
+    log( " - Downsampling with voxel filter: %s" % voxelsize )
+    pc = downsample_voxel( pointcloud, voxelsize )
+
+
+    ####
+    # Clip to drivemap to prevent outliers confusing the ICP algorithm
+
+    log( " - Clipping to drivemap" )
+    bb = BoundingBox( drivemap )
+    z = bb.center[2]
+    extracted = extract_mask(pc, [bb.contains([point[0],point[1],z]) for point in pc])
+
+    log( " - Remaining points: %s" % len(extracted) )
+
+    ####
+    # GICP
+
+    converged, transf, estimate, fitness = gicp(extracted, drivemap)
+
+    ####
+    # Dont accept large translations
+
+    translation = transf[0:3,3]
+    if np.dot( translation, translation ) > 5 ** 2:
+        log(" - Translation too large, considering it a failure." )
         converged = False
         fitness = 1e30
+    else:
+        log(" - Success, fitness: ", converged, fitness )
+
+    force_srs( estimate, same_as=pointcloud )
+    save( estimate, "attempt%s.las" % attempt )
 
     return transf, converged, fitness
 
-def fine_registration(pointcloud, drivemap):
+def fine_registration(pointcloud, drivemap, center, voxelsize=0.05):
     '''
     Final registration step using ICP.
 
@@ -394,39 +426,47 @@ def fine_registration(pointcloud, drivemap):
         pointcloud: pcl.PointCloud
                     The high-res object to register.
 
-        drivemap:   pcl.PointCloud
+        drivemap: pcl.PointCloud
                     A small part of the low-res drivemap on which to register
 
+        center: np.array([3])
+                    Vector giving the centerpoint of the pointcloud, used to do 
+                    the 180 degree rotations.
+
+        voxelsize: float default : 0.05
+                    Size in [m] of the voxel grid used for downsampling
     '''
 
     # for rotation around z-axis
-    rot=np.array([[-1,0,0],[0,-1,0],[0,0,1]])
+    rot=np.array([[0,-1,0],[1,0,0],[0,0,1]])
+    # rot=np.array([[-1,0,0],[0,-1,0],[0,0,1]])
 
     ####
-    # do a ICP step
+    # do a ICP step for 4 orientations
 
-    log("ICP 1" )
-    transfA, successA, fitnessA = _fine_registration_helper(pointcloud, drivemap)
+    transf  = {}
+    success = {}
+    fitness = {}
+    for i in range(4):
+        log( " - attempt: %s" % i )
+        transf[i], success[i], fitness[i] = _fine_registration_helper(
+                                             pointcloud,
+                                             drivemap, attempt=i,
+                                             voxelsize=voxelsize)
+        pointcloud.rotate( rot, origin=center)
 
-    pointcloud.rotate( rot )
-
-    log("ICP 2" )
-    transfB, successB, fitnessB = _fine_registration_helper(pointcloud, drivemap)
-
+    ####
     # pick best
-    if fitnessB < fitnessA and successB:
-        pointcloud.transform( transfB )
-        return 
 
-    # undo rotation
-    pointcloud.rotate( rot )
-
-    if fitnessA < fitnessB and successA:
-        pointcloud.transform( transfA )
+    best,value = min(fitness.iteritems(), key=lambda x:x[1])
+    if success[ best ]:
+        log( " - Best attempt: %s" % best )
+        pointcloud.rotate( rot**best, origin=center).transform( transf[best] )
         return
 
     # ICP failed:
     # return the pointcloud with just footprints aligned
-    pointcloud.rotate( rot )
+    # no use to undo a rotation, as any orientationi is equally likely.
+    log( " - Unable to do fine registration" )
 
     return
