@@ -205,11 +205,12 @@ def rotate_upwards(pc, up):
     return pc 
 
 
-def initial_registration(pointcloud, up, drivemap, trust_up=False):
+def initial_registration(pointcloud, up, drivemap, initial_scale=None, trust_up=True):
     """
     Initial registration adds an spatial reference system to the pointcloud,
     and place the pointlcoud on top of the drivemap. The pointcloud is rotated
-    so that the up vector points along [0,0,1].
+    so that the up vector points along [0,0,1], and scaled such that it has the
+    right order of magnitude in size.
 
     Arguments:
         pointcloud : pcl.PointCloud
@@ -223,7 +224,11 @@ def initial_registration(pointcloud, up, drivemap, trust_up=False):
         drivemap : pcl.PointCloud
             A small part of the low-res drivemap on which to register.
 
-        trust_up : Boolean
+        initial_scale : float
+            if given, scale pointcloud using this value; estimate scale factor
+            from bounding boxes.
+         
+        trust_up : Boolean, default to True
             True:  Assume the up vector is exact.
             False: Calculate 'up' as if it was None, but orient it such that
                    np.dot( up, pancake_up ) > 0
@@ -232,6 +237,8 @@ def initial_registration(pointcloud, up, drivemap, trust_up=False):
     it in a undefined state.
 
     """
+    log( "Starting initial registration" )
+
     #####
     # set scale and offset of pointcloud, drivemap, and footprint
     # as the pointcloud is unregisterd, the coordinate system is undefined,
@@ -258,6 +265,17 @@ def initial_registration(pointcloud, up, drivemap, trust_up=False):
 
     else:
         log( "No upvector, skipping" )
+    if initial_scale is None:
+        bbDrivemap = BoundingBox( points=np.asarray( drivemap ) )
+        bbObject   = BoundingBox( points=np.asarray( pointcloud ) )
+        scale = bbDrivemap.size[0:2] / bbObject.size[0:2] # ignore z-direction
+
+        # take the average scale factor for x and y dimensions
+        scale = np.mean(scale)
+    else:
+        # use user provided scale
+        scale = initial_scale
+    pointcloud.scale(scale)  # dont care about origin of scaling
 
 
 def coarse_registration(pointcloud, drivemap, footprint, downsample=None):
@@ -282,27 +300,17 @@ def coarse_registration(pointcloud, drivemap, footprint, downsample=None):
     ###
     # find redstick scale, and use it if possible
     log("Redstick scaling")
+    allow_scaling = True
 
     scale, confidence = get_stick_scale(pointcloud)
     log("Red stick scale=%s confidence=%s" % (scale, confidence))
 
-    allow_scaling = True
     if (confidence > 0.5):
         log("Applying red stick scale")
         pointcloud.scale(1.0 / scale)  # dont care about origin of scaling
         allow_scaling = False
     else:
         log("Not applying red stick scale, confidence too low")
-        bbDrivemap = BoundingBox( points=np.asarray( drivemap ) )
-        bbObject   = BoundingBox( points=np.asarray( pointcloud ) )
-        scale = bbDrivemap.size / bbObject.size
-
-        # take the average scale factor for all dimensions
-        scale = np.mean(scale)
-        log("Applying rough estimation of scale factor", scale )
-        pointcloud.scale(scale)  # dont care about origin of scaling
-
-        allow_scaling = True
 
     #####
     # find all the points in the drivemap along the footprint
