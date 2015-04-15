@@ -12,8 +12,11 @@ Positional arguments:
 
 Options:
   -d <sample>  Downsample source pointcloud to a percentage of number of points
-               [default: 1.0].
-  -U           Trust the upvector completely and dont estimate it in this script, too
+               [default: 0.1].
+  -v <voxel>   Downsample source pointcloud using voxel filter to speedup ICP
+               [default: 0.05]
+  -s <scale>   User override for initial scale factor
+  -U           Dont trust the upvector completely and estimate it in this script, too
   -u <upfile>  Json file containing the up vector relative to the pointcloud.
   -c <camfile> CSV file containing all the camera postionions. [UNIMPLEMENTED]
 """
@@ -46,8 +49,26 @@ if __name__ == '__main__':
     foutLas = args['<output>']
     up_file = args['-u']
     cam_file = args['-c']
-    trust_up = args['-U']
-    downsample = float(args['-d'])
+
+    if args['-U']:
+        trust_up = False
+    else:
+        trust_up = True
+
+    try:
+        downsample = float(args['-d'])
+    except KeyError:
+        downsample = 0.1
+
+    try:
+        voxel = float(args['-v'])
+    except KeyError:
+        voxel = 0.05
+
+    try:
+        initial_scale = float(args['-s'])
+    except:
+        initial_scale = None
 
     assert os.path.exists(sourcefile),   sourcefile + ' does not exist'
     assert os.path.exists(drivemapfile), drivemapfile + ' does not exist'
@@ -81,9 +102,9 @@ if __name__ == '__main__':
     except:
         log( "Cannot parse upfile, aborting" )
 
-    initial_registration(pointcloud, up, drivemap, trust_up=trust_up)
-    fine_registration(pointcloud, drivemap)
+    initial_registration(pointcloud, up, drivemap, trust_up=trust_up, initial_scale=initial_scale)
     center = coarse_registration(pointcloud, drivemap, footprint, downsample)
+    save( pointcloud, "coarse.las" )
     fine_registration(pointcloud, drivemap, center, voxelsize=voxel)
 
     save( pointcloud, foutLas )
