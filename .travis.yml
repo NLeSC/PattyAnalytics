@@ -13,7 +13,7 @@ before_install:
 - "sudo apt-get update"
 - "pip install -U cython"
 # ATLAS is installed to speed up scikit-learn build (shouldn't build its own)
-- "sudo apt-get -qq install libpcl-all python-liblas liblas-bin liblas1 liblas-dev libatlas-base-dev"
+- "sudo apt-get -qq install libpcl-all python-liblas liblas-bin liblas1 liblas-dev libatlas-base-dev python-gdal"
 - "sudo apt-get -qq install python-numpy-dev python-scipy python-matplotlib"
 - "pip install coverage"
 - "pip install -r requirements.txt"
