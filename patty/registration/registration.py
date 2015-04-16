@@ -470,7 +470,9 @@ def fine_registration(pointcloud, drivemap, center, voxelsize=0.05):
     best,value = min(fitness.iteritems(), key=lambda x:x[1])
     if success[ best ]:
         log( " - Best attempt: %s" % best )
-        pointcloud.rotate( rot**best, origin=center).transform( transf[best] )
+        if best > 0: # np.array()**0 does weird things
+            pointcloud.rotate( rot**best, origin=center)
+        pointcloud.transform( transf[best] )
         return
 
     # ICP failed:
