@@ -7,7 +7,7 @@ Usage: redstickdetection.py  [-h] <infile> <outfile>
 
 from docopt import docopt
 from patty.segmentation.segRedStick import get_red_mask
-from patty.conversions import extract_mask, load, save
+from patty.utils import extract_mask, load, save
 
 if __name__ == '__main__':
     args = docopt(__doc__)

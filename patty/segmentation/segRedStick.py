@@ -3,7 +3,12 @@ import numpy as np
 
 
 def get_red_mask(pointcloud):
-    """Returns a mask for the red parts of a pointcloud"""
+    """Returns a mask for the red parts of a pointcloud.
+
+    Red points are points that have hue larger than 0.9
+    and saturation larger than 0.5 in HSV colorspace.
+    """
+
     red_mask = np.empty(len(pointcloud), dtype=np.bool)
     for i in xrange(len(pointcloud)):
         red, grn, blu = pointcloud[i][3:6]

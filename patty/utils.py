@@ -8,6 +8,10 @@ import liblas
 import pcl
 import os
 import numpy as np
+import time
+from patty.srs import force_srs, is_registered
+
+from sklearn.decomposition import PCA
 
 
 def _check_readable(filepath):
@@ -25,40 +29,56 @@ def _check_writable(filepath):
             not os.path.isfile(filepath) or
             not os.access(filepath, os.W_OK)
             )) or not os.access(os.path.dirname(filepath), os.W_OK | os.X_OK):
-        raise IOError("Cannot write to " + filepath)
+        raise IOError("Cannot save to " + filepath)
 
+def clone(pc):
+    """Return a copy of a pointcloud, including registration metadata
 
-def load(path, format=None, load_rgb=True):
+    Arguments:
+        pc: pcl.PointCloud()
+    Returns:
+        cp: pcl.PointCloud()
+    """
+
+    cp = pcl.PointCloud( np.asarray(pc) )
+    if is_registered(pc):
+        force_srs(cp, same_as=pc)
+
+    return cp
+
+def load(path, format=None, load_rgb=True ):
     """Read a pointcloud file.
 
-    Supports LAS files, and lets PCD and PLY files be read by python-pcl.
+    Supports LAS and CSV files, and lets PCD and PLY files be read by python-pcl.
 
     Arguments:
         path : string
             Filename.
         format : string, optional
-            File format: "PLY", "PCD", "LAS" or None to detect the format
+            File format: "PLY", "PCD", "LAS", "CSV" or None to detect the format
             from the file extension.
         load_rgb : bool
             Whether RGB is loaded for PLY and PCD files. For LAS files, RGB is
             always read.
+
     Returns:
-        cloud : pcl.PointCloud
-            Registered pointcloud.
+        pc : pcl.PointCloud
     """
     if format == 'las' or format is None and path.endswith('.las'):
-        return load_las(path)
+        pc = _load_las(path)
+    elif format == 'las' or format is None and path.endswith('.csv'):
+        pc = _load_csv(path)
     else:
         _check_readable(path)
-        pointcloud = pcl.load(path, format=format, loadRGB=load_rgb)
-        register(pointcloud)
-        return pointcloud
+        pc = pcl.load(path, format=format, loadRGB=load_rgb)
+
+    return pc
 
 
-def save(cloud, path, format=None, binary=False):
+def save(cloud, path, format=None, binary=False, las_header=None):
     """Save a pointcloud to file.
 
-    Supports LAS files, and lets PCD and PLY files be saved by python-pcl.
+    Supports LAS and CSV files, and lets PCD and PLY files be saved by python-pcl.
 
     Arguments:
         cloud : pcl.PointCloud or pcl.PointCloudXYZRGB
@@ -66,13 +86,18 @@ def save(cloud, path, format=None, binary=False):
         path : string
             Filename.
         format : string
-            File format: "PLY", "PCD", "LAS" or None to detect the format
+            File format: "PLY", "PCD", "LAS", "CSV" or None to detect the format
              from the file extension.
         binary : boolean
             Whether PLY and PCD files are saved in binary format.
+        las_header: liblas.header.Header
+            LAS header to use. When none, a default header is created by
+            make_las_header(). Default: None
     """
     if format == 'las' or format is None and path.endswith('.las'):
-        write_las(path, cloud)
+        _save_las(path, cloud, header=las_header)
+    elif format == 'csv' or format is None and path.endswith('.csv'):
+        _save_csv(path, cloud)
     else:
         _check_writable(path)
         if is_registered(cloud) and cloud.offset != np.zeros(3):
@@ -80,8 +105,7 @@ def save(cloud, path, format=None, binary=False):
             cloud_array += cloud.offset
         pcl.save(cloud, path, format=format, binary=binary)
 
-
-def load_las(lasfile):
+def _load_las(lasfile):
     """Read a LAS file
 
     Returns:
@@ -92,110 +116,64 @@ def load_las(lasfile):
     """
     _check_readable(lasfile)
 
-    print("--READING--", lasfile, "---------")
-
     las = None
     try:
         las = liblas.file.File(lasfile)
+        lsrs = las.header.get_srs()
+        lsrs = lsrs.get_wkt()
+
         n_points = las.header.get_count()
-        data = np.zeros((n_points, 6), dtype=np.float64)
+        precise_points = np.zeros((n_points, 6), dtype=np.float64)
 
         for i, point in enumerate(las):
-            data[i] = (point.x, point.y, point.z, point.color.red /
+            precise_points[i] = (point.x, point.y, point.z, point.color.red /
                        256, point.color.green / 256, point.color.blue / 256)
 
-        bbox = BoundingBox(points=data[:, 0:3])
         # reduce the offset to decrease floating point errors
-        data[:, 0:3] -= bbox.center
+        bbox = BoundingBox(points=precise_points[:, 0:3])
+        center = bbox.center
+        precise_points[:, 0:3] -= center
 
-        pointcloud = pcl.PointCloudXYZRGB(data.astype(np.float32))
+        pointcloud = pcl.PointCloudXYZRGB(precise_points.astype(np.float32))
+        force_srs( pointcloud, srs=lsrs, offset=center )
 
-        register(pointcloud, offset=bbox.center, precision=las.header.scale,
-                 crs_wkt=las.header.srs.get_wkt(),
-                 crs_proj4=las.header.srs.get_proj4())
-
-        return pointcloud
     finally:
         if las is not None:
             las.close()
 
+    return pointcloud
 
-def is_registered(pointcloud):
-    """Returns True when a pointcloud is registered."""
-    return hasattr(pointcloud, 'is_registered') and pointcloud.is_registered
-
-
-def register(pointcloud, offset=None, precision=None, crs_wkt=None,
-             crs_proj4=None, crs_verticalcs=None):
-    """Register a pointcloud.
-
-    Arguments:
-        offset=None
-            Offset [dx, dy, dz] for the pointcloud.
-            Pointclouds often use double precision coordinates, this is
-            necessary for some spatial reference systems like standard lat/lon.
-            Subtracting an offset, typically the center of the pointcloud,
-            allows us to use floats without losing precision.
-            If no offset is set, defaults to [0, 0, 0].
-
-        precision=None
-            Precision of the points, used to store into a LAS file. Update
-            when scaling the pointcloud.
-            If no precision is set, defaults to [0.01, 0.01, 0.01].
-
-        crs_wkt=None
-            Well Known Text form of the spatial reference system.
-
-        crs_proj4=None
-            PROJ4 projection string for the spatial reference system.
-
-        crs_verticalcs=None
-            Well Known Text form of the vertical coordinate system.
-    """
-    if not is_registered(pointcloud):
-        pointcloud.is_registered = True
-        pointcloud.offset = np.array([0., 0., 0.], dtype=np.float64)
-        pointcloud.precision = np.array([0.01, 0.01, 0.01], dtype=np.float64)
-        pointcloud.crs_wkt = ''
-        pointcloud.crs_proj4 = ''
-        pointcloud.crs_verticalcs = ''
-
-    if offset is not None:
-        pointcloud.offset = np.asarray(offset, dtype=np.float64)
-    if precision is not None:
-        pointcloud.precision = np.asarray(precision, dtype=np.float64)
-    if crs_wkt is not None:
-        pointcloud.crs_wkt = crs_wkt
-    if crs_proj4 is not None:
-        pointcloud.crs_proj4 = crs_proj4
-    if crs_verticalcs is not None:
-        pointcloud.crs_verticalcs = crs_verticalcs
-
-
-def copy_registration(target, src):
-    """Copy spatial reference system metadata from src to target.
-
-    Arguments:
-        pointcloud_target: pcl.PointCloud
-            pointcloud to copy registration to
-        pointcloud_src: pcl.PointCloud
-            registered pointcloud to copy registration from
-    """
-    target.is_registered = True
-    target.offset = src.offset
-    target.precision = src.precision
-    target.crs_wkt = src.crs_wkt
-    target.crs_proj4 = src.crs_proj4
-    target.crs_verticalcs = src.crs_verticalcs
-
-
-def load_csv_polygon(csvfile, delimiter=','):
-    """Load a polygon from a CSV file.
+def _load_csv(path, delimiter=','):
+    """Load a set of points from a CSV file as 
 
     Returns:
-        polygon : numpy.ndarray
+        pc : pcl.PointCloud
     """
-    return np.genfromtxt(csvfile, delimiter=delimiter)
+    precise_points = np.genfromtxt(path, delimiter=delimiter, dtype=np.float64 )
+    offset = np.mean( precise_points, axis=0, dtype=np.float64 )
+    pc = pcl.PointCloud(  np.array( precise_points - offset, dtype=np.float32 ) )
+
+    force_srs(pc, offset=offset)
+    return pc    
+
+def _save_csv(path, pc, delimiter=', '):
+    """Write a pointcloud to a CSV file.
+
+    Arguments:
+        path: string
+            Output filename
+        pc: pcl.PointCloud
+            Pointcloud to save
+        delimiter: string
+            Field delimiter to use, see np.savetxt documentation.
+
+    """
+    if not hasattr(pc, 'offset'):
+        offset = np.zeros(3)
+    else:
+        offset = pc.offset
+
+    np.savetxt(path, np.asarray(pc) + offset, delimiter=delimiter )
 
 
 def extract_mask(pointcloud, mask):
@@ -210,7 +188,7 @@ def extract_mask(pointcloud, mask):
         pointcloud with the same registration (if any) as the original one."""
     pointcloud_new = pointcloud.extract(np.where(mask)[0])
     if is_registered(pointcloud):
-        copy_registration(pointcloud_new, pointcloud)
+        force_srs(pointcloud_new, same_as=pointcloud)
     return pointcloud_new
 
 
@@ -218,7 +196,11 @@ def make_las_header(pointcloud):
     """Make a LAS header for given pointcloud.
 
     If the pointcloud is registered, this is taken into account for the
-    header metadata. Has the side-effect of registering the given pointcloud.
+    header metadata.
+
+    LAS rounds the coordinates on writing; this is controlled via the
+    'precision' attribute of the input pointcloud. By default this is
+    0.01 in units of the projection.
 
     Arguments:
         pointcloud : pcl.PointCloud
@@ -231,27 +213,34 @@ def make_las_header(pointcloud):
     schema.time = False
     schema.color = True
 
+    # FIXME: this format version assumes color is present
     head = liblas.header.Header()
     head.schema = schema
     head.dataformat_id = 3
     head.major_version = 1
     head.minor_version = 2
 
-    register(pointcloud)
+    if is_registered(pointcloud):
+        try:
+            lsrs = liblas.srs.SRS()
+            lsrs.set_wkt(pointcloud.srs.ExportToWkt())
+            head.set_srs(lsrs)
+        except liblas.core.LASException:
+            pass
+
+    if hasattr(pointcloud, 'offset'):
+        head.offset = pointcloud.offset
+    else:
+        head.offset = np.zeros(3)
+
     # FIXME: need extra precision to reduce floating point errors. We don't
     # know exactly why this works. It might reduce precision on the top of
     # the float, but reduces an error of one bit for the last digit.
-    head.scale = np.asarray(pointcloud.precision) * 0.5
-    head.offset = pointcloud.offset
-
-    lsrs = liblas.srs.SRS()
-    if pointcloud.crs_wkt != '':
-        lsrs.set_wkt(pointcloud.crs_wkt)
-    if pointcloud.crs_proj4 != '':
-        lsrs.set_proj4(pointcloud.crs_proj4)
-    if pointcloud.crs_verticalcs != '':
-        lsrs.set_verticalcs(pointcloud.crs_verticalcs)
-    head.set_srs(lsrs)
+    if not hasattr(pointcloud, 'precision'):
+        precision = np.array([0.01, 0.01, 0.01], dtype=np.float64)
+    else:
+        precision = np.array( pointcloud.precision, dtype=np.float64)
+    head.scale = precision * 0.5
 
     pc_array = np.asarray(pointcloud)
     head.min = pc_array.min(axis=0) + head.offset
@@ -259,7 +248,7 @@ def make_las_header(pointcloud):
     return head
 
 
-def write_las(lasfile, pointcloud, header=None):
+def _save_las(lasfile, pointcloud, header=None):
     """Write a pointcloud to a LAS file
 
     Arguments:
@@ -274,9 +263,14 @@ def write_las(lasfile, pointcloud, header=None):
     """
     _check_writable(lasfile)
 
-    print("--WRITING--", lasfile, "--------")
     if header is None:
         header = make_las_header(pointcloud)
+
+    # deal with color
+    if len(pointcloud[0]) > 3:
+        do_RGB = True
+    else:
+        do_RGB = False
 
     precise_points = np.array(pointcloud, dtype=np.float64)
     precise_points /= header.scale
@@ -288,9 +282,10 @@ def write_las(lasfile, pointcloud, header=None):
         for i in xrange(pointcloud.size):
             point = liblas.point.Point()
             point.x, point.y, point.z = precise_points[i]
-            red, grn, blu = pointcloud[i][3:6]
-            point.color = liblas.color.Color(
-                red=int(red) * 256, green=int(grn) * 256, blue=int(blu) * 256)
+            if do_RGB:
+                red, grn, blu = pointcloud[i][3:6]
+                point.color = liblas.color.Color(
+                    red=int(red) * 256, green=int(grn) * 256, blue=int(blu) * 256)
             las.write(point)
     finally:
         if las is not None:
@@ -317,7 +312,7 @@ class BoundingBox(object):
             self._min = points_array.min(axis=0)
             self._max = points_array.max(axis=0)
         else:
-            raise ValueError("Need to give min and max or matrix")
+            raise TypeError("Need to give min and max or matrix")
 
         self._reset()
 
@@ -367,21 +362,75 @@ class BoundingBox(object):
 
     def contains(self, pos):
         ''' Whether the bounding box contains given position. '''
-        return np.all((pos >= self.min) & (pos <= self.max))
+        return np.all((pos[0:3] >= self.min) & (pos[0:3] <= self.max))
+
+def log(*args, **kwargs):
+    """Simple logging function that prints to stdout"""
+    print(time.strftime("[%F %H:%M:%S]", time.gmtime()), *args, **kwargs)
 
 
-def center_boundingbox(pointcloud):
-    """Center the pointcloud on origin using the center of its bounding box.
+def measure_length(pointcloud):
+    """Returns the length of a point cloud in its longest direction."""
+    if len(pointcloud) < 2:
+        return 0
 
-    The offset compared to the original location is added to the
-    pointcloud.offset. The pointcloud is registered after use.
+    pca = PCA(n_components=1)
+    pc_array = np.asarray(pointcloud)
+    pca.fit(pc_array)
+    primary_axis = np.dot(pc_array, np.transpose(pca.components_))[:, 0]
+    return np.max(primary_axis) - np.min(primary_axis)
+
+
+def downsample_voxel(pc, voxel_size=0.01):
+    '''Downsample a pointcloud using a voxel grid filter.
+    Resulting pointcloud has the same SRS and offset as the input.
 
     Arguments:
-        pointcloud: pcl.PointCloud
-            input pointcloud
+        pc         : pcl.PointCloud
+                     Original pointcloud
+        float      : voxel_size
+                     Grid spacing for the voxel grid
+    Returns:
+        pc : pcl.PointCloud
+             filtered pointcloud
+    '''
+    pc_filter = pc.make_voxel_grid_filter()
+    pc_filter.set_leaf_size(voxel_size, voxel_size, voxel_size)
+    newpc = pc_filter.filter()
+
+    force_srs(newpc, same_as=pc)
+
+    return newpc
+
+
+def downsample_random(pc, fraction, random_seed=None):
+    """Randomly downsample pointcloud to a fraction of its size.
+
+    Returns a pointcloud of size fraction * len(pc), rounded to the nearest
+    integer.  Resulting pointcloud has the same SRS and offset as the input.
+
+    Use random_seed=k for some integer k to get reproducible results.
+    Arguments:
+        pc : pcl.PointCloud
+            Input pointcloud.
+        fraction : float
+            Fraction of points to include.
+        random_seed : int, optional
+            Seed to use in random number generator.
+
+    Returns:
+        pcl.Pointcloud
     """
-    register(pointcloud)
-    pc_array = np.asarray(pointcloud)
-    bbox = BoundingBox(points=pc_array)
-    pc_array -= bbox.center
-    pointcloud.offset += bbox.center
+    if not 0 < fraction <= 1:
+        raise ValueError("Expected fraction in (0,1], got %r" % fraction)
+
+    rng = np.random.RandomState(random_seed)
+
+    k = max(int(round(fraction * len(pc))), 1)
+    sample = rng.choice(len(pc), k, replace=False)
+    new_pc = pc.extract(sample)
+
+    force_srs(new_pc, same_as=pc)
+
+    return new_pc
+

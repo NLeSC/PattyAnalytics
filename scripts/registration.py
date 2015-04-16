@@ -2,7 +2,7 @@
 """Registration script.
 
 Usage:
-  registration.py [-h] [-d <sample>] [-u <upfile>] <source> <drivemap> <footprint> <output>
+  registration.py [-h] [-d <sample>] [-U] [-u <upfile>] [-c <camfile>] <source> <drivemap> <footprint> <output>
 
 Positional arguments:
   source       Source LAS file
@@ -11,173 +11,36 @@ Positional arguments:
   output       file to write output LAS to
 
 Options:
-  -d <sample>  Downsample source pointcloud to a maximum of <sample> points
-               [default: -1].
+  -d <sample>  Downsample source pointcloud to a percentage of number of points
+               [default: 0.1].
+  -v <voxel>   Downsample source pointcloud using voxel filter to speedup ICP
+               [default: 0.05]
+  -s <scale>   User override for initial scale factor
+  -U           Dont trust the upvector completely and estimate it in this script, too
   -u <upfile>  Json file containing the up vector relative to the pointcloud.
+  -c <camfile> CSV file containing all the camera postionions. [UNIMPLEMENTED]
 """
 
 from __future__ import print_function
 from docopt import docopt
 
 import numpy as np
-import time
 import os
-import sys
-from patty.conversions import (load, save, load_csv_polygon,
-                               copy_registration, extract_mask, BoundingBox)
-from patty.registration import (get_pointcloud_boundaries, find_rotation,
-                                register_offset_scale_from_ref, scale_points,
-                                point_in_polygon2d, downsample, is_upside_down)
-from patty.segmentation.dbscan import get_largest_dbscan_clusters
-from patty.registration.stickscale import get_preferred_scale_factor
+import json
+from patty.utils import (load, save, log)
+from patty.srs import (set_srs, force_srs)
 
-
-def log(*args, **kwargs):
-    print(time.strftime("[%H:%M:%S]"), *args, **kwargs)
-
-
-def find_largest_cluster(pointcloud, sample):
-    if sample != -1 and len(pointcloud) > sample:
-        fraction = float(sample) / len(pointcloud)
-        log("downsampling from %d to %d points (%d%%) for registration" % (
-            len(pointcloud), sample, int(fraction * 100)))
-        pc = downsample(pointcloud, fraction, random_seed=0)
-    else:
-        pc = pointcloud
-    return get_largest_dbscan_clusters(pc, 0.7, .15, 250)
-
-
-def detect_boundary(pointcloud):
-    log("Detecting boundary")
-    boundary_bb = BoundingBox(points=pointcloud)
-    search_radius = boundary_bb.diagonal / 100.0
-    return get_pointcloud_boundaries(
-        pointcloud, search_radius=search_radius,
-        normal_search_radius=search_radius)
-
-
-def cutout_edge(pointcloud, polygon2d, polygon_width):
-    pc_array = np.asarray(pointcloud) + pointcloud.offset
-
-    slightly_large_polygon = scale_points(polygon2d, 1.05)
-    in_polygon = point_in_polygon2d(pc_array, slightly_large_polygon)
-
-    large_polygon = scale_points(polygon2d, polygon_width)
-    in_large_polygon = point_in_polygon2d(pc_array, large_polygon)
-    return extract_mask(pointcloud,
-                        in_large_polygon & np.invert(in_polygon))
-
-
-def registration_pipeline(sourcefile, drivemapfile, footprintcsv, f_out,
-                          f_outdir, upfile=None, sample=-1):
-    """Single function wrapping whole script, so it can be unit tested"""
-    assert os.path.exists(sourcefile), sourcefile + ' does not exist'
-    assert os.path.exists(drivemapfile), drivemapfile + ' does not exist'
-    assert os.path.exists(footprintcsv), footprintcsv + ' does not exist'
-
-    log("reading source", sourcefile)
-    pointcloud = load(sourcefile)
-    log("reading drivemap ", drivemapfile)
-    drivemap = load(drivemapfile)
-
-    drivemap_array = np.asarray(drivemap)
-    bb = BoundingBox(points=drivemap_array)
-    # use bottom two meters of drivemap (not trees)
-    if bb.size[2] > bb.size[1] or bb.size[2] > bb.size[0]:
-        drivemap = extract_mask(drivemap, drivemap_array[:, 2] < bb.min[2] + 2)
-
-    footprint = load_csv_polygon(footprintcsv)
-
-    if f_outdir is None:
-        f_outdir = os.path.dirname(f_out)
-
-# Footprint is NO LONGER off by some meters
-# footprint[:, 0] += -1.579381346780
-# footprint[:, 1] += 0.52519696509
-    footprint_boundary = cutout_edge(drivemap, footprint, 1.5)
-
-    log("Finding largest cluster")
-    cluster = find_largest_cluster(pointcloud, sample)
-
-    log("Detecting boundary")
-    boundary = detect_boundary(cluster)
-
-    if len(boundary) == len(cluster) or len(boundary) == 0:
-        # DISCARD BOUNDARY INFORMATION
-        log("Boundary information could not be retrieved")
-        print('BoundaryLen:', len(boundary))
-        print('ClusterLen:', len(cluster))
-        sys.exit(1)
-    else:
-        log("Finding rotation:")
-        transform = find_rotation(boundary, footprint_boundary)
-        log(transform)
-        rotate180 = np.eye(4)
-        rotate180[1, 1] = rotate180[2, 2] = -1
-
-        up_is_down = is_upside_down(upfile, transform[:3, :3])
-        if up_is_down:
-            transform = np.dot(rotate180, transform)
-
-        log("Rotating pointcloud...")
-        boundary.transform(transform)
-        cluster.transform(transform)
-        pointcloud.transform(transform)
-
-        with open(f_out + '.rotation.csv', 'w') as f:
-            for row in transform:
-                print(','.join(np.char.mod('%f', row)), file=f)
-        with open(f_out + '.rotation_offset.csv', 'w') as f:
-            print(','.join(np.char.mod('%f', pointcloud.offset)), file=f)
-
-        log("Calculating scale and shift from boundary to footprint")
-        registered_offset, registered_scale = \
-            register_offset_scale_from_ref(boundary, footprint)
-
-        with open(f_out + '.translation.csv', 'w') as f:
-            str_arr = np.char.mod('%f', registered_offset - pointcloud.offset)
-            print(','.join(str_arr), file=f)
-
-        boundary_zmean = np.asarray(boundary)[:, 2].mean()
-        boundary_zmean += boundary.offset[2]
-        footprint_zmean = np.asarray(footprint_boundary)[:, 2].mean()
-        footprint_zmean += footprint_boundary.offset[2]
-        boundary.offset[2] += footprint_zmean - boundary_zmean
-
-        registered_scale = get_preferred_scale_factor(pointcloud,
-                                                      registered_scale)
-
-        with open(f_out + '.scaling_factor.csv', 'w') as f:
-            print(registered_scale, file=f)
-
-        log("Scaling pointcloud: %f" % registered_scale)
-        pc_array = np.asarray(pointcloud)
-        pc_array *= registered_scale
-        cluster_array = np.asarray(cluster)
-        cluster_array *= registered_scale
-
-        log("Adding offset:")
-        copy_registration(pointcloud, boundary)
-        copy_registration(cluster, boundary)
-        log(pointcloud.offset)
-
-# TODO: set the right height
-# footprint_drivemap_array = np.asarray(footprint_drivemap)[2]
-# pc_array = np.asarray(cluster)[2]
-# ref_boundary_height = ((footprint_drivemap_array.min()
-#                         + footprint_drivemap_array.max()) / 2.0
-#                        + footprint_drivemap.offset[2])
-# register(pointcloud, offset=[pointcloud.offset[0], pointcloud.offset[1],
-#          ref_boundary_height])
-
-    log("Writing output")
-    save(pointcloud, f_out)
-    save(cluster, f_out + ".cluster.las")
-    save(boundary, f_out + ".boundary.las")
-    save(footprint_boundary, f_out + ".footboundary.las")
-
+from patty.registration import (
+    coarse_registration,
+    fine_registration,
+    initial_registration,
+    )
 
 if __name__ == '__main__':
+
+    ####
+    # Parse comamnd line arguments
+
     args = docopt(__doc__)
 
     sourcefile = args['<source>']
@@ -185,7 +48,64 @@ if __name__ == '__main__':
     footprintcsv = args['<footprint>']
     foutLas = args['<output>']
     up_file = args['-u']
-    sample = int(args['-d'])
+    cam_file = args['-c']
 
-    registration_pipeline(sourcefile, drivemapfile, footprintcsv, foutLas,
-                          None, up_file, sample)
+    if args['-U']:
+        trust_up = False
+    else:
+        trust_up = True
+
+    try:
+        downsample = float(args['-d'])
+    except KeyError:
+        downsample = 0.1
+
+    try:
+        voxel = float(args['-v'])
+    except KeyError:
+        voxel = 0.05
+
+    try:
+        initial_scale = float(args['-s'])
+    except:
+        initial_scale = None
+
+    assert os.path.exists(sourcefile),   sourcefile + ' does not exist'
+    assert os.path.exists(drivemapfile), drivemapfile + ' does not exist'
+    assert os.path.exists(footprintcsv), footprintcsv + ' does not exist'
+
+    #####
+    # Setup * the low-res drivemap
+    #       * footprint
+    #       * pointcloud
+    #       * up-vector
+
+    log("Reading drivemap", drivemapfile)
+    drivemap = load(drivemapfile)
+    force_srs(drivemap, srs="EPSG:32633")
+
+    log("Reading footprint", footprintcsv)
+    footprint = load(footprintcsv)
+    force_srs( footprint, srs="EPSG:32633" )
+    set_srs( footprint, same_as=drivemap )
+
+    log("Reading object", sourcefile)
+    pointcloud = load(sourcefile)
+
+    up = None
+    try:
+        with open(up_file) as f:
+            dic = json.load(f)
+        up = np.array(dic['estimatedUpDirection'])
+        log("Reading up_file", up_file)
+    except:
+        log( "Cannot parse upfile, skipping" )
+
+    initial_registration(pointcloud, up, drivemap, trust_up=trust_up, initial_scale=initial_scale)
+    save( pointcloud, "initial.las" )
+    center = coarse_registration(pointcloud, drivemap, footprint, downsample)
+    save( pointcloud, "coarse.las" )
+    fine_registration(pointcloud, drivemap, center, voxelsize=voxel)
+
+    save( pointcloud, foutLas )
+

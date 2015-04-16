@@ -19,7 +19,7 @@ from docopt import docopt
 import sys
 
 from patty.segmentation import segment_dbscan
-from patty.conversions import load, save
+from patty.utils import load, save
 
 if __name__ == '__main__':
     args = docopt(__doc__, sys.argv[1:])

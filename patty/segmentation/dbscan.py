@@ -10,7 +10,7 @@ http://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html.
 """
 import numpy as np
 from sklearn.cluster import dbscan
-from patty.conversions import extract_mask
+from patty.utils import extract_mask
 
 
 def dbscan_labels(pointcloud, epsilon, minpoints, rgb_weight=0,

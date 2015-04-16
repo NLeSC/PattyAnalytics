@@ -26,6 +26,8 @@ if __name__ == "__main__":
     header = f1.header
     header.set_srs(lsrs)
 
+    print '%s' % lsrs
+
     f2 = liblas.file.File(args['<outfile>'], header=header, mode="w")
     for p in f1:
         f2.write(p)

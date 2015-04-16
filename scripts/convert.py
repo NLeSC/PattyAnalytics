@@ -9,7 +9,7 @@ Usage:
   convert.py [-h] <infile> <outfile>
 """
 
-from patty.conversions import load, save
+from patty.utils import load, save
 from docopt import docopt
 
 if __name__ == '__main__':
