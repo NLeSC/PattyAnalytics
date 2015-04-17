@@ -7,7 +7,7 @@ from .registration import (
     initial_registration,
     rotate_upwards,
     )
-                    
+
 from .stickscale import (
     get_stick_scale,
     )

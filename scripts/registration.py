@@ -16,7 +16,8 @@ Options:
   -v <voxel>   Downsample source pointcloud using voxel filter to speedup ICP
                [default: 0.05]
   -s <scale>   User override for initial scale factor
-  -U           Dont trust the upvector completely and estimate it in this script, too
+  -U           Dont trust the upvector completely and estimate it in
+               this script, too
   -u <upfile>  Json file containing the up vector relative to the pointcloud.
   -c <camfile> CSV file containing all the camera postionions. [UNIMPLEMENTED]
 """
@@ -70,7 +71,7 @@ if __name__ == '__main__':
     except:
         initial_scale = None
 
-    assert os.path.exists(sourcefile),   sourcefile + ' does not exist'
+    assert os.path.exists(sourcefile), sourcefile + ' does not exist'
     assert os.path.exists(drivemapfile), drivemapfile + ' does not exist'
     assert os.path.exists(footprintcsv), footprintcsv + ' does not exist'
 
@@ -86,8 +87,8 @@ if __name__ == '__main__':
 
     log("Reading footprint", footprintcsv)
     footprint = load(footprintcsv)
-    force_srs( footprint, srs="EPSG:32633" )
-    set_srs( footprint, same_as=drivemap )
+    force_srs(footprint, srs="EPSG:32633")
+    set_srs(footprint, same_as=drivemap)
 
     log("Reading object", sourcefile)
     pointcloud = load(sourcefile)
@@ -99,13 +100,13 @@ if __name__ == '__main__':
         up = np.array(dic['estimatedUpDirection'])
         log("Reading up_file", up_file)
     except:
-        log( "Cannot parse upfile, skipping" )
+        log("Cannot parse upfile, skipping")
 
-    initial_registration(pointcloud, up, drivemap, trust_up=trust_up, initial_scale=initial_scale)
-    save( pointcloud, "initial.las" )
+    initial_registration(pointcloud, up, drivemap,
+                         trust_up=trust_up, initial_scale=initial_scale)
+    save(pointcloud, "initial.las")
     center = coarse_registration(pointcloud, drivemap, footprint, downsample)
-    save( pointcloud, "coarse.las" )
+    save(pointcloud, "coarse.las")
     fine_registration(pointcloud, drivemap, center, voxelsize=voxel)
 
-    save( pointcloud, foutLas )
-
+    save(pointcloud, foutLas)

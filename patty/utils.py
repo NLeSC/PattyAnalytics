@@ -15,13 +15,17 @@ from sklearn.decomposition import PCA
 
 
 def _check_readable(filepath):
-    """ Test whether filepath is readable, raises IOError otherwise """
+    """
+    Test whether filepath is readable, raises IOError otherwise
+    """
     with open(filepath):
         pass
 
 
 def _check_writable(filepath):
-    """ Test whether filepath is writable, raises IOError otherwise """
+    """
+    Test whether filepath is writable, raises IOError otherwise
+    """
     # either the path exists but is not writable, or the path does not exist
     # and the parent is not writable.
     filepath = os.path.abspath(filepath)
@@ -31,8 +35,10 @@ def _check_writable(filepath):
             )) or not os.access(os.path.dirname(filepath), os.W_OK | os.X_OK):
         raise IOError("Cannot save to " + filepath)
 
+
 def clone(pc):
-    """Return a copy of a pointcloud, including registration metadata
+    """
+    Return a copy of a pointcloud, including registration metadata
 
     Arguments:
         pc: pcl.PointCloud()
@@ -40,23 +46,26 @@ def clone(pc):
         cp: pcl.PointCloud()
     """
 
-    cp = pcl.PointCloud( np.asarray(pc) )
+    cp = pcl.PointCloud(np.asarray(pc))
     if is_registered(pc):
         force_srs(cp, same_as=pc)
 
     return cp
 
-def load(path, format=None, load_rgb=True ):
-    """Read a pointcloud file.
 
-    Supports LAS and CSV files, and lets PCD and PLY files be read by python-pcl.
+def load(path, format=None, load_rgb=True):
+    """
+    Read a pointcloud file.
+
+    Supports LAS and CSV files, and lets PCD and PLY files be
+    read by python-pcl.
 
     Arguments:
         path : string
             Filename.
         format : string, optional
-            File format: "PLY", "PCD", "LAS", "CSV" or None to detect the format
-            from the file extension.
+            File format: "PLY", "PCD", "LAS", "CSV",
+            or None to detect the format from the file extension.
         load_rgb : bool
             Whether RGB is loaded for PLY and PCD files. For LAS files, RGB is
             always read.
@@ -78,7 +87,8 @@ def load(path, format=None, load_rgb=True ):
 def save(cloud, path, format=None, binary=False, las_header=None):
     """Save a pointcloud to file.
 
-    Supports LAS and CSV files, and lets PCD and PLY files be saved by python-pcl.
+    Supports LAS and CSV files, and lets PCD and PLY
+    files be saved by python-pcl.
 
     Arguments:
         cloud : pcl.PointCloud or pcl.PointCloudXYZRGB
@@ -86,8 +96,8 @@ def save(cloud, path, format=None, binary=False, las_header=None):
         path : string
             Filename.
         format : string
-            File format: "PLY", "PCD", "LAS", "CSV" or None to detect the format
-             from the file extension.
+            File format: "PLY", "PCD", "LAS", "CSV",
+            or None to detect the format from the file extension.
         binary : boolean
             Whether PLY and PCD files are saved in binary format.
         las_header: liblas.header.Header
@@ -104,6 +114,7 @@ def save(cloud, path, format=None, binary=False, las_header=None):
             cloud_array = np.asarray(cloud)
             cloud_array += cloud.offset
         pcl.save(cloud, path, format=format, binary=binary)
+
 
 def _load_las(lasfile):
     """Read a LAS file
@@ -126,8 +137,10 @@ def _load_las(lasfile):
         precise_points = np.zeros((n_points, 6), dtype=np.float64)
 
         for i, point in enumerate(las):
-            precise_points[i] = (point.x, point.y, point.z, point.color.red /
-                       256, point.color.green / 256, point.color.blue / 256)
+            precise_points[i] = (point.x, point.y, point.z,
+                                 point.color.red / 256,
+                                 point.color.green / 256,
+                                 point.color.blue / 256)
 
         # reduce the offset to decrease floating point errors
         bbox = BoundingBox(points=precise_points[:, 0:3])
@@ -135,7 +148,7 @@ def _load_las(lasfile):
         precise_points[:, 0:3] -= center
 
         pointcloud = pcl.PointCloudXYZRGB(precise_points.astype(np.float32))
-        force_srs( pointcloud, srs=lsrs, offset=center )
+        force_srs(pointcloud, srs=lsrs, offset=center)
 
     finally:
         if las is not None:
@@ -143,21 +156,25 @@ def _load_las(lasfile):
 
     return pointcloud
 
+
 def _load_csv(path, delimiter=','):
-    """Load a set of points from a CSV file as 
+    """
+    Load a set of points from a CSV file as a pointcloud
 
     Returns:
         pc : pcl.PointCloud
     """
-    precise_points = np.genfromtxt(path, delimiter=delimiter, dtype=np.float64 )
-    offset = np.mean( precise_points, axis=0, dtype=np.float64 )
-    pc = pcl.PointCloud(  np.array( precise_points - offset, dtype=np.float32 ) )
+    precise_points = np.genfromtxt(path, delimiter=delimiter, dtype=np.float64)
+    offset = np.mean(precise_points, axis=0, dtype=np.float64)
+    pc = pcl.PointCloud(np.array(precise_points - offset, dtype=np.float32))
 
     force_srs(pc, offset=offset)
-    return pc    
+    return pc
+
 
 def _save_csv(path, pc, delimiter=', '):
-    """Write a pointcloud to a CSV file.
+    """
+    Write a pointcloud to a CSV file.
 
     Arguments:
         path: string
@@ -173,7 +190,7 @@ def _save_csv(path, pc, delimiter=', '):
     else:
         offset = pc.offset
 
-    np.savetxt(path, np.asarray(pc) + offset, delimiter=delimiter )
+    np.savetxt(path, np.asarray(pc) + offset, delimiter=delimiter)
 
 
 def extract_mask(pointcloud, mask):
@@ -239,7 +256,7 @@ def make_las_header(pointcloud):
     if not hasattr(pointcloud, 'precision'):
         precision = np.array([0.01, 0.01, 0.01], dtype=np.float64)
     else:
-        precision = np.array( pointcloud.precision, dtype=np.float64)
+        precision = np.array(pointcloud.precision, dtype=np.float64)
     head.scale = precision * 0.5
 
     pc_array = np.asarray(pointcloud)
@@ -285,7 +302,9 @@ def _save_las(lasfile, pointcloud, header=None):
             if do_RGB:
                 red, grn, blu = pointcloud[i][3:6]
                 point.color = liblas.color.Color(
-                    red=int(red) * 256, green=int(grn) * 256, blue=int(blu) * 256)
+                    red=int(red) * 256,
+                    green=int(grn) * 256,
+                    blue=int(blu) * 256)
             las.write(point)
     finally:
         if las is not None:
@@ -364,6 +383,7 @@ class BoundingBox(object):
         ''' Whether the bounding box contains given position. '''
         return np.all((pos[0:3] >= self.min) & (pos[0:3] <= self.max))
 
+
 def log(*args, **kwargs):
     """Simple logging function that prints to stdout"""
     print(time.strftime("[%F %H:%M:%S]", time.gmtime()), *args, **kwargs)
@@ -433,4 +453,3 @@ def downsample_random(pc, fraction, random_seed=None):
     force_srs(new_pc, same_as=pc)
 
     return new_pc
-

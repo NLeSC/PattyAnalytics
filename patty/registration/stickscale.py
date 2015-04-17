@@ -39,7 +39,7 @@ def get_stick_scale(pointcloud, eps=0.1, min_samples=20):
     pc_reds = extract_mask(pointcloud, get_red_mask(pointcloud))
     if len(pc_reds) == 0:
         # unit scale, zero confidence (ie. any other estimation is better)
-        return 1.0, 0.0 
+        return 1.0, 0.0
 
     cluster_generator = segment_dbscan(
         pc_reds, eps, min_samples, algorithm='kd_tree')
@@ -54,6 +54,7 @@ def get_stick_scale(pointcloud, eps=0.1, min_samples=20):
     scale, votes, n_clusters = ransac(sizes)
     confidence = get_confidence_level(votes, n_clusters)
     return scale, confidence
+
 
 def ransac(meter_clusters, rel_inlier_margin=0.05):
     """Very simple RANSAC implementation for finding the value with most

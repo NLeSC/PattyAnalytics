@@ -16,7 +16,8 @@ Positional arguments:
 Options:
   -r <rot>          CSV file of a 4x4 transformation matrix, assumed to be
                     normalized.
-  -o <rot_origin>   CSV file with a 3d point of the origin for the rotation and scaling
+  -o <rot_origin>   CSV file with a 3d point of the origin for the
+                    rotation and scaling
   -s <scaling>      CSV file with a single scaling multiplication factor.
   -t <translate>    CSV file with a 3d vector to translate the pointcloud with.
 """
@@ -53,19 +54,19 @@ if __name__ == '__main__':
 
     try:
         matrix = csv_read(args['-r'])
-        pc.rotate( matrix, origin=offset )
+        pc.rotate(matrix, origin=offset)
     except:
         pass
 
     try:
         factor = csv_read(args['-s'])
-        pc.scale( scale, origin=offset )
+        pc.scale(scale, origin=offset)
     except:
         pass
 
     try:
         vector = csv_read(args['-t'])
-        pc.translate( vector ) 
+        pc.translate(vector)
     except:
         pass
 
