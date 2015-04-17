@@ -60,7 +60,7 @@ if __name__ == '__main__':
 
     try:
         factor = csv_read(args['-s'])
-        pc.scale(scale, origin=offset)
+        pc.scale(factor, origin=offset)
     except:
         pass
 

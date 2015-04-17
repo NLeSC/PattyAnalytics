@@ -285,9 +285,9 @@ def _save_las(lasfile, pointcloud, header=None):
 
     # deal with color
     if len(pointcloud[0]) > 3:
-        do_RGB = True
+        do_rgb = True
     else:
-        do_RGB = False
+        do_rgb = False
 
     precise_points = np.array(pointcloud, dtype=np.float64)
     precise_points /= header.scale
@@ -299,7 +299,7 @@ def _save_las(lasfile, pointcloud, header=None):
         for i in xrange(pointcloud.size):
             point = liblas.point.Point()
             point.x, point.y, point.z = precise_points[i]
-            if do_RGB:
+            if do_rgb:
                 red, grn, blu = pointcloud[i][3:6]
                 point.color = liblas.color.Color(
                     red=int(red) * 256,

@@ -49,27 +49,26 @@ if __name__ == '__main__':
     footprintcsv = args['<footprint>']
     foutLas = args['<output>']
     up_file = args['-u']
-    cam_file = args['-c']
 
     if args['-U']:
-        trust_up = False
+        Trust_up = False
     else:
-        trust_up = True
+        Trust_up = True
 
     try:
-        downsample = float(args['-d'])
+        Downsample = float(args['-d'])
     except KeyError:
-        downsample = 0.1
+        Downsample = 0.1
 
     try:
-        voxel = float(args['-v'])
+        Voxel = float(args['-v'])
     except KeyError:
-        voxel = 0.05
+        Voxel = 0.05
 
     try:
-        initial_scale = float(args['-s'])
+        Initial_scale = float(args['-s'])
     except:
-        initial_scale = None
+        Initial_scale = None
 
     assert os.path.exists(sourcefile), sourcefile + ' does not exist'
     assert os.path.exists(drivemapfile), drivemapfile + ' does not exist'
@@ -93,20 +92,20 @@ if __name__ == '__main__':
     log("Reading object", sourcefile)
     pointcloud = load(sourcefile)
 
-    up = None
+    Up = None
     try:
         with open(up_file) as f:
             dic = json.load(f)
-        up = np.array(dic['estimatedUpDirection'])
+        Up = np.array(dic['estimatedUpDirection'])
         log("Reading up_file", up_file)
     except:
         log("Cannot parse upfile, skipping")
 
-    initial_registration(pointcloud, up, drivemap,
-                         trust_up=trust_up, initial_scale=initial_scale)
+    initial_registration(pointcloud, Up, drivemap,
+                         trust_up=Trust_up, initial_scale=Initial_scale)
     save(pointcloud, "initial.las")
-    center = coarse_registration(pointcloud, drivemap, footprint, downsample)
+    center = coarse_registration(pointcloud, drivemap, footprint, Downsample)
     save(pointcloud, "coarse.las")
-    fine_registration(pointcloud, drivemap, center, voxelsize=voxel)
+    fine_registration(pointcloud, drivemap, center, voxelsize=Voxel)
 
     save(pointcloud, foutLas)

@@ -16,50 +16,50 @@ def is_registered(pointcloud):
     return hasattr(pointcloud, 'srs') or hasattr(pointcloud, 'offset')
 
 
-def same_srs(pcA, pcB):
+def same_srs(pc_one, pc_two):
     """
     True if the two pointclouds have the same coordinate system
 
     Arguments:
-        pcA : pcl.PointCloud
-        pcB : pc..PointCloud
+        pc_one : pcl.PointCloud
+        pc_two : pc..PointCloud
     """
 
-    a = is_registered(pcA)
-    b = is_registered(pcB)
+    is_reg_one = is_registered(pc_one)
+    is_reg_two = is_registered(pc_two)
 
     # both pointcloud are pure pcl: no offset nor SRS
-    if not a and not b:
+    if not is_reg_one and not is_reg_two:
         return True
 
     # only one of the pointclouds is registered
-    if ((not a) and b) or ((not b) and a):
+    if ((not is_reg_one) and is_reg_two) or ((not is_reg_two) and is_reg_one):
         return False
 
-    a = None
-    b = None
+    srs_one = None
+    srs_two = None
     try:
-        a = pcA.srs
-        b = pcB.srs
+        srs_one = pc_one.srs
+        srs_two = pc_two.srs
 
-        if not a.IsSame(b):
+        if not srs_one.IsSame(srs_two):
             # SRS present, but different
             return False
     except:
         # one of the pointclouds does not have a SRS
         return False
 
-    a = None
-    b = None
+    off_one = None
+    off_two = None
     try:
-        a = pcA.offset
-        b = pcB.offset
+        off_one = pc_one.offset
+        off_two = pc_two.offset
     except:
         # one of the pointclouds does not have an offset
         return False
 
-    # absolute(a - b) <= (atol + rtol * absolute(b))
-    if not np.allclose(a, b, rtol=1e-06, atol=1e-08):
+    # absolute(off_one - off_two) <= (atol + rtol * absolute(off_two))
+    if not np.allclose(off_one, off_two, rtol=1e-06, atol=1e-08):
         return False
 
     return True
@@ -162,8 +162,8 @@ def set_srs(pc, srs=None, offset=np.array([0, 0, 0], dtype=np.float64),
     # do transformation, this resets the offset to 0
     if update_srs and not pc.srs.IsSame(newsrs):
         try:
-            T = osr.CoordinateTransformation(pc.srs, newsrs)
-            precise_points = np.array(T.TransformPoints(precise_points),
+            transform = osr.CoordinateTransformation(pc.srs, newsrs)
+            precise_points = np.array(transform.TransformPoints(precise_points),
                                       dtype=np.float64)
             pc.srs = newsrs.Clone()
             pc.offset = np.array([0, 0, 0], dtype=np.float64)
