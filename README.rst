@@ -75,19 +75,19 @@ camera position) can be provided.
 The following image is a screenshot of a dense point cloud to be registered
 on the drive map -- this would correspond to *SOURCE.las*.
 
-![Site 558 dense point cloud](/img/site558_dense.png?raw=true "Dense point cloud")
+![Site 558 dense point cloud](./img/site558_dense.png?raw=true "Dense point cloud")
 
 This screenshot shows the drive map where we want to register to -- this corresponds
 to *DRIVEMAP.las*
 
-![Site 558 drive map point cloud](/img/site558_drivemap.png?raw=true "Drive map")
+![Site 558 drive map point cloud](./img/site558_drivemap.png?raw=true "Drive map")
 
 Finally, this screenshot shows the dense point cloud registered on the drive map.
 The dense point cloud has been rotated, scaled and translated to find it's best
 fit on the drive map -- this corresponds to *OUTPUT.las*.
 
 
-![Site 558 registered point cloud](/img/site558_registered.png?raw=true "Registered point cloud")
+![Site 558 registered point cloud](./img/site558_registered.png?raw=true "Registered point cloud")
 
 Testing
 -------
