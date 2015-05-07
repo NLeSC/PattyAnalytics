@@ -83,6 +83,7 @@ def _add_noise(points, size, rng):
 
 
 def perpendicular_2d(a):
+    '''Create a vector perpendicular to the original'''
     b = np.zeros(a.shape)
     b[0] = -a[1]
     b[1] = a[0]
@@ -90,10 +91,10 @@ def perpendicular_2d(a):
 
 
 def rotation_around_axis(axis, theta):
-    """
+    '''
     Return the rotation matrix associated with counterclockwise rotation about
     the given axis by theta radians.
-    """
+    '''
     axis = np.asarray(axis)
     theta = np.asarray(theta)
     axis = axis / math.sqrt(np.dot(axis, axis))

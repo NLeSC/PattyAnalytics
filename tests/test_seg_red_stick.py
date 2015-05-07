@@ -5,6 +5,7 @@ from numpy.testing import assert_almost_equal
 
 
 def test_centered_line_on_x_axis():
+    '''Test get_red_mask function from patty.segmentation.segRedStick'''
     # Arrange
     ar = np.asarray([[0, 0, 0, 210, 25, 30],
                      [0, 0, 0, 0, 0, 150],

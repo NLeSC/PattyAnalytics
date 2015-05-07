@@ -1,5 +1,3 @@
-import os
-
 from patty.srs import set_srs, force_srs, is_registered
 import pcl
 import numpy as np
@@ -74,11 +72,11 @@ def test_set_srs():
 
     pcB = pcl.PointCloud ( [[0., 0., 0.]] )
     force_srs( pcB, srs=rdnew, offset=adam_rdnew )
-    
+
     # latlon [degrees] -> rdnew [m]
     set_srs( pcA, same_as=pcB )
 
-    assert_less( np.max( np.square( np.asarray( pcA ) ) ), 1e-3 ** 2, 
+    assert_less( np.max( np.square( np.asarray( pcA ) ) ), 1e-3 ** 2,
         "Coordinate transform not accurate to 1 mm %s" % np.asarray(pcA) )
 
 
@@ -88,12 +86,11 @@ def test_set_srs():
     # check horizontal error [degrees]
     error = np.asarray(pcB)[0] - adam_latlon
 
-    assert_less( np.max( np.square(error[0:2]) ), (1e-6) ** 2, 
+    assert_less( np.max( np.square(error[0:2]) ), (1e-6) ** 2,
         "Coordinate transform rdnew->latlon not accurate to 1e-6 degree %s"
          % error[0:2] )
 
     # check vertical error [m]
-    assert_less( abs(error[2]) , (1e-6) , 
+    assert_less( abs(error[2]) , (1e-6) ,
         "Vertical Coordinate in of transform not accurate to 1e-6 meter %s"
          % abs(error[2]) )
-

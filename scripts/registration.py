@@ -108,4 +108,3 @@ if __name__ == '__main__':
     fine_registration(pointcloud, drivemap, center, voxelsize=voxel)
 
     save( pointcloud, foutLas )
-

@@ -6,14 +6,13 @@ Registration algorithms and utility functions
 
 from __future__ import print_function
 import numpy as np
-from .. import BoundingBox, log, force_srs, extract_mask, clone
+from .. import BoundingBox, force_srs, extract_mask, clone
 from .stickscale import get_stick_scale
-from pcl.registration import gicp, icp, icp_nl, ia_ransac
+from pcl.registration import gicp
 
 from patty.utils import (
     log,
     save,
-    downsample_random,
     downsample_voxel,
 )
 
@@ -25,13 +24,14 @@ from patty.segmentation import (
 
 from sklearn.decomposition import PCA
 
+
 def align_footprints(loose_pc, fixed_pc,
                      allow_scaling=True,
                      allow_rotation=True,
                      allow_translation=True):
     '''
     Align a pointcloud 'loose_pc' by placing it on top of
-    'fixed_pc' as good as poosible. Done by aligning the 
+    'fixed_pc' as good as poosible. Done by aligning the
     principle axis of both pointclouds.
 
     NOTE: Both pointclouds are assumed to be the footprint (or projection)
@@ -39,7 +39,7 @@ def align_footprints(loose_pc, fixed_pc,
 
     (allow_rotation=True)
         The pointcloud boundary is alinged with the footprint
-        by rotating its pricipal axis in the (x,y) plane. 
+        by rotating its pricipal axis in the (x,y) plane.
 
     (allow_translation=True)
         Then, it is translated so the centers of mass coincide.
@@ -154,7 +154,7 @@ def rotate_upwards(pc, up):
 
     Arguments:
         pc : pcl.PointCloud
-        up : np.array([3]) 
+        up : np.array([3])
 
     Returns:
         pc : pcl.PointCloud the input pointcloud, for convenience.
@@ -205,7 +205,7 @@ def rotate_upwards(pc, up):
     rotation = np.linalg.inv(rotation)
     pc.rotate( rotation, origin=pc.center() )
 
-    return pc 
+    return pc
 
 
 def initial_registration(pointcloud, up, drivemap, initial_scale=None, trust_up=True):
@@ -220,9 +220,9 @@ def initial_registration(pointcloud, up, drivemap, initial_scale=None, trust_up=
             The high-res object to register.
 
         up: np.array([3])
-            Up direction for the pointcloud. 
+            Up direction for the pointcloud.
             If None, assume the object is pancake shaped, and chose the upvector such
-            that it is perpendicullar to the pancake. 
+            that it is perpendicullar to the pancake.
 
         drivemap : pcl.PointCloud
             A small part of the low-res drivemap on which to register.
@@ -230,7 +230,7 @@ def initial_registration(pointcloud, up, drivemap, initial_scale=None, trust_up=
         initial_scale : float
             if given, scale pointcloud using this value; estimate scale factor
             from bounding boxes.
-         
+
         trust_up : Boolean, default to True
             True:  Assume the up vector is exact.
             False: Calculate 'up' as if it was None, but orient it such that
@@ -289,7 +289,7 @@ def coarse_registration(pointcloud, drivemap, footprint, downsample=None):
     """
     Improve the initial registration.
     Find the proper scale by looking for the red meter sticks, and calculate
-    and align the pointcloud's footprint. 
+    and align the pointcloud's footprint.
 
     Arguments:
         pointcloud: pcl.PointCloud
@@ -334,7 +334,7 @@ def coarse_registration(pointcloud, drivemap, footprint, downsample=None):
     fixed_boundary = clone(footprint)
     fp_array = np.asarray( fixed_boundary )
     fp_array[:,2] = dm_bb.min[2]
-    
+
     save( fixed_boundary, "fixed_bound.las" )
 
     #####
@@ -379,9 +379,9 @@ def _fine_registration_helper(pointcloud, drivemap, voxelsize=0.05, attempt=0):
         success : Boolean
             if icp was successful
         fitness : float
-            sort of sum of square differences, ie. smaller is better 
-            
-    ''' 
+            sort of sum of square differences, ie. smaller is better
+
+    '''
 
     ####
     # Downsample to speed up
@@ -438,7 +438,7 @@ def fine_registration(pointcloud, drivemap, center, voxelsize=0.05):
                     A small part of the low-res drivemap on which to register
 
         center: np.array([3])
-                    Vector giving the centerpoint of the pointcloud, used to do 
+                    Vector giving the centerpoint of the pointcloud, used to do
                     the 180 degree rotations.
 
         voxelsize: float default : 0.05
