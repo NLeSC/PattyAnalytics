@@ -26,6 +26,7 @@ def test_largest_dbscan_clusters():
 
 
 def get_one_big_and_10_small_clusters():
+    '''Create clusters as advertised'''
     ar = np.empty([0, 3], dtype=np.float32)
     rn = np.random.RandomState(1234)
     big = rn.randn(100, 3) + 10
@@ -38,6 +39,7 @@ def get_one_big_and_10_small_clusters():
 
 
 def test_get_top_labels():
+    '''Test _get_top_labels function from patty.segmentation.dbscan'''
     # With outliers
     labels = np.array([0, 0, 0, -1, -1, 0, 1, 1, 2, 3])
     assert_equal(_get_top_labels(labels, .6), ([0, 1], 6))

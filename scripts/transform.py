@@ -26,21 +26,12 @@ from __future__ import print_function
 from docopt import docopt
 
 import numpy as np
-from patty.utils import load, save, log
+from patty.utils import load, save
 
 
 def csv_read(path):
     return np.genfromtxt(path, dtype=float, delimiter=',')
 
-
-def scale(pointcloud, factor):
-    pc_array = np.asarray(pointcloud)
-    pc_array *= factor
-    set_registeration(pointcloud, precision=pointcloud.precision * factor)
-
-
-def translate(pointcloud, offset):
-    set_registeration(pointcloud, offset=pointcloud.offset + offset)
 
 if __name__ == '__main__':
     args = docopt(__doc__)
@@ -55,19 +46,19 @@ if __name__ == '__main__':
     try:
         matrix = csv_read(args['-r'])
         pc.rotate(matrix, origin=offset)
-    except:
-        pass
+    except Exception as e:
+        print('Problem with rotate: ', e)
 
     try:
         factor = csv_read(args['-s'])
         pc.scale(factor, origin=offset)
-    except:
-        pass
+    except Exception as e:
+        print('Problem with scale: ', e)
 
     try:
         vector = csv_read(args['-t'])
         pc.translate(vector)
-    except:
-        pass
+    except Exception as e:
+        print('Problem with translate: ', e)
 
     save(pc, args['<target>'])

@@ -6,16 +6,12 @@ import numpy as np
 import pcl
 
 from patty import utils
-from patty.utils import (clone, downsample_voxel) 
+from patty.utils import downsample_voxel
 
 from helpers import make_tri_pyramid_with_base
-from nose.tools import (assert_equal, assert_greater, assert_less,
-                        assert_true, assert_false)
-from numpy.testing import (assert_array_equal, assert_array_almost_equal,
-                           assert_array_less)
+
 from sklearn.utils.extmath import cartesian
 import unittest
-
 
 
 class TestRegistrationPipeline(unittest.TestCase):
@@ -106,4 +102,3 @@ class TestRegistrationPipeline(unittest.TestCase):
         # array_in_margin(target.mean(axis=0), actual.mean(axis=0), [1, 1, 1],
         #                 "Middle point of registered cloud does not"
         #                 " match expectation")
-

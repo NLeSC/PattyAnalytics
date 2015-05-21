@@ -5,13 +5,12 @@ import pcl
 import numpy as np
 from patty import utils
 
-from helpers import make_tri_pyramid_with_base
-
 from numpy.testing import assert_array_almost_equal
 from nose.tools import assert_equal, assert_raises
 
+
 def _compare( pcA, pcB ):
-    ''' compare two pointclouds point-by-point''' 
+    ''' compare two pointclouds point-by-point'''
 
     pcA_arr = np.asarray(pcA)
     pcB_arr = np.asarray(pcB)
@@ -24,7 +23,7 @@ def _compare( pcA, pcB ):
 
     assert_array_almost_equal(pcA_arr, pcB_arr, 2,
                               "Written/read point clouds are different!")
-    
+
 
 def test_read_write():
     ''' Test read and write LAS files functionality'''
@@ -82,4 +81,3 @@ def test_downsample_random():
     assert_raises(ValueError, utils.downsample_random, pc, 2)
 
     assert_equal(len(utils.downsample_random(pc, .39)), 4)
-

@@ -1,7 +1,6 @@
 import logging
 import pcl
 import numpy as np
-import patty
 from helpers import make_tri_pyramid_with_base
 
 from nose.tools import assert_greater

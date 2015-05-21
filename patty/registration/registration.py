@@ -383,7 +383,6 @@ def _fine_registration_helper(pointcloud, drivemap, voxelsize=0.05, attempt=0):
         fitness : float
             sort of sum of square differences, ie. smaller is better
     """
-
     ####
     # Downsample to speed up
     # use voxel filter to keep evenly distributed spatial extent
