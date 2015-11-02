@@ -3,12 +3,6 @@
 API reference
 =============
 
-Conversions
------------
-
-.. automodule:: patty.conversions
-    :members:
-
 Registration
 ------------
 
@@ -22,3 +16,15 @@ Segmentation
 .. automodule:: patty.segmentation
     :members:
     :imported-members:
+
+SRS
+---
+
+.. automodule:: patty.srs
+    :members:
+
+Utils
+-----
+
+.. automodule:: patty.utils
+    :members:

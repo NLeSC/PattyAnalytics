@@ -83,7 +83,7 @@
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">sklearn.cluster</span> <span class="kn">import</span> <span class="n">dbscan</span>
-<span class="kn">from</span> <span class="nn">patty.conversions</span> <span class="kn">import</span> <span class="n">extract_mask</span>
+<span class="kn">from</span> <span class="nn">patty.utils</span> <span class="kn">import</span> <span class="n">extract_mask</span>
 
 
 <div class="viewcode-block" id="dbscan_labels"><a class="viewcode-back" href="../../../api.html#patty.segmentation.dbscan_labels">[docs]</a><span class="k">def</span> <span class="nf">dbscan_labels</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">minpoints</span><span class="p">,</span> <span class="n">rgb_weight</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
@@ -107,9 +107,10 @@
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    labels: a sequence of labels per point. Label -1 indicates a point does</span>
-<span class="sd">    not belong to any cluster, other labels indicate the cluster number a</span>
-<span class="sd">    point belongs to.</span>
+<span class="sd">    labels : Sequence</span>
+<span class="sd">        A sequence of labels per point. Label -1 indicates a point does not</span>
+<span class="sd">        belong to any cluster, other labels indicate the cluster number a</span>
+<span class="sd">        point belongs to.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
 
     <span class="k">if</span> <span class="n">rgb_weight</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
@@ -147,45 +148,6 @@
             <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">labels</span><span class="p">[</span><span class="n">labels</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
 
 </div>
-<div class="viewcode-block" id="largest_dbscan_cluster"><a class="viewcode-back" href="../../../api.html#patty.segmentation.largest_dbscan_cluster">[docs]</a><span class="k">def</span> <span class="nf">largest_dbscan_cluster</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">minpoints</span><span class="o">=</span><span class="mi">250</span><span class="p">,</span>
-                           <span class="n">rgb_weight</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;</span>
-<span class="sd">    Finds the largest cluster found in the pointcloud</span>
-
-<span class="sd">    Parameters</span>
-<span class="sd">    ----------</span>
-<span class="sd">    pointcloud : pcl.PointCloud</span>
-<span class="sd">        Input pointcloud.</span>
-<span class="sd">    epsilon : float</span>
-<span class="sd">        Neighborhood radius for DBSCAN.</span>
-<span class="sd">    minpoints : integer</span>
-<span class="sd">        Minimum neighborhood density for DBSCAN.</span>
-<span class="sd">    rgb_weight : float, optional</span>
-<span class="sd">        If non-zero, cluster on color information as well as location;</span>
-<span class="sd">        specifies the relative weight of the RGB components to spatial</span>
-<span class="sd">        coordinates in distance computations.</span>
-<span class="sd">        (RGB values have wildly different scales than spatial coordinates.)</span>
-
-<span class="sd">    Returns</span>
-<span class="sd">    -------</span>
-<span class="sd">    cluster: PointCloud</span>
-<span class="sd">        Registered pointcloud of the largest cluster found by dbscan</span>
-<span class="sd">    &#39;&#39;&#39;</span>
-    <span class="n">labels</span> <span class="o">=</span> <span class="n">dbscan_labels</span><span class="p">(</span>
-        <span class="n">pointcloud</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">minpoints</span><span class="p">,</span> <span class="n">rgb_weight</span><span class="o">=</span><span class="n">rgb_weight</span><span class="p">)</span>
-
-    <span class="c"># Labels start at -1, so increase all by 1.</span>
-    <span class="n">bins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">bincount</span><span class="p">(</span><span class="n">labels</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
-
-    <span class="c"># Pointcloud is the only cluster</span>
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">bins</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">pointcloud</span>
-
-    <span class="c"># Indexes are automatically moved one back by [1:]</span>
-    <span class="n">max_label</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">bins</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
-    <span class="k">return</span> <span class="n">extract_mask</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">labels</span> <span class="o">==</span> <span class="n">max_label</span><span class="p">)</span>
-
-</div>
 <div class="viewcode-block" id="get_largest_dbscan_clusters"><a class="viewcode-back" href="../../../api.html#patty.segmentation.get_largest_dbscan_clusters">[docs]</a><span class="k">def</span> <span class="nf">get_largest_dbscan_clusters</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">min_return_fragment</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span>
                                 <span class="n">epsilon</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">minpoints</span><span class="o">=</span><span class="mi">250</span><span class="p">,</span> <span class="n">rgb_weight</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
     <span class="sd">&#39;&#39;&#39;</span>
@@ -196,6 +158,7 @@
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
 <span class="sd">    pointcloud : pcl.PointCloud</span>
+<span class="sd">        Input pointcloud.</span>
 <span class="sd">    min_return_fragment : float</span>
 <span class="sd">        Minimum desired fragment of pointcloud to be returned</span>
 <span class="sd">    epsilon : float</span>
@@ -210,7 +173,8 @@
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
-<span class="sd">    cluster: registered pointcloud of the largest cluster found by dbscan</span>
+<span class="sd">    cluster : pcl.PointCloud</span>
+<span class="sd">        Registered pointcloud of the largest cluster found by dbscan.</span>
 <span class="sd">    &#39;&#39;&#39;</span>
     <span class="n">labels</span> <span class="o">=</span> <span class="n">dbscan_labels</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">minpoints</span><span class="p">,</span>
                            <span class="n">rgb_weight</span><span class="o">=</span><span class="n">rgb_weight</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
@@ -218,7 +182,7 @@
 
     <span class="c"># No clusters were found</span>
     <span class="k">if</span> <span class="n">selected_count</span> <span class="o">&lt;</span> <span class="n">min_return_fragment</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">pointcloud</span>
+        <span class="k">return</span> <span class="n">extract_mask</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">))</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">mask</span> <span class="o">=</span> <span class="p">[</span><span class="n">label</span> <span class="ow">in</span> <span class="n">selection</span> <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">extract_mask</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">mask</span><span class="p">)</span>

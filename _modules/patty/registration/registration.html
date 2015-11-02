@@ -78,207 +78,483 @@
 <span class="sd">&quot;&quot;&quot;</span>
 
 <span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
-<span class="kn">from</span> <span class="nn">pcl.boundaries</span> <span class="kn">import</span> <span class="n">estimate_boundaries</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">logging</span>
-<span class="kn">from</span> <span class="nn">..</span> <span class="kn">import</span> <span class="n">copy_registration</span><span class="p">,</span> <span class="n">is_registered</span><span class="p">,</span> <span class="n">extract_mask</span><span class="p">,</span> <span class="n">register</span>
-<span class="kn">from</span> <span class="nn">..segmentation</span> <span class="kn">import</span> <span class="n">dbscan</span>
-<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">path</span>
-<span class="kn">from</span> <span class="nn">.pca</span> <span class="kn">import</span> <span class="n">find_principal_axes_rotation</span>
+<span class="kn">from</span> <span class="nn">..</span> <span class="kn">import</span> <span class="n">BoundingBox</span><span class="p">,</span> <span class="n">force_srs</span><span class="p">,</span> <span class="n">extract_mask</span><span class="p">,</span> <span class="n">clone</span>
+<span class="kn">from</span> <span class="nn">.stickscale</span> <span class="kn">import</span> <span class="n">get_stick_scale</span>
+<span class="kn">from</span> <span class="nn">pcl.registration</span> <span class="kn">import</span> <span class="n">gicp</span>
 
-<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">patty.utils</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">log</span><span class="p">,</span>
+    <span class="n">save</span><span class="p">,</span>
+    <span class="n">downsample_voxel</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">patty.segmentation</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">boundary_of_center_object</span><span class="p">,</span>
+    <span class="n">boundary_of_drivemap</span><span class="p">,</span>
+    <span class="n">boundary_of_lowest_points</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">sklearn.decomposition</span> <span class="kn">import</span> <span class="n">PCA</span>
 
 
-<div class="viewcode-block" id="downsample_voxel"><a class="viewcode-back" href="../../../api.html#patty.registration.downsample_voxel">[docs]</a><span class="k">def</span> <span class="nf">downsample_voxel</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">voxel_size</span><span class="o">=</span><span class="mf">0.01</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;Downsample a pointcloud using a voxel grid filter.</span>
+<div class="viewcode-block" id="align_footprints"><a class="viewcode-back" href="../../../api.html#patty.registration.align_footprints">[docs]</a><span class="k">def</span> <span class="nf">align_footprints</span><span class="p">(</span><span class="n">loose_pc</span><span class="p">,</span> <span class="n">fixed_pc</span><span class="p">,</span>
+                     <span class="n">allow_scaling</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                     <span class="n">allow_rotation</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                     <span class="n">allow_translation</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Align a pointcloud &#39;loose_pc&#39; by placing it on top of</span>
+<span class="sd">    &#39;fixed_pc&#39; as good as poosible. Done by aligning the</span>
+<span class="sd">    principle axis of both pointclouds.</span>
+
+<span class="sd">    NOTE: Both pointclouds are assumed to be the footprint (or projection)</span>
+<span class="sd">    on the xy plane, with basically zero extent along the z-axis.</span>
+
+<span class="sd">    (allow_rotation=True)</span>
+<span class="sd">        The pointcloud boundary is alinged with the footprint</span>
+<span class="sd">        by rotating its pricipal axis in the (x,y) plane.</span>
+
+<span class="sd">    (allow_translation=True)</span>
+<span class="sd">        Then, it is translated so the centers of mass coincide.</span>
+
+<span class="sd">    (allow_scaling=True)</span>
+<span class="sd">        Finally, the pointcloud is scaled to have the same extent.</span>
 
 <span class="sd">    Arguments:</span>
-<span class="sd">        pointcloud    Original pointcloud</span>
-<span class="sd">        voxel_size    Grid spacing for the voxel grid</span>
+<span class="sd">        loose_pc          : pcl.PointCloud</span>
+<span class="sd">        fixed_pc          : pcl.PointCloud</span>
+
+<span class="sd">        allow_scaling     : Bolean</span>
+<span class="sd">        allow_rotation    : Bolean</span>
+<span class="sd">        allow_translation : Bolean</span>
+
 <span class="sd">    Returns:</span>
-<span class="sd">        filtered_pointcloud</span>
+<span class="sd">        rot_matrix, rot_center, scale, translation : np.array()</span>
+
 <span class="sd">    &#39;&#39;&#39;</span>
-    <span class="n">pc_filter</span> <span class="o">=</span> <span class="n">pointcloud</span><span class="o">.</span><span class="n">make_voxel_grid_filter</span><span class="p">()</span>
-    <span class="n">pc_filter</span><span class="o">.</span><span class="n">set_leaf_size</span><span class="p">(</span><span class="n">voxel_size</span><span class="p">,</span> <span class="n">voxel_size</span><span class="p">,</span> <span class="n">voxel_size</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">pc_filter</span><span class="o">.</span><span class="n">filter</span><span class="p">()</span>
+
+    <span class="n">rot_center</span> <span class="o">=</span> <span class="n">loose_pc</span><span class="o">.</span><span class="n">center</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">allow_rotation</span><span class="p">:</span>
+        <span class="n">log</span><span class="p">(</span><span class="s">&quot; - Finding rotation&quot;</span><span class="p">)</span>
+        <span class="n">rot_matrix</span> <span class="o">=</span> <span class="n">find_rotation_xy</span><span class="p">(</span><span class="n">loose_pc</span><span class="p">,</span> <span class="n">fixed_pc</span><span class="p">)</span>
+        <span class="n">loose_pc</span><span class="o">.</span><span class="n">rotate</span><span class="p">(</span><span class="n">rot_matrix</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="n">rot_center</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">log</span><span class="p">(</span><span class="s">&quot; - Skipping rotation&quot;</span><span class="p">)</span>
+        <span class="n">rot_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">allow_scaling</span><span class="p">:</span>
+        <span class="n">fixed_bb</span> <span class="o">=</span> <span class="n">BoundingBox</span><span class="p">(</span><span class="n">fixed_pc</span><span class="p">)</span>  <span class="c"># used 2x below</span>
+        <span class="n">loose_bb</span> <span class="o">=</span> <span class="n">BoundingBox</span><span class="p">(</span><span class="n">loose_pc</span><span class="p">)</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="n">fixed_bb</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span> <span class="o">/</span> <span class="n">loose_bb</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span>
+
+        <span class="c"># take the average scale factor for the x and y dimensions</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">scale</span><span class="p">)</span>
+        <span class="n">loose_pc</span><span class="o">.</span><span class="n">scale</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="n">rot_center</span><span class="p">)</span>
+        <span class="n">log</span><span class="p">(</span><span class="s">&quot; - Scale: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">scale</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">log</span><span class="p">(</span><span class="s">&quot; - Skipping scale&quot;</span><span class="p">)</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="mf">1.0</span>
+
+    <span class="k">if</span> <span class="n">allow_translation</span><span class="p">:</span>
+        <span class="n">translation</span> <span class="o">=</span> <span class="n">fixed_pc</span><span class="o">.</span><span class="n">center</span><span class="p">()</span> <span class="o">-</span> <span class="n">rot_center</span>
+        <span class="n">loose_pc</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">translation</span><span class="p">)</span>
+        <span class="n">log</span><span class="p">(</span><span class="s">&quot; - Translation: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">translation</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">log</span><span class="p">(</span><span class="s">&quot; - Skipping translation&quot;</span><span class="p">)</span>
+        <span class="n">translation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">rot_matrix</span><span class="p">,</span> <span class="n">rot_center</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">translation</span>
 
 </div>
-<div class="viewcode-block" id="downsample"><a class="viewcode-back" href="../../../api.html#patty.registration.downsample">[docs]</a><span class="k">def</span> <span class="nf">downsample</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">fraction</span><span class="p">,</span> <span class="n">random_seed</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Randomly downsample pointcloud to a fraction of its size.</span>
+<div class="viewcode-block" id="estimate_pancake_up"><a class="viewcode-back" href="../../../api.html#patty.registration.estimate_pancake_up">[docs]</a><span class="k">def</span> <span class="nf">estimate_pancake_up</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Assuming a pancake like pointcloud, the up direction is the third PCA.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">pca</span> <span class="o">=</span> <span class="n">PCA</span><span class="p">(</span><span class="n">n_components</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
 
-<span class="sd">    Returns a pointcloud of size fraction * len(pc), rounded to the nearest</span>
-<span class="sd">    integer.</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">)</span>
+    <span class="n">pca</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">points</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">])</span>
 
-<span class="sd">    Use random_seed=k for some integer k to get reproducible results.</span>
+    <span class="k">return</span> <span class="n">pca</span><span class="o">.</span><span class="n">components_</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+</div>
+<span class="k">def</span> <span class="nf">_find_rotation_xy_helper</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">):</span>
+    <span class="n">pca</span> <span class="o">=</span> <span class="n">PCA</span><span class="p">(</span><span class="n">n_components</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">)</span>
+    <span class="n">pca</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">points</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">])</span>
+
+    <span class="n">rotxy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">pca</span><span class="o">.</span><span class="n">components_</span><span class="p">)</span>
+
+    <span class="c"># make sure the rotation is a proper rotation, ie det = +1</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">rotxy</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">rotxy</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">*=</span> <span class="o">-</span><span class="mf">1.0</span>
+
+    <span class="c"># create a 3D rotation around the z-axis</span>
+    <span class="n">rotation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">rotation</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">rotxy</span>
+
+    <span class="k">return</span> <span class="n">rotation</span>
+
+
+<div class="viewcode-block" id="find_rotation_xy"><a class="viewcode-back" href="../../../api.html#patty.registration.find_rotation_xy">[docs]</a><span class="k">def</span> <span class="nf">find_rotation_xy</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">ref</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Find the transformation that rotates the principal axis of the</span>
+<span class="sd">    pointcloud onto those of the reference.</span>
+<span class="sd">    Keep the z-axis pointing upwards.</span>
+
 <span class="sd">    Arguments:</span>
 <span class="sd">        pc: pcl.PointCloud</span>
-<span class="sd">            input pointcloud</span>
-<span class="sd">        fraction: double</span>
-<span class="sd">            fraction of points to include</span>
-<span class="sd">        random_seed: int</span>
-<span class="sd">            seed to use in random number generator</span>
+
+<span class="sd">        ref: pcl.PointCloud</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        pcl.Pointcloud</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">fraction</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Expected fraction in (0,1], got </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">fraction</span><span class="p">)</span>
-
-    <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">RandomState</span><span class="p">(</span><span class="n">random_seed</span><span class="p">)</span>
-
-    <span class="n">k</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">fraction</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">pc</span><span class="p">))),</span> <span class="mi">1</span><span class="p">)</span>
-    <span class="n">sample</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pc</span><span class="p">),</span> <span class="n">k</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
-    <span class="n">new_pc</span> <span class="o">=</span> <span class="n">pc</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">is_registered</span><span class="p">(</span><span class="n">pc</span><span class="p">):</span>
-        <span class="n">copy_registration</span><span class="p">(</span><span class="n">new_pc</span><span class="p">,</span> <span class="n">pc</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">new_pc</span>
-
-</div>
-<div class="viewcode-block" id="register_offset_scale_from_ref"><a class="viewcode-back" href="../../../api.html#patty.registration.register_offset_scale_from_ref">[docs]</a><span class="k">def</span> <span class="nf">register_offset_scale_from_ref</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">ref_array</span><span class="p">,</span> <span class="n">ref_offset</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">)):</span>
-    <span class="sd">&#39;&#39;&#39;Returns a 3d-offset and uniform scale value from footprint.</span>
-
-<span class="sd">    The scale is immediately applied to the pointcloud. The offset is</span>
-<span class="sd">    set to the patty_registration.conversions.RegisteredPointCloud.&#39;&#39;&#39;</span>
-    <span class="n">ref_min</span> <span class="o">=</span> <span class="n">ref_array</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-    <span class="n">ref_max</span> <span class="o">=</span> <span class="n">ref_array</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-    <span class="n">ref_center</span> <span class="o">=</span> <span class="p">(</span><span class="n">ref_min</span> <span class="o">+</span> <span class="n">ref_max</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span> <span class="o">+</span> <span class="n">ref_offset</span>
-
-    <span class="n">pc_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pc</span><span class="p">)</span>
-    <span class="n">pc_min</span> <span class="o">=</span> <span class="n">pc_array</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-    <span class="n">pc_max</span> <span class="o">=</span> <span class="n">pc_array</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-
-    <span class="n">pc_size</span> <span class="o">=</span> <span class="n">pc_max</span> <span class="o">-</span> <span class="n">pc_min</span>
-    <span class="n">ref_size</span> <span class="o">=</span> <span class="n">ref_max</span> <span class="o">-</span> <span class="n">ref_min</span>
-
-    <span class="c"># Take the footprint as the real offset, and correct the z-offset</span>
-    <span class="c"># The z-offset of the footprint will be ground level, the z-offset of the</span>
-    <span class="c"># pointcloud will include the monuments height</span>
-    <span class="n">pc_registration_scale</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">ref_size</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="n">pc_size</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">1</span><span class="p">])</span>
-
-    <span class="n">pc_array</span> <span class="o">*=</span> <span class="n">pc_registration_scale</span>
-    <span class="n">pc_min</span> <span class="o">*=</span> <span class="n">pc_registration_scale</span>
-    <span class="n">pc_max</span> <span class="o">*=</span> <span class="n">pc_registration_scale</span>
-
-    <span class="n">register</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="n">ref_center</span> <span class="o">-</span> <span class="p">(</span><span class="n">pc_min</span> <span class="o">+</span> <span class="n">pc_max</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span>
-             <span class="n">precision</span><span class="o">=</span><span class="n">pc</span><span class="o">.</span><span class="n">precision</span> <span class="o">*</span> <span class="n">pc_registration_scale</span><span class="p">)</span>
-
-    <span class="k">return</span> <span class="n">pc</span><span class="o">.</span><span class="n">offset</span><span class="p">,</span> <span class="n">pc_registration_scale</span>
-
-</div>
-<div class="viewcode-block" id="get_pointcloud_boundaries"><a class="viewcode-back" href="../../../api.html#patty.registration.get_pointcloud_boundaries">[docs]</a><span class="k">def</span> <span class="nf">get_pointcloud_boundaries</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">angle_threshold</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
-                              <span class="n">search_radius</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span> <span class="n">normal_search_radius</span><span class="o">=</span><span class="mf">0.02</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;Find the boundary of a pointcloud.</span>
-
-<span class="sd">    Arguments:</span>
-<span class="sd">        pointcloud : pcl.PointCloud</span>
-
-<span class="sd">        angle_threshold : float</span>
-
-<span class="sd">        search_radius : float</span>
-
-<span class="sd">        normal_radius : float</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        a pointcloud</span>
+<span class="sd">        numpy array of shape [3,3], can be used to rotate pointclouds</span>
+<span class="sd">        with pc.rotate()</span>
 <span class="sd">    &#39;&#39;&#39;</span>
-    <span class="n">boundary</span> <span class="o">=</span> <span class="n">estimate_boundaries</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">angle_threshold</span><span class="o">=</span><span class="n">angle_threshold</span><span class="p">,</span>
-                                   <span class="n">search_radius</span><span class="o">=</span><span class="n">search_radius</span><span class="p">,</span>
-                                   <span class="n">normal_search_radius</span><span class="o">=</span><span class="n">normal_search_radius</span><span class="p">)</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;sum </span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">boundary</span><span class="p">))</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;len </span><span class="si">%d</span><span class="s">&quot;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">boundary</span><span class="p">))</span>
-    <span class="k">print</span><span class="p">(</span><span class="n">boundary</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">extract_mask</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">boundary</span><span class="p">)</span>
+
+    <span class="n">pc_transform</span> <span class="o">=</span> <span class="n">_find_rotation_xy_helper</span><span class="p">(</span><span class="n">pc</span><span class="p">)</span>
+    <span class="n">ref_transform</span> <span class="o">=</span> <span class="n">_find_rotation_xy_helper</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">ref_transform</span><span class="p">),</span> <span class="n">pc_transform</span><span class="p">)</span>
 
 </div>
-<div class="viewcode-block" id="register_from_footprint"><a class="viewcode-back" href="../../../api.html#patty.registration.register_from_footprint">[docs]</a><span class="k">def</span> <span class="nf">register_from_footprint</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">footprint</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;Register a pointcloud by placing it in footprint. Applies dbscan first.</span>
+<div class="viewcode-block" id="rotate_upwards"><a class="viewcode-back" href="../../../api.html#patty.registration.rotate_upwards">[docs]</a><span class="k">def</span> <span class="nf">rotate_upwards</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">up</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Rotate the pointcloud in-place around its center, such that the</span>
+<span class="sd">    &#39;up&#39; vector points along [0,0,1]</span>
 
 <span class="sd">    Arguments:</span>
 <span class="sd">        pc : pcl.PointCloud</span>
-
-<span class="sd">        footprint : np.ndarray</span>
-<span class="sd">            Array of [x,y,z] describing the footprint.</span>
+<span class="sd">        up : np.array([3])</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        The original pointcloud, rotated/translated to the footprint.</span>
+<span class="sd">        pc : pcl.PointCloud the input pointcloud, for convenience.</span>
+
 <span class="sd">    &#39;&#39;&#39;</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Finding largest cluster&quot;</span><span class="p">)</span>
-    <span class="n">pc_main</span> <span class="o">=</span> <span class="n">dbscan</span><span class="o">.</span><span class="n">largest_dbscan_cluster</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="o">.</span><span class="mi">1</span><span class="p">,</span> <span class="mi">250</span><span class="p">)</span>
 
-    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Detecting boundary&quot;</span><span class="p">)</span>
-    <span class="n">boundary</span> <span class="o">=</span> <span class="n">get_pointcloud_boundaries</span><span class="p">(</span><span class="n">pc_main</span><span class="p">)</span>
+    <span class="n">newz</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">up</span><span class="p">)</span>
 
-    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Finding rotation&quot;</span><span class="p">)</span>
-    <span class="n">pc_transform</span> <span class="o">=</span> <span class="n">find_principal_axes_rotation</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">boundary</span><span class="p">))</span>
-    <span class="n">fp_transform</span> <span class="o">=</span> <span class="n">find_principal_axes_rotation</span><span class="p">(</span><span class="n">footprint</span><span class="p">)</span>
-    <span class="n">transform</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">fp_transform</span><span class="p">)</span> <span class="o">*</span> <span class="n">pc_transform</span>
-    <span class="n">boundary</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">transform</span><span class="p">)</span>
+    <span class="c"># Right-handed coordiante system:</span>
+    <span class="c"># np.cross(x,y) = z</span>
+    <span class="c"># np.cross(y,z) = x</span>
+    <span class="c"># np.cross(z,x) = y</span>
 
-    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Registering pointcloud to footprint&quot;</span><span class="p">)</span>
-    <span class="n">registered_offset</span><span class="p">,</span> <span class="n">registered_scale</span> <span class="o">=</span> <span class="n">register_offset_scale_from_ref</span><span class="p">(</span>
-        <span class="n">boundary</span><span class="p">,</span> <span class="n">footprint</span><span class="p">)</span>
-    <span class="n">copy_registration</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">boundary</span><span class="p">)</span>
+    <span class="c"># normalize</span>
+    <span class="n">newz</span> <span class="o">/=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">newz</span><span class="p">,</span> <span class="n">newz</span><span class="p">))</span> <span class="o">**</span> <span class="mf">0.5</span>
 
-    <span class="c"># rotate and scale up</span>
-    <span class="n">transform</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">*=</span> <span class="n">registered_scale</span>
-    <span class="n">pc</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">transform</span><span class="p">)</span>
+    <span class="c"># find two orthogonal vectors to represent x and y,</span>
+    <span class="c"># randomly choose a vector, and take cross product. If we&#39;re unlucky,</span>
+    <span class="c"># this ones is parallel to z, so cross pruduct is zero.</span>
+    <span class="c"># In that case, try another one</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">newx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]),</span> <span class="n">newz</span><span class="p">)</span>
+        <span class="n">newx</span> <span class="o">/=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">newx</span><span class="p">,</span> <span class="n">newx</span><span class="p">))</span> <span class="o">**</span> <span class="mf">0.5</span>
+
+        <span class="n">newy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">newz</span><span class="p">,</span> <span class="n">newx</span><span class="p">)</span>
+        <span class="n">newy</span> <span class="o">/=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">newy</span><span class="p">,</span> <span class="n">newy</span><span class="p">))</span> <span class="o">**</span> <span class="mf">0.5</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">print</span><span class="p">(</span><span class="s">&quot;Alternative&quot;</span><span class="p">)</span>
+        <span class="n">newy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">newz</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]))</span>
+        <span class="n">newy</span> <span class="o">/=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">newy</span><span class="p">,</span> <span class="n">newy</span><span class="p">))</span> <span class="o">**</span> <span class="mf">0.5</span>
+
+        <span class="n">newx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cross</span><span class="p">(</span><span class="n">newy</span><span class="p">,</span> <span class="n">newz</span><span class="p">)</span>
+        <span class="n">newx</span> <span class="o">/=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">newx</span><span class="p">,</span> <span class="n">newx</span><span class="p">))</span> <span class="o">**</span> <span class="mf">0.5</span>
+
+    <span class="n">rotation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span>
+    <span class="n">rotation</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">newx</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">rotation</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">newx</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">rotation</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">newx</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+    <span class="n">rotation</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">newy</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">rotation</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">newy</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">rotation</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">newy</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+    <span class="n">rotation</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">newz</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">rotation</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">newz</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">rotation</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">newz</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+    <span class="n">rotation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">rotation</span><span class="p">)</span>
+    <span class="n">pc</span><span class="o">.</span><span class="n">rotate</span><span class="p">(</span><span class="n">rotation</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="n">pc</span><span class="o">.</span><span class="n">center</span><span class="p">())</span>
 
     <span class="k">return</span> <span class="n">pc</span>
 
 </div>
-<div class="viewcode-block" id="register_from_reference"><a class="viewcode-back" href="../../../api.html#patty.registration.register_from_reference">[docs]</a><span class="k">def</span> <span class="nf">register_from_reference</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">pc_ref</span><span class="p">):</span>
-    <span class="sd">&#39;&#39;&#39;Register a pointcloud by aligning it with a reference pointcloud.</span>
-
-<span class="sd">    Applies dbscan first.</span>
+<div class="viewcode-block" id="initial_registration"><a class="viewcode-back" href="../../../api.html#patty.registration.initial_registration">[docs]</a><span class="k">def</span> <span class="nf">initial_registration</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">up</span><span class="p">,</span> <span class="n">drivemap</span><span class="p">,</span>
+                         <span class="n">initial_scale</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">trust_up</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Initial registration adds an spatial reference system to the pointcloud,</span>
+<span class="sd">    and place the pointlcoud on top of the drivemap. The pointcloud is rotated</span>
+<span class="sd">    so that the up vector points along [0,0,1], and scaled such that it has the</span>
+<span class="sd">    right order of magnitude in size.</span>
 
 <span class="sd">    Arguments:</span>
-<span class="sd">        pc         pointcloud</span>
-<span class="sd">        footprint  array of [x,y,z] describing the footprint</span>
-<span class="sd">    Returns:</span>
-<span class="sd">        the original pointcloud, but rotated/translated to the footprint</span>
-<span class="sd">    &#39;&#39;&#39;</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Finding largest cluster&quot;</span><span class="p">)</span>
-    <span class="n">pc_main</span> <span class="o">=</span> <span class="n">dbscan</span><span class="o">.</span><span class="n">largest_dbscan_cluster</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="o">.</span><span class="mi">1</span><span class="p">,</span> <span class="mi">250</span><span class="p">)</span>
+<span class="sd">        pointcloud : pcl.PointCloud</span>
+<span class="sd">            The high-res object to register.</span>
 
-    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Finding rotation&quot;</span><span class="p">)</span>
-    <span class="n">pc_transform</span> <span class="o">=</span> <span class="n">find_principal_axes_rotation</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pc_main</span><span class="p">))</span>
-    <span class="n">ref_transform</span> <span class="o">=</span> <span class="n">find_principal_axes_rotation</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pc_ref</span><span class="p">))</span>
-    <span class="n">transform</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">ref_transform</span><span class="p">)</span> <span class="o">*</span> <span class="n">pc_transform</span>
-    <span class="n">pc_main</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">transform</span><span class="p">)</span>
+<span class="sd">        up: np.array([3])</span>
+<span class="sd">            Up direction for the pointcloud.</span>
+<span class="sd">            If None, assume the object is pancake shaped, and chose the</span>
+<span class="sd">            upvector such that it is perpendicullar to the pancake.</span>
 
-    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Registering pointcloud to footprint&quot;</span><span class="p">)</span>
-    <span class="n">registered_offset</span><span class="p">,</span> <span class="n">registered_scale</span> <span class="o">=</span> <span class="n">register_offset_scale_from_ref</span><span class="p">(</span>
-        <span class="n">pc_main</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pc_ref</span><span class="p">),</span> <span class="n">pc_ref</span><span class="o">.</span><span class="n">offset</span><span class="p">)</span>
-    <span class="n">copy_registration</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">pc_main</span><span class="p">)</span>
+<span class="sd">        drivemap : pcl.PointCloud</span>
+<span class="sd">            A small part of the low-res drivemap on which to register.</span>
 
-    <span class="c"># rotate and scale up</span>
-    <span class="n">transform</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">*=</span> <span class="n">registered_scale</span>
-    <span class="n">pc</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">transform</span><span class="p">)</span>
+<span class="sd">        initial_scale : float</span>
+<span class="sd">            if given, scale pointcloud using this value; estimate scale factor</span>
+<span class="sd">            from bounding boxes.</span>
 
-    <span class="k">return</span> <span class="n">pc</span>
+<span class="sd">        trust_up : Boolean, default to True</span>
+<span class="sd">            True:  Assume the up vector is exact.</span>
+<span class="sd">            False: Calculate &#39;up&#39; as if it was None, but orient it such that</span>
+<span class="sd">                   np.dot( up, pancake_up ) &gt; 0</span>
+
+<span class="sd">    NOTE: Modifies the input pointcloud in-place, and leaves</span>
+<span class="sd">    it in a undefined state.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">log</span><span class="p">(</span><span class="s">&quot;Starting initial registration&quot;</span><span class="p">)</span>
+
+    <span class="c">#####</span>
+    <span class="c"># set scale and offset of pointcloud, drivemap, and footprint</span>
+    <span class="c"># as the pointcloud is unregisterd, the coordinate system is undefined,</span>
+    <span class="c"># and we lose nothing if we just copy it</span>
+
+    <span class="k">if</span><span class="p">(</span><span class="nb">hasattr</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="s">&quot;offset&quot;</span><span class="p">)):</span>
+        <span class="n">log</span><span class="p">(</span><span class="s">&quot; - Dropping initial offset, was: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">pointcloud</span><span class="o">.</span><span class="n">offset</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">log</span><span class="p">(</span><span class="s">&quot; - No initial offset&quot;</span><span class="p">)</span>
+    <span class="n">force_srs</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">same_as</span><span class="o">=</span><span class="n">drivemap</span><span class="p">)</span>
+    <span class="n">log</span><span class="p">(</span><span class="s">&quot; - New offset forced to: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">pointcloud</span><span class="o">.</span><span class="n">offset</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">up</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">log</span><span class="p">(</span><span class="s">&quot; - Rotating the pointcloud so up points along [0,0,1]&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">trust_up</span><span class="p">:</span>
+            <span class="n">rotate_upwards</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">up</span><span class="p">)</span>
+            <span class="n">log</span><span class="p">(</span><span class="s">&quot; - Using trusted up: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">up</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">pancake_up</span> <span class="o">=</span> <span class="n">estimate_pancake_up</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">up</span><span class="p">,</span> <span class="n">pancake_up</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">0.0</span><span class="p">:</span>
+                <span class="n">pancake_up</span> <span class="o">*=</span> <span class="o">-</span><span class="mf">1.0</span>
+            <span class="n">log</span><span class="p">(</span><span class="s">&quot; - Using estimated up: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">pancake_up</span><span class="p">)</span>
+            <span class="n">rotate_upwards</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">pancake_up</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">log</span><span class="p">(</span><span class="s">&quot; - No upvector, skipping&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">initial_scale</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">bbDrivemap</span> <span class="o">=</span> <span class="n">BoundingBox</span><span class="p">(</span><span class="n">points</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">drivemap</span><span class="p">))</span>
+        <span class="n">bbObject</span> <span class="o">=</span> <span class="n">BoundingBox</span><span class="p">(</span><span class="n">points</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">))</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="n">bbDrivemap</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span> <span class="o">/</span> <span class="n">bbObject</span><span class="o">.</span><span class="n">size</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">2</span><span class="p">]</span>  <span class="c"># ignore z-direction</span>
+
+        <span class="c"># take the average scale factor for x and y dimensions</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">scale</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c"># use user provided scale</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="n">initial_scale</span>
+
+    <span class="n">log</span><span class="p">(</span><span class="s">&quot; - Applying rough estimation of scale factor&quot;</span><span class="p">,</span> <span class="n">scale</span><span class="p">)</span>
+    <span class="n">pointcloud</span><span class="o">.</span><span class="n">scale</span><span class="p">(</span><span class="n">scale</span><span class="p">)</span>  <span class="c"># dont care about origin of scaling</span>
 
 </div>
-<span class="k">def</span> <span class="nf">find_rotation</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">ref</span><span class="p">):</span>
-    <span class="n">pc_transform</span> <span class="o">=</span> <span class="n">find_principal_axes_rotation</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">)</span>
-    <span class="n">ref_transform</span> <span class="o">=</span> <span class="n">find_principal_axes_rotation</span><span class="p">(</span><span class="n">ref</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">ref_transform</span><span class="p">)</span> <span class="o">*</span> <span class="n">pc_transform</span>
+<div class="viewcode-block" id="coarse_registration"><a class="viewcode-back" href="../../../api.html#patty.registration.coarse_registration">[docs]</a><span class="k">def</span> <span class="nf">coarse_registration</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">drivemap</span><span class="p">,</span> <span class="n">footprint</span><span class="p">,</span> <span class="n">downsample</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Improve the initial registration.</span>
+<span class="sd">    Find the proper scale by looking for the red meter sticks, and calculate</span>
+<span class="sd">    and align the pointcloud&#39;s footprint.</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        pointcloud: pcl.PointCloud</span>
+<span class="sd">                    The high-res object to register.</span>
+
+<span class="sd">        drivemap:   pcl.PointCloud</span>
+<span class="sd">                    A small part of the low-res drivemap on which to register</span>
+
+<span class="sd">        footprint:  pcl.PointCloud</span>
+<span class="sd">                    Pointlcloud containing the objects footprint</span>
+
+<span class="sd">        downsample: float, default=None, no resampling</span>
+<span class="sd">                    Downsample the high-res pointcloud before footprint</span>
+<span class="sd">                    calculation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">log</span><span class="p">(</span><span class="s">&quot;Starting coarse registration&quot;</span><span class="p">)</span>
+
+    <span class="c">###</span>
+    <span class="c"># find redstick scale, and use it if possible</span>
+    <span class="n">log</span><span class="p">(</span><span class="s">&quot; - Redstick scaling&quot;</span><span class="p">)</span>
+
+    <span class="n">allow_scaling</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="n">scale</span><span class="p">,</span> <span class="n">confidence</span> <span class="o">=</span> <span class="n">get_stick_scale</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">)</span>
+    <span class="n">log</span><span class="p">(</span><span class="s">&quot; - Red stick scale=</span><span class="si">%s</span><span class="s"> confidence=</span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="n">confidence</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">confidence</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">):</span>
+        <span class="n">log</span><span class="p">(</span><span class="s">&quot; - Applying red stick scale&quot;</span><span class="p">)</span>
+        <span class="n">pointcloud</span><span class="o">.</span><span class="n">scale</span><span class="p">(</span><span class="mf">1.0</span> <span class="o">/</span> <span class="n">scale</span><span class="p">)</span>  <span class="c"># dont care about origin of scaling</span>
+        <span class="n">allow_scaling</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">log</span><span class="p">(</span><span class="s">&quot; - Not applying red stick scale, confidence too low&quot;</span><span class="p">)</span>
+
+    <span class="c">#####</span>
+    <span class="c"># find all the points in the drivemap along the footprint</span>
+    <span class="c"># use bottom two meters of drivemap (not trees)</span>
+
+    <span class="n">dm_boundary</span> <span class="o">=</span> <span class="n">boundary_of_drivemap</span><span class="p">(</span><span class="n">drivemap</span><span class="p">,</span> <span class="n">footprint</span><span class="p">)</span>
+    <span class="n">dm_bb</span> <span class="o">=</span> <span class="n">BoundingBox</span><span class="p">(</span><span class="n">dm_boundary</span><span class="p">)</span>
+
+    <span class="c"># set footprint height from minimum value,</span>
+    <span class="c"># as trees, or high object make the pc.center() too high</span>
+    <span class="n">fixed_boundary</span> <span class="o">=</span> <span class="n">clone</span><span class="p">(</span><span class="n">footprint</span><span class="p">)</span>
+    <span class="n">fp_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">fixed_boundary</span><span class="p">)</span>
+    <span class="n">fp_array</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">dm_bb</span><span class="o">.</span><span class="n">min</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+    <span class="n">save</span><span class="p">(</span><span class="n">fixed_boundary</span><span class="p">,</span> <span class="s">&quot;fixed_bound.las&quot;</span><span class="p">)</span>
+
+    <span class="c">#####</span>
+    <span class="c"># find all the boundary points of the pointcloud</span>
+
+    <span class="n">loose_boundary</span> <span class="o">=</span> <span class="n">boundary_of_center_object</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">downsample</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">loose_boundary</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">log</span><span class="p">(</span><span class="s">&quot; - boundary estimation failed, using lowest 30 percent of points&quot;</span><span class="p">)</span>
+        <span class="n">loose_boundary</span> <span class="o">=</span> <span class="n">boundary_of_lowest_points</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span>
+                                                   <span class="n">height_fraction</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+
+    <span class="c">####</span>
+    <span class="c"># match the pointcloud boundary with the footprint boundary</span>
+
+    <span class="n">log</span><span class="p">(</span><span class="s">&quot; - Aligning footprints:&quot;</span><span class="p">)</span>
+    <span class="n">rot_matrix</span><span class="p">,</span> <span class="n">rot_center</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">translation</span> <span class="o">=</span> <span class="n">align_footprints</span><span class="p">(</span>
+        <span class="n">loose_boundary</span><span class="p">,</span> <span class="n">fixed_boundary</span><span class="p">,</span>
+        <span class="n">allow_scaling</span><span class="o">=</span><span class="n">allow_scaling</span><span class="p">,</span>
+        <span class="n">allow_rotation</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+        <span class="n">allow_translation</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+    <span class="n">save</span><span class="p">(</span><span class="n">loose_boundary</span><span class="p">,</span> <span class="s">&quot;aligned_bound.las&quot;</span><span class="p">)</span>
+
+    <span class="c">####</span>
+    <span class="c"># Apply to the main pointcloud</span>
+
+    <span class="n">pointcloud</span><span class="o">.</span><span class="n">rotate</span><span class="p">(</span><span class="n">rot_matrix</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="n">rot_center</span><span class="p">)</span>
+    <span class="n">pointcloud</span><span class="o">.</span><span class="n">scale</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="n">rot_center</span><span class="p">)</span>
+    <span class="n">pointcloud</span><span class="o">.</span><span class="n">translate</span><span class="p">(</span><span class="n">translation</span><span class="p">)</span>
+    <span class="n">rot_center</span> <span class="o">+=</span> <span class="n">translation</span>
+
+    <span class="k">return</span> <span class="n">rot_center</span>
+
+</div>
+<span class="k">def</span> <span class="nf">_fine_registration_helper</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">drivemap</span><span class="p">,</span> <span class="n">voxelsize</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">attempt</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Perform ICP on pointcloud with drivemap, and return convergence indicator.</span>
+<span class="sd">    Reject large translatoins.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        transf : np.array([4,4])</span>
+<span class="sd">            transform</span>
+<span class="sd">        success : Boolean</span>
+<span class="sd">            if icp was successful</span>
+<span class="sd">        fitness : float</span>
+<span class="sd">            sort of sum of square differences, ie. smaller is better</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c">####</span>
+    <span class="c"># Downsample to speed up</span>
+    <span class="c"># use voxel filter to keep evenly distributed spatial extent</span>
+
+    <span class="n">log</span><span class="p">(</span><span class="s">&quot; - Downsampling with voxel filter: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">voxelsize</span><span class="p">)</span>
+    <span class="n">pc</span> <span class="o">=</span> <span class="n">downsample_voxel</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">voxelsize</span><span class="p">)</span>
+
+    <span class="c">####</span>
+    <span class="c"># Clip to drivemap to prevent outliers confusing the ICP algorithm</span>
+
+    <span class="n">log</span><span class="p">(</span><span class="s">&quot; - Clipping to drivemap&quot;</span><span class="p">)</span>
+    <span class="n">bb</span> <span class="o">=</span> <span class="n">BoundingBox</span><span class="p">(</span><span class="n">drivemap</span><span class="p">)</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="n">bb</span><span class="o">.</span><span class="n">center</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">extracted</span> <span class="o">=</span> <span class="n">extract_mask</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="p">[</span><span class="n">bb</span><span class="o">.</span><span class="n">contains</span><span class="p">([</span><span class="n">point</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">point</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">z</span><span class="p">])</span>
+                                  <span class="k">for</span> <span class="n">point</span> <span class="ow">in</span> <span class="n">pc</span><span class="p">])</span>
+
+    <span class="n">log</span><span class="p">(</span><span class="s">&quot; - Remaining points: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="n">extracted</span><span class="p">))</span>
+
+    <span class="c">####</span>
+    <span class="c"># GICP</span>
+
+    <span class="n">converged</span><span class="p">,</span> <span class="n">transf</span><span class="p">,</span> <span class="n">estimate</span><span class="p">,</span> <span class="n">fitness</span> <span class="o">=</span> <span class="n">gicp</span><span class="p">(</span><span class="n">extracted</span><span class="p">,</span> <span class="n">drivemap</span><span class="p">)</span>
+
+    <span class="c">####</span>
+    <span class="c"># Dont accept large translations</span>
+
+    <span class="n">translation</span> <span class="o">=</span> <span class="n">transf</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">translation</span><span class="p">,</span> <span class="n">translation</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">5</span> <span class="o">**</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">log</span><span class="p">(</span><span class="s">&quot; - Translation too large, considering it a failure.&quot;</span><span class="p">)</span>
+        <span class="n">converged</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="n">fitness</span> <span class="o">=</span> <span class="mf">1e30</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">log</span><span class="p">(</span><span class="s">&quot; - Success, fitness: &quot;</span><span class="p">,</span> <span class="n">converged</span><span class="p">,</span> <span class="n">fitness</span><span class="p">)</span>
+
+    <span class="n">force_srs</span><span class="p">(</span><span class="n">estimate</span><span class="p">,</span> <span class="n">same_as</span><span class="o">=</span><span class="n">pointcloud</span><span class="p">)</span>
+    <span class="n">save</span><span class="p">(</span><span class="n">estimate</span><span class="p">,</span> <span class="s">&quot;attempt</span><span class="si">%s</span><span class="s">.las&quot;</span> <span class="o">%</span> <span class="n">attempt</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">transf</span><span class="p">,</span> <span class="n">converged</span><span class="p">,</span> <span class="n">fitness</span>
 
 
-<span class="k">def</span> <span class="nf">point_in_polygon2d</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">polygon</span><span class="p">):</span>
-    <span class="n">p</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">polygon</span><span class="p">)[:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">])</span>
-    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">p</span><span class="o">.</span><span class="n">contains_point</span><span class="p">(</span><span class="n">point</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span> <span class="k">for</span> <span class="n">point</span> <span class="ow">in</span> <span class="n">points</span><span class="p">],</span>
-                    <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
+<div class="viewcode-block" id="fine_registration"><a class="viewcode-back" href="../../../api.html#patty.registration.fine_registration">[docs]</a><span class="k">def</span> <span class="nf">fine_registration</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">drivemap</span><span class="p">,</span> <span class="n">center</span><span class="p">,</span> <span class="n">voxelsize</span><span class="o">=</span><span class="mf">0.05</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Final registration step using ICP.</span>
 
+<span class="sd">    Find the local optimal postion of the pointcloud on the drivemap; due to</span>
+<span class="sd">    our coarse_registration algorithm, we have to try two orientations:</span>
+<span class="sd">    original, and rotated by 180 degrees around the z-axis.</span>
 
-<span class="k">def</span> <span class="nf">intersect_polygon2d</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">polygon</span><span class="p">):</span>
-    <span class="n">in_polygon</span> <span class="o">=</span> <span class="n">point_in_polygon2d</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pc</span><span class="p">)</span> <span class="o">+</span> <span class="n">pc</span><span class="o">.</span><span class="n">offset</span><span class="p">,</span> <span class="n">polygon</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">extract_mask</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">in_polygon</span><span class="p">)</span>
+<span class="sd">    Arguments:</span>
+<span class="sd">        pointcloud: pcl.PointCloud</span>
+<span class="sd">                    The high-res object to register.</span>
 
+<span class="sd">        drivemap: pcl.PointCloud</span>
+<span class="sd">                    A small part of the low-res drivemap on which to register</span>
 
-<span class="k">def</span> <span class="nf">scale_points</span><span class="p">(</span><span class="n">polygon</span><span class="p">,</span> <span class="n">factor</span><span class="p">):</span>
-    <span class="n">polygon</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">polygon</span><span class="p">)</span>
-    <span class="n">offset</span> <span class="o">=</span> <span class="p">(</span><span class="n">polygon</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">polygon</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span> <span class="o">/</span> <span class="mf">2.0</span>
-    <span class="k">return</span> <span class="p">((</span><span class="n">polygon</span> <span class="o">-</span> <span class="n">offset</span><span class="p">)</span> <span class="o">*</span> <span class="n">factor</span><span class="p">)</span> <span class="o">+</span> <span class="n">offset</span>
+<span class="sd">        center: np.array([3])</span>
+<span class="sd">                    Vector giving the centerpoint of the pointcloud, used to do</span>
+<span class="sd">                    the 180 degree rotations.</span>
+
+<span class="sd">        voxelsize: float default : 0.05</span>
+<span class="sd">                    Size in [m] of the voxel grid used for downsampling</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">log</span><span class="p">(</span><span class="s">&quot;Starting fine registration&quot;</span><span class="p">)</span>
+
+    <span class="c"># for rotation around z-axis</span>
+    <span class="n">rot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]])</span>
+
+    <span class="c">####</span>
+    <span class="c"># do a ICP step for 4 orientations</span>
+
+    <span class="n">transf</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">success</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">fitness</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">4</span><span class="p">):</span>
+        <span class="n">log</span><span class="p">(</span><span class="s">&quot; - attempt: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">)</span>
+        <span class="n">transf</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">success</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">fitness</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">_fine_registration_helper</span><span class="p">(</span>
+            <span class="n">pointcloud</span><span class="p">,</span>
+            <span class="n">drivemap</span><span class="p">,</span>
+            <span class="n">attempt</span><span class="o">=</span><span class="n">i</span><span class="p">,</span>
+            <span class="n">voxelsize</span><span class="o">=</span><span class="n">voxelsize</span><span class="p">)</span>
+        <span class="n">pointcloud</span><span class="o">.</span><span class="n">rotate</span><span class="p">(</span><span class="n">rot</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="n">center</span><span class="p">)</span>
+
+    <span class="c">####</span>
+    <span class="c"># pick best</span>
+
+    <span class="n">best</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">fitness</span><span class="o">.</span><span class="n">iteritems</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">success</span><span class="p">[</span><span class="n">best</span><span class="p">]:</span>
+        <span class="n">log</span><span class="p">(</span><span class="s">&quot; - Best attempt: </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">best</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">best</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="c"># np.array()**0 does weird things</span>
+            <span class="n">pointcloud</span><span class="o">.</span><span class="n">rotate</span><span class="p">(</span><span class="n">rot</span><span class="o">**</span><span class="n">best</span><span class="p">,</span> <span class="n">origin</span><span class="o">=</span><span class="n">center</span><span class="p">)</span>
+        <span class="n">pointcloud</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">transf</span><span class="p">[</span><span class="n">best</span><span class="p">])</span>
+        <span class="k">return</span>
+
+    <span class="c"># ICP failed:</span>
+    <span class="c"># return the pointcloud with just footprints aligned</span>
+    <span class="c"># no use to undo a rotation, as any orientationi is equally likely.</span>
+    <span class="n">log</span><span class="p">(</span><span class="s">&quot; - Unable to do fine registration&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span></div>
 </pre></div>
 
           </div>

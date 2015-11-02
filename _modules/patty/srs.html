@@ -1,0 +1,336 @@
+
+
+<!doctype html>
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>patty.srs &mdash; Patty Analytics 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/bizstyle.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="../../_static/bizstyle.js"></script>
+    <link rel="top" title="Patty Analytics 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <!--[if lt IE 9]>
+    <script type="text/javascript" src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Patty Analytics 0.1 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for patty.srs</h1><div class="highlight"><pre>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">osgeo.osr</span> <span class="kn">as</span> <span class="nn">osr</span>
+
+
+<div class="viewcode-block" id="is_registered"><a class="viewcode-back" href="../../api.html#patty.srs.is_registered">[docs]</a><span class="k">def</span> <span class="nf">is_registered</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns True when a pointcloud is registered; ie coordinates are relative</span>
+<span class="sd">    to a specific spatial reference system or offset.</span>
+
+<span class="sd">    In that case, first transform one pointcloud to the reference system</span>
+<span class="sd">    of the other, before doing processing on the points:</span>
+
+<span class="sd">       set_srs(pcA, same_as=pcB)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="s">&#39;srs&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="s">&#39;offset&#39;</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="same_srs"><a class="viewcode-back" href="../../api.html#patty.srs.same_srs">[docs]</a><span class="k">def</span> <span class="nf">same_srs</span><span class="p">(</span><span class="n">pc_one</span><span class="p">,</span> <span class="n">pc_two</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    True if the two pointclouds have the same coordinate system</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        pc_one : pcl.PointCloud</span>
+<span class="sd">        pc_two : pc..PointCloud</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">is_reg_one</span> <span class="o">=</span> <span class="n">is_registered</span><span class="p">(</span><span class="n">pc_one</span><span class="p">)</span>
+    <span class="n">is_reg_two</span> <span class="o">=</span> <span class="n">is_registered</span><span class="p">(</span><span class="n">pc_two</span><span class="p">)</span>
+
+    <span class="c"># both pointcloud are pure pcl: no offset nor SRS</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_reg_one</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">is_reg_two</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="c"># only one of the pointclouds is registered</span>
+    <span class="k">if</span> <span class="p">((</span><span class="ow">not</span> <span class="n">is_reg_one</span><span class="p">)</span> <span class="ow">and</span> <span class="n">is_reg_two</span><span class="p">)</span> <span class="ow">or</span> <span class="p">((</span><span class="ow">not</span> <span class="n">is_reg_two</span><span class="p">)</span> <span class="ow">and</span> <span class="n">is_reg_one</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="n">srs_one</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">srs_two</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">srs_one</span> <span class="o">=</span> <span class="n">pc_one</span><span class="o">.</span><span class="n">srs</span>
+        <span class="n">srs_two</span> <span class="o">=</span> <span class="n">pc_two</span><span class="o">.</span><span class="n">srs</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">srs_one</span><span class="o">.</span><span class="n">IsSame</span><span class="p">(</span><span class="n">srs_two</span><span class="p">):</span>
+            <span class="c"># SRS present, but different</span>
+            <span class="k">return</span> <span class="bp">False</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="c"># one of the pointclouds does not have a SRS</span>
+        <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="n">off_one</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">off_two</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">off_one</span> <span class="o">=</span> <span class="n">pc_one</span><span class="o">.</span><span class="n">offset</span>
+        <span class="n">off_two</span> <span class="o">=</span> <span class="n">pc_two</span><span class="o">.</span><span class="n">offset</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="c"># one of the pointclouds does not have an offset</span>
+        <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="c"># absolute(off_one - off_two) &lt;= (atol + rtol * absolute(off_two))</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">off_one</span><span class="p">,</span> <span class="n">off_two</span><span class="p">,</span> <span class="n">rtol</span><span class="o">=</span><span class="mf">1e-06</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="mf">1e-08</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="k">return</span> <span class="bp">True</span>
+
+</div>
+<div class="viewcode-block" id="set_srs"><a class="viewcode-back" href="../../api.html#patty.srs.set_srs">[docs]</a><span class="k">def</span> <span class="nf">set_srs</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">srs</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+            <span class="n">same_as</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Set the spatial reference system (SRS) and offset for a pointcloud.</span>
+<span class="sd">    This function transforms all the points to the new reference system, and</span>
+<span class="sd">    updates the metadata accordingly.</span>
+
+<span class="sd">    Either give a SRS and offset, or a reference pointcloud</span>
+
+<span class="sd">    NOTE: Pointclouds in PCL do not have absolute coordinates, ie.</span>
+<span class="sd">          latitude / longitude. This function sets metadata to the pointcloud</span>
+<span class="sd">          describing an absolute frame of reference.</span>
+<span class="sd">          It is left to the user to make sure pointclouds are in the same</span>
+<span class="sd">          reference system, before passing them on to PCL functions. This</span>
+<span class="sd">          can be checked with patty.utils.same_srs().</span>
+
+<span class="sd">    NOTE: To add a SRS to a point cloud, or to update incorrect metadata,</span>
+<span class="sd">          use force_srs().</span>
+
+<span class="sd">    Example:</span>
+
+<span class="sd">        # set the SRS to lat/lon,</span>
+<span class="sd">        # don&#39;t use an offset, so it defaults to [0,0,0]</span>
+<span class="sd">        set_srs( pc, srs=&quot;EPSG:4326&quot; )</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        pc : pcl.Pointcloud, with pcl.is_registered() == True</span>
+
+<span class="sd">        same_as : pcl.PointCloud</span>
+
+<span class="sd">        offset : np.array([3], dtype=np.float64 )</span>
+<span class="sd">            Must be added to the points to get absolute coordinates,</span>
+<span class="sd">            neccesary to retain precision for LAS pointclouds.</span>
+
+<span class="sd">        srs : object or osgeo.osr.SpatialReference</span>
+<span class="sd">            If it is an SpatialReference, it will be used directly.</span>
+<span class="sd">            Otherwise it is passed to osr.SpatialReference.SetFromUserInput()</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        pc : pcl.PointCloud</span>
+<span class="sd">            The input pointcloud.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_registered</span><span class="p">(</span><span class="n">pc</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Pointcloud is not registered&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">None</span>
+
+    <span class="n">update_offset</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="n">update_srs</span> <span class="o">=</span> <span class="bp">False</span>
+
+    <span class="k">if</span> <span class="n">same_as</span><span class="p">:</span>
+
+        <span class="c"># take offset and SRS from reference pointcloud</span>
+        <span class="n">update_offset</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="n">update_srs</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">if</span> <span class="n">is_registered</span><span class="p">(</span><span class="n">same_as</span><span class="p">):</span>
+            <span class="n">newsrs</span> <span class="o">=</span> <span class="n">same_as</span><span class="o">.</span><span class="n">srs</span>
+            <span class="n">newoffset</span> <span class="o">=</span> <span class="n">same_as</span><span class="o">.</span><span class="n">offset</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Reference pointcloud is not registered&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="c"># take offset and SRS from arguments</span>
+
+        <span class="c"># sanitize offset</span>
+        <span class="k">if</span> <span class="n">offset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">update_offset</span> <span class="o">=</span> <span class="bp">True</span>
+
+            <span class="n">newoffset</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">offset</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">newoffset</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Offset should be an np.array([3])&quot;</span><span class="p">)</span>
+
+        <span class="c"># sanitize SRS</span>
+        <span class="k">if</span> <span class="n">srs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+
+            <span class="c"># argument is a SRS, use it</span>
+            <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">srs</span><span class="p">)</span> <span class="o">==</span> <span class="nb">type</span><span class="p">(</span><span class="n">osr</span><span class="o">.</span><span class="n">SpatialReference</span><span class="p">()):</span>
+                <span class="n">update_srs</span> <span class="o">=</span> <span class="bp">True</span>
+                <span class="n">newsrs</span> <span class="o">=</span> <span class="n">srs</span>
+
+            <span class="c"># argument is not an SRS, try to convert it to one</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">srs</span><span class="p">,</span> <span class="n">osr</span><span class="o">.</span><span class="n">SpatialReference</span><span class="p">):</span>
+                <span class="n">newsrs</span> <span class="o">=</span> <span class="n">osr</span><span class="o">.</span><span class="n">SpatialReference</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">newsrs</span><span class="o">.</span><span class="n">SetFromUserInput</span><span class="p">(</span><span class="n">srs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">update_srs</span> <span class="o">=</span> <span class="bp">True</span>
+
+            <span class="c"># illegal input</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                    <span class="s">&quot;SRS should be a string or a osr.SpatialReference&quot;</span><span class="p">)</span>
+    <span class="c"># Apply</span>
+
+    <span class="c"># add old offset</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pc</span><span class="p">)</span>
+    <span class="n">precise_points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span> <span class="o">+</span> <span class="n">pc</span><span class="o">.</span><span class="n">offset</span>
+
+    <span class="c"># do transformation, this resets the offset to 0</span>
+    <span class="k">if</span> <span class="n">update_srs</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">pc</span><span class="o">.</span><span class="n">srs</span><span class="o">.</span><span class="n">IsSame</span><span class="p">(</span><span class="n">newsrs</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">transform</span> <span class="o">=</span> <span class="n">osr</span><span class="o">.</span><span class="n">CoordinateTransformation</span><span class="p">(</span><span class="n">pc</span><span class="o">.</span><span class="n">srs</span><span class="p">,</span> <span class="n">newsrs</span><span class="p">)</span>
+            <span class="n">precise_points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">transform</span><span class="o">.</span><span class="n">TransformPoints</span><span class="p">(</span><span class="n">precise_points</span><span class="p">),</span>
+                                      <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="n">pc</span><span class="o">.</span><span class="n">srs</span> <span class="o">=</span> <span class="n">newsrs</span><span class="o">.</span><span class="n">Clone</span><span class="p">()</span>
+            <span class="n">pc</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">print</span><span class="p">(</span><span class="s">&quot;WARNING, CAN&#39;T DO COORDINATE TRANSFORMATION&quot;</span><span class="p">)</span>
+
+    <span class="c"># substract new offset</span>
+    <span class="k">if</span> <span class="n">update_offset</span><span class="p">:</span>
+        <span class="n">precise_points</span> <span class="o">-=</span> <span class="n">newoffset</span>
+        <span class="n">pc</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">newoffset</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+    <span class="c"># copy the float64 to the pointcloud</span>
+    <span class="n">data</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">precise_points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">pc</span>
+
+</div>
+<div class="viewcode-block" id="force_srs"><a class="viewcode-back" href="../../api.html#patty.srs.force_srs">[docs]</a><span class="k">def</span> <span class="nf">force_srs</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">srs</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">same_as</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Set a spatial reference system (SRS) and offset for a pointcloud.</span>
+<span class="sd">    Either give a SRS and offset, or a reference pointcloud</span>
+<span class="sd">    This function affects the metadata only.</span>
+
+<span class="sd">    This is the recommended way to turn a python-pcl pointcloud to a</span>
+<span class="sd">    registerd pointcloud with absolute coordiantes.</span>
+
+<span class="sd">    NOTE: To change the SRS for an already registered pointcloud, use set_srs()</span>
+
+<span class="sd">    Example:</span>
+
+<span class="sd">        # set the SRS to lat/lon, leave offset unchanged</span>
+<span class="sd">        force_srs( pc, srs=&quot;EPSG:4326&quot; )</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        pc : pcl.Pointcloud</span>
+
+<span class="sd">        same_as : pcl.PointCloud</span>
+
+<span class="sd">        offset : np.array([3])</span>
+<span class="sd">            Must be added to the points to get absolute coordinates,</span>
+<span class="sd">            neccesary to retain precision for LAS pointclouds.</span>
+
+<span class="sd">        srs : object or osgeo.osr.SpatialReference</span>
+<span class="sd">            If it is an SpatialReference, it will be used directly.</span>
+<span class="sd">            Otherwise it is passed to osr.SpatialReference.SetFromUserInput()</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        pc : pcl.PointCloud</span>
+<span class="sd">            The input pointcloud.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">same_as</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">is_registered</span><span class="p">(</span><span class="n">same_as</span><span class="p">):</span>
+            <span class="n">pc</span><span class="o">.</span><span class="n">srs</span> <span class="o">=</span> <span class="n">same_as</span><span class="o">.</span><span class="n">srs</span><span class="o">.</span><span class="n">Clone</span><span class="p">()</span>
+            <span class="n">pc</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">same_as</span><span class="o">.</span><span class="n">offset</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">srs</span><span class="p">)</span> <span class="o">==</span> <span class="nb">type</span><span class="p">(</span><span class="n">osr</span><span class="o">.</span><span class="n">SpatialReference</span><span class="p">()):</span>
+            <span class="n">pc</span><span class="o">.</span><span class="n">srs</span> <span class="o">=</span> <span class="n">srs</span><span class="o">.</span><span class="n">Clone</span><span class="p">()</span>
+        <span class="k">elif</span> <span class="n">srs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">pc</span><span class="o">.</span><span class="n">srs</span> <span class="o">=</span> <span class="n">osr</span><span class="o">.</span><span class="n">SpatialReference</span><span class="p">()</span>
+            <span class="n">pc</span><span class="o">.</span><span class="n">srs</span><span class="o">.</span><span class="n">SetFromUserInput</span><span class="p">(</span><span class="n">srs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">pc</span><span class="o">.</span><span class="n">srs</span> <span class="o">=</span> <span class="n">osr</span><span class="o">.</span><span class="n">SpatialReference</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">offset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">offset</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">offset</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">offset</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Offset should be an np.array([3])&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">pc</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="n">offset</span>
+
+    <span class="k">return</span> <span class="n">pc</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Patty Analytics 0.1 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2015, Netherlands eScience Center.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+    </div>
+  </body>
+</html>

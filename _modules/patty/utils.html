@@ -1,0 +1,554 @@
+
+
+<!doctype html>
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>patty.utils &mdash; Patty Analytics 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/bizstyle.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="../../_static/bizstyle.js"></script>
+    <link rel="top" title="Patty Analytics 0.1 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <!--[if lt IE 9]>
+    <script type="text/javascript" src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Patty Analytics 0.1 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for patty.utils</h1><div class="highlight"><pre>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">Pointcloud functions for reading/writing LAS files, and functions for dealing</span>
+<span class="sd">with the spatial reference system.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+<span class="kn">import</span> <span class="nn">liblas</span>
+<span class="kn">import</span> <span class="nn">pcl</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">patty.srs</span> <span class="kn">import</span> <span class="n">force_srs</span><span class="p">,</span> <span class="n">is_registered</span>
+
+<span class="kn">from</span> <span class="nn">sklearn.decomposition</span> <span class="kn">import</span> <span class="n">PCA</span>
+
+
+<span class="k">def</span> <span class="nf">_check_readable</span><span class="p">(</span><span class="n">filepath</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Test whether filepath is readable, raises IOError otherwise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+
+<span class="k">def</span> <span class="nf">_check_writable</span><span class="p">(</span><span class="n">filepath</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Test whether filepath is writable, raises IOError otherwise</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c"># either the path exists but is not writable, or the path does not exist</span>
+    <span class="c"># and the parent is not writable.</span>
+    <span class="n">filepath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span>
+            <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span> <span class="ow">or</span>
+            <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">access</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">W_OK</span><span class="p">)</span>
+            <span class="p">))</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">access</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">filepath</span><span class="p">),</span> <span class="n">os</span><span class="o">.</span><span class="n">W_OK</span> <span class="o">|</span> <span class="n">os</span><span class="o">.</span><span class="n">X_OK</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s">&quot;Cannot save to &quot;</span> <span class="o">+</span> <span class="n">filepath</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="clone"><a class="viewcode-back" href="../../api.html#patty.utils.clone">[docs]</a><span class="k">def</span> <span class="nf">clone</span><span class="p">(</span><span class="n">pc</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return a copy of a pointcloud, including registration metadata</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        pc: pcl.PointCloud()</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        cp: pcl.PointCloud()</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">cp</span> <span class="o">=</span> <span class="n">pcl</span><span class="o">.</span><span class="n">PointCloud</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pc</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">is_registered</span><span class="p">(</span><span class="n">pc</span><span class="p">):</span>
+        <span class="n">force_srs</span><span class="p">(</span><span class="n">cp</span><span class="p">,</span> <span class="n">same_as</span><span class="o">=</span><span class="n">pc</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">cp</span>
+
+</div>
+<div class="viewcode-block" id="load"><a class="viewcode-back" href="../../api.html#patty.utils.load">[docs]</a><span class="k">def</span> <span class="nf">load</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">load_rgb</span><span class="o">=</span><span class="bp">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Read a pointcloud file.</span>
+
+<span class="sd">    Supports LAS and CSV files, and lets PCD and PLY files be</span>
+<span class="sd">    read by python-pcl.</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        path : string</span>
+<span class="sd">            Filename.</span>
+<span class="sd">        format : string, optional</span>
+<span class="sd">            File format: &quot;PLY&quot;, &quot;PCD&quot;, &quot;LAS&quot;, &quot;CSV&quot;,</span>
+<span class="sd">            or None to detect the format from the file extension.</span>
+<span class="sd">        load_rgb : bool</span>
+<span class="sd">            Whether RGB is loaded for PLY and PCD files. For LAS files, RGB is</span>
+<span class="sd">            always read.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        pc : pcl.PointCloud</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">format</span> <span class="o">==</span> <span class="s">&#39;las&#39;</span> <span class="ow">or</span> <span class="n">format</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;.las&#39;</span><span class="p">):</span>
+        <span class="n">pc</span> <span class="o">=</span> <span class="n">_load_las</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">format</span> <span class="o">==</span> <span class="s">&#39;las&#39;</span> <span class="ow">or</span> <span class="n">format</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;.csv&#39;</span><span class="p">):</span>
+        <span class="n">pc</span> <span class="o">=</span> <span class="n">_load_csv</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">_check_readable</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">pc</span> <span class="o">=</span> <span class="n">pcl</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="n">format</span><span class="p">,</span> <span class="n">loadRGB</span><span class="o">=</span><span class="n">load_rgb</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">pc</span>
+
+</div>
+<div class="viewcode-block" id="save"><a class="viewcode-back" href="../../api.html#patty.utils.save">[docs]</a><span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="n">cloud</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">binary</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">las_header</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Save a pointcloud to file.</span>
+
+<span class="sd">    Supports LAS and CSV files, and lets PCD and PLY</span>
+<span class="sd">    files be saved by python-pcl.</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        cloud : pcl.PointCloud or pcl.PointCloudXYZRGB</span>
+<span class="sd">            Pointcloud to save.</span>
+<span class="sd">        path : string</span>
+<span class="sd">            Filename.</span>
+<span class="sd">        format : string</span>
+<span class="sd">            File format: &quot;PLY&quot;, &quot;PCD&quot;, &quot;LAS&quot;, &quot;CSV&quot;,</span>
+<span class="sd">            or None to detect the format from the file extension.</span>
+<span class="sd">        binary : boolean</span>
+<span class="sd">            Whether PLY and PCD files are saved in binary format.</span>
+<span class="sd">        las_header: liblas.header.Header</span>
+<span class="sd">            LAS header to use. When none, a default header is created by</span>
+<span class="sd">            make_las_header(). Default: None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">format</span> <span class="o">==</span> <span class="s">&#39;las&#39;</span> <span class="ow">or</span> <span class="n">format</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;.las&#39;</span><span class="p">):</span>
+        <span class="n">_save_las</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">cloud</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">las_header</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">format</span> <span class="o">==</span> <span class="s">&#39;csv&#39;</span> <span class="ow">or</span> <span class="n">format</span> <span class="ow">is</span> <span class="bp">None</span> <span class="ow">and</span> <span class="n">path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s">&#39;.csv&#39;</span><span class="p">):</span>
+        <span class="n">_save_csv</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">cloud</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">_check_writable</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">is_registered</span><span class="p">(</span><span class="n">cloud</span><span class="p">)</span> <span class="ow">and</span> <span class="n">cloud</span><span class="o">.</span><span class="n">offset</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
+            <span class="n">cloud_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">cloud</span><span class="p">)</span>
+            <span class="n">cloud_array</span> <span class="o">+=</span> <span class="n">cloud</span><span class="o">.</span><span class="n">offset</span>
+        <span class="n">pcl</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">cloud</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">format</span><span class="o">=</span><span class="n">format</span><span class="p">,</span> <span class="n">binary</span><span class="o">=</span><span class="n">binary</span><span class="p">)</span>
+
+</div>
+<span class="k">def</span> <span class="nf">_load_las</span><span class="p">(</span><span class="n">lasfile</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Read a LAS file</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        registered pointcloudxyzrgb</span>
+
+<span class="sd">    The pointcloud has color and XYZ coordinates, and the offset and precision</span>
+<span class="sd">    set.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_check_readable</span><span class="p">(</span><span class="n">lasfile</span><span class="p">)</span>
+
+    <span class="n">las</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">las</span> <span class="o">=</span> <span class="n">liblas</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">lasfile</span><span class="p">)</span>
+        <span class="n">lsrs</span> <span class="o">=</span> <span class="n">las</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">get_srs</span><span class="p">()</span>
+        <span class="n">lsrs</span> <span class="o">=</span> <span class="n">lsrs</span><span class="o">.</span><span class="n">get_wkt</span><span class="p">()</span>
+
+        <span class="n">n_points</span> <span class="o">=</span> <span class="n">las</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">get_count</span><span class="p">()</span>
+        <span class="n">precise_points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_points</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">point</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">las</span><span class="p">):</span>
+            <span class="n">precise_points</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">point</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">point</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">point</span><span class="o">.</span><span class="n">z</span><span class="p">,</span>
+                                 <span class="n">point</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">red</span> <span class="o">/</span> <span class="mi">256</span><span class="p">,</span>
+                                 <span class="n">point</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">green</span> <span class="o">/</span> <span class="mi">256</span><span class="p">,</span>
+                                 <span class="n">point</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">blue</span> <span class="o">/</span> <span class="mi">256</span><span class="p">)</span>
+
+        <span class="c"># reduce the offset to decrease floating point errors</span>
+        <span class="n">bbox</span> <span class="o">=</span> <span class="n">BoundingBox</span><span class="p">(</span><span class="n">points</span><span class="o">=</span><span class="n">precise_points</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">])</span>
+        <span class="n">center</span> <span class="o">=</span> <span class="n">bbox</span><span class="o">.</span><span class="n">center</span>
+        <span class="n">precise_points</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">-=</span> <span class="n">center</span>
+
+        <span class="n">pointcloud</span> <span class="o">=</span> <span class="n">pcl</span><span class="o">.</span><span class="n">PointCloudXYZRGB</span><span class="p">(</span><span class="n">precise_points</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
+        <span class="n">force_srs</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">srs</span><span class="o">=</span><span class="n">lsrs</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="n">center</span><span class="p">)</span>
+
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">las</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">las</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">pointcloud</span>
+
+
+<span class="k">def</span> <span class="nf">_load_csv</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s">&#39;,&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Load a set of points from a CSV file as a pointcloud</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        pc : pcl.PointCloud</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">precise_points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">genfromtxt</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="n">delimiter</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">offset</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">precise_points</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">pc</span> <span class="o">=</span> <span class="n">pcl</span><span class="o">.</span><span class="n">PointCloud</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">precise_points</span> <span class="o">-</span> <span class="n">offset</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
+
+    <span class="n">force_srs</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="n">offset</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pc</span>
+
+
+<span class="k">def</span> <span class="nf">_save_csv</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">pc</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s">&#39;, &#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Write a pointcloud to a CSV file.</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        path: string</span>
+<span class="sd">            Output filename</span>
+<span class="sd">        pc: pcl.PointCloud</span>
+<span class="sd">            Pointcloud to save</span>
+<span class="sd">        delimiter: string</span>
+<span class="sd">            Field delimiter to use, see np.savetxt documentation.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="s">&#39;offset&#39;</span><span class="p">):</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="n">pc</span><span class="o">.</span><span class="n">offset</span>
+
+    <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pc</span><span class="p">)</span> <span class="o">+</span> <span class="n">offset</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="n">delimiter</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="extract_mask"><a class="viewcode-back" href="../../api.html#patty.utils.extract_mask">[docs]</a><span class="k">def</span> <span class="nf">extract_mask</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">mask</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Extract all points in a mask into a new pointcloud.</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        pointcloud : pcl.PointCloud</span>
+<span class="sd">            Input pointcloud.</span>
+<span class="sd">        mask : numpy.ndarray of bool</span>
+<span class="sd">            mask for which points from the pointcloud to include.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        pointcloud with the same registration (if any) as the original one.&quot;&quot;&quot;</span>
+    <span class="n">pointcloud_new</span> <span class="o">=</span> <span class="n">pointcloud</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">is_registered</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">):</span>
+        <span class="n">force_srs</span><span class="p">(</span><span class="n">pointcloud_new</span><span class="p">,</span> <span class="n">same_as</span><span class="o">=</span><span class="n">pointcloud</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">pointcloud_new</span>
+
+</div>
+<div class="viewcode-block" id="make_las_header"><a class="viewcode-back" href="../../api.html#patty.utils.make_las_header">[docs]</a><span class="k">def</span> <span class="nf">make_las_header</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Make a LAS header for given pointcloud.</span>
+
+<span class="sd">    If the pointcloud is registered, this is taken into account for the</span>
+<span class="sd">    header metadata.</span>
+
+<span class="sd">    LAS rounds the coordinates on writing; this is controlled via the</span>
+<span class="sd">    &#39;precision&#39; attribute of the input pointcloud. By default this is</span>
+<span class="sd">    0.01 in units of the projection.</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        pointcloud : pcl.PointCloud</span>
+<span class="sd">            Input pointcloud.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        header : liblas.header.Header</span>
+<span class="sd">            Header for writing the pointcloud to a LAS file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">schema</span> <span class="o">=</span> <span class="n">liblas</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">Schema</span><span class="p">()</span>
+    <span class="n">schema</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="n">schema</span><span class="o">.</span><span class="n">color</span> <span class="o">=</span> <span class="bp">True</span>
+
+    <span class="c"># FIXME: this format version assumes color is present</span>
+    <span class="n">head</span> <span class="o">=</span> <span class="n">liblas</span><span class="o">.</span><span class="n">header</span><span class="o">.</span><span class="n">Header</span><span class="p">()</span>
+    <span class="n">head</span><span class="o">.</span><span class="n">schema</span> <span class="o">=</span> <span class="n">schema</span>
+    <span class="n">head</span><span class="o">.</span><span class="n">dataformat_id</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">head</span><span class="o">.</span><span class="n">major_version</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">head</span><span class="o">.</span><span class="n">minor_version</span> <span class="o">=</span> <span class="mi">2</span>
+
+    <span class="k">if</span> <span class="n">is_registered</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">lsrs</span> <span class="o">=</span> <span class="n">liblas</span><span class="o">.</span><span class="n">srs</span><span class="o">.</span><span class="n">SRS</span><span class="p">()</span>
+            <span class="n">lsrs</span><span class="o">.</span><span class="n">set_wkt</span><span class="p">(</span><span class="n">pointcloud</span><span class="o">.</span><span class="n">srs</span><span class="o">.</span><span class="n">ExportToWkt</span><span class="p">())</span>
+            <span class="n">head</span><span class="o">.</span><span class="n">set_srs</span><span class="p">(</span><span class="n">lsrs</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">liblas</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">LASException</span><span class="p">:</span>
+            <span class="k">pass</span>
+
+    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="s">&#39;offset&#39;</span><span class="p">):</span>
+        <span class="n">head</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="n">pointcloud</span><span class="o">.</span><span class="n">offset</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">head</span><span class="o">.</span><span class="n">offset</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+
+    <span class="c"># FIXME: need extra precision to reduce floating point errors. We don&#39;t</span>
+    <span class="c"># know exactly why this works. It might reduce precision on the top of</span>
+    <span class="c"># the float, but reduces an error of one bit for the last digit.</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="s">&#39;precision&#39;</span><span class="p">):</span>
+        <span class="n">precision</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">precision</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">pointcloud</span><span class="o">.</span><span class="n">precision</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">head</span><span class="o">.</span><span class="n">scale</span> <span class="o">=</span> <span class="n">precision</span> <span class="o">*</span> <span class="mf">0.5</span>
+
+    <span class="n">pc_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">)</span>
+    <span class="n">head</span><span class="o">.</span><span class="n">min</span> <span class="o">=</span> <span class="n">pc_array</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">head</span><span class="o">.</span><span class="n">offset</span>
+    <span class="n">head</span><span class="o">.</span><span class="n">max</span> <span class="o">=</span> <span class="n">pc_array</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">head</span><span class="o">.</span><span class="n">offset</span>
+    <span class="k">return</span> <span class="n">head</span>
+
+</div>
+<span class="k">def</span> <span class="nf">_save_las</span><span class="p">(</span><span class="n">lasfile</span><span class="p">,</span> <span class="n">pointcloud</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Write a pointcloud to a LAS file</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        lasfile : string</span>
+<span class="sd">            Filename.</span>
+
+<span class="sd">        pointcloud : pcl.PointCloud</span>
+
+<span class="sd">        header : liblas.header.Header, optional</span>
+<span class="sd">            See :func:`make_las_header`. If not given, makes a header using</span>
+<span class="sd">            that function with default settings.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_check_writable</span><span class="p">(</span><span class="n">lasfile</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">header</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">header</span> <span class="o">=</span> <span class="n">make_las_header</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">)</span>
+
+    <span class="c"># deal with color</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">do_rgb</span> <span class="o">=</span> <span class="bp">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">do_rgb</span> <span class="o">=</span> <span class="bp">False</span>
+
+    <span class="n">precise_points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">precise_points</span> <span class="o">/=</span> <span class="n">header</span><span class="o">.</span><span class="n">scale</span>
+
+    <span class="n">las</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">las</span> <span class="o">=</span> <span class="n">liblas</span><span class="o">.</span><span class="n">file</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">lasfile</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s">&quot;w&quot;</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="n">header</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="n">pointcloud</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
+            <span class="n">point</span> <span class="o">=</span> <span class="n">liblas</span><span class="o">.</span><span class="n">point</span><span class="o">.</span><span class="n">Point</span><span class="p">()</span>
+            <span class="n">point</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">point</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="n">point</span><span class="o">.</span><span class="n">z</span> <span class="o">=</span> <span class="n">precise_points</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">do_rgb</span><span class="p">:</span>
+                <span class="n">red</span><span class="p">,</span> <span class="n">grn</span><span class="p">,</span> <span class="n">blu</span> <span class="o">=</span> <span class="n">pointcloud</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">3</span><span class="p">:</span><span class="mi">6</span><span class="p">]</span>
+                <span class="n">point</span><span class="o">.</span><span class="n">color</span> <span class="o">=</span> <span class="n">liblas</span><span class="o">.</span><span class="n">color</span><span class="o">.</span><span class="n">Color</span><span class="p">(</span>
+                    <span class="n">red</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">red</span><span class="p">)</span> <span class="o">*</span> <span class="mi">256</span><span class="p">,</span>
+                    <span class="n">green</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">grn</span><span class="p">)</span> <span class="o">*</span> <span class="mi">256</span><span class="p">,</span>
+                    <span class="n">blue</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">blu</span><span class="p">)</span> <span class="o">*</span> <span class="mi">256</span><span class="p">)</span>
+            <span class="n">las</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">point</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">las</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">las</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="BoundingBox"><a class="viewcode-back" href="../../api.html#patty.utils.BoundingBox">[docs]</a><span class="k">class</span> <span class="nc">BoundingBox</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;A bounding box for a sequence of points.</span>
+
+<span class="sd">    Center, size and diagonal are updated when the minimum or maximum are</span>
+<span class="sd">    updated.</span>
+
+<span class="sd">    Constructor usage: either set points (any object that is converted to an</span>
+<span class="sd">    NxD array by np.asarray, with D the number of dimensions) or a fixed min</span>
+<span class="sd">    and max.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">points</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">min</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span> <span class="ow">and</span> <span class="nb">max</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_min</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="nb">min</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_max</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="nb">max</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">points</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">points_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_min</span> <span class="o">=</span> <span class="n">points_array</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_max</span> <span class="o">=</span> <span class="n">points_array</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;Need to give min and max or matrix&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reset</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s">&#39;BoundingBox &lt;</span><span class="si">%s</span><span class="s"> - </span><span class="si">%s</span><span class="s">&gt;&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">min</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_center</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_size</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">min</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_min</span>
+
+    <span class="nd">@min.setter</span>
+    <span class="k">def</span> <span class="nf">min</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_min</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reset</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min</span> <span class="o">=</span> <span class="n">new_min</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">max</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max</span>
+
+    <span class="nd">@max.setter</span>
+    <span class="k">def</span> <span class="nf">max</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">new_max</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reset</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max</span> <span class="o">=</span> <span class="n">new_max</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">center</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; Center point of the bounding box&#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_center</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_center</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">min</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">max</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_center</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">size</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; N-dimensional size array &#39;&#39;&#39;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_size</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">min</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_size</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">diagonal</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; Length of the diagonal of the box. &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+
+<div class="viewcode-block" id="BoundingBox.contains"><a class="viewcode-back" href="../../api.html#patty.utils.BoundingBox.contains">[docs]</a>    <span class="k">def</span> <span class="nf">contains</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pos</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39; Whether the bounding box contains given position. &#39;&#39;&#39;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">((</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">min</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">pos</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max</span><span class="p">))</span>
+
+</div></div>
+<div class="viewcode-block" id="log"><a class="viewcode-back" href="../../api.html#patty.utils.log">[docs]</a><span class="k">def</span> <span class="nf">log</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Simple logging function that prints to stdout&quot;&quot;&quot;</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s">&quot;[</span><span class="si">%F</span><span class="s"> %H:%M:%S]&quot;</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">gmtime</span><span class="p">()),</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="measure_length"><a class="viewcode-back" href="../../api.html#patty.utils.measure_length">[docs]</a><span class="k">def</span> <span class="nf">measure_length</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Returns the length of a point cloud in its longest direction.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">0</span>
+
+    <span class="n">pca</span> <span class="o">=</span> <span class="n">PCA</span><span class="p">(</span><span class="n">n_components</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">pc_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">)</span>
+    <span class="n">pca</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">pc_array</span><span class="p">)</span>
+    <span class="n">primary_axis</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">pc_array</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">pca</span><span class="o">.</span><span class="n">components_</span><span class="p">))[:,</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">primary_axis</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">primary_axis</span><span class="p">)</span>
+
+</div>
+<div class="viewcode-block" id="downsample_voxel"><a class="viewcode-back" href="../../api.html#patty.utils.downsample_voxel">[docs]</a><span class="k">def</span> <span class="nf">downsample_voxel</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">voxel_size</span><span class="o">=</span><span class="mf">0.01</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;Downsample a pointcloud using a voxel grid filter.</span>
+<span class="sd">    Resulting pointcloud has the same SRS and offset as the input.</span>
+
+<span class="sd">    Arguments:</span>
+<span class="sd">        pc         : pcl.PointCloud</span>
+<span class="sd">                     Original pointcloud</span>
+<span class="sd">        float      : voxel_size</span>
+<span class="sd">                     Grid spacing for the voxel grid</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        pc : pcl.PointCloud</span>
+<span class="sd">             filtered pointcloud</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">pc_filter</span> <span class="o">=</span> <span class="n">pc</span><span class="o">.</span><span class="n">make_voxel_grid_filter</span><span class="p">()</span>
+    <span class="n">pc_filter</span><span class="o">.</span><span class="n">set_leaf_size</span><span class="p">(</span><span class="n">voxel_size</span><span class="p">,</span> <span class="n">voxel_size</span><span class="p">,</span> <span class="n">voxel_size</span><span class="p">)</span>
+    <span class="n">newpc</span> <span class="o">=</span> <span class="n">pc_filter</span><span class="o">.</span><span class="n">filter</span><span class="p">()</span>
+
+    <span class="n">force_srs</span><span class="p">(</span><span class="n">newpc</span><span class="p">,</span> <span class="n">same_as</span><span class="o">=</span><span class="n">pc</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">newpc</span>
+
+</div>
+<div class="viewcode-block" id="downsample_random"><a class="viewcode-back" href="../../api.html#patty.utils.downsample_random">[docs]</a><span class="k">def</span> <span class="nf">downsample_random</span><span class="p">(</span><span class="n">pc</span><span class="p">,</span> <span class="n">fraction</span><span class="p">,</span> <span class="n">random_seed</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Randomly downsample pointcloud to a fraction of its size.</span>
+
+<span class="sd">    Returns a pointcloud of size fraction * len(pc), rounded to the nearest</span>
+<span class="sd">    integer.  Resulting pointcloud has the same SRS and offset as the input.</span>
+
+<span class="sd">    Use random_seed=k for some integer k to get reproducible results.</span>
+<span class="sd">    Arguments:</span>
+<span class="sd">        pc : pcl.PointCloud</span>
+<span class="sd">            Input pointcloud.</span>
+<span class="sd">        fraction : float</span>
+<span class="sd">            Fraction of points to include.</span>
+<span class="sd">        random_seed : int, optional</span>
+<span class="sd">            Seed to use in random number generator.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        pcl.Pointcloud</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">fraction</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;Expected fraction in (0,1], got </span><span class="si">%r</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">fraction</span><span class="p">)</span>
+
+    <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">RandomState</span><span class="p">(</span><span class="n">random_seed</span><span class="p">)</span>
+
+    <span class="n">k</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">fraction</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">pc</span><span class="p">))),</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">sample</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pc</span><span class="p">),</span> <span class="n">k</span><span class="p">,</span> <span class="n">replace</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">new_pc</span> <span class="o">=</span> <span class="n">pc</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+
+    <span class="n">force_srs</span><span class="p">(</span><span class="n">new_pc</span><span class="p">,</span> <span class="n">same_as</span><span class="o">=</span><span class="n">pc</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">new_pc</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">Patty Analytics 0.1 documentation</a> &raquo;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2015, Netherlands eScience Center.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+    </div>
+  </body>
+</html>

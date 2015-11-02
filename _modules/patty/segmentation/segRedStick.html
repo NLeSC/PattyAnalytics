@@ -76,15 +76,20 @@
 
 
 <div class="viewcode-block" id="get_red_mask"><a class="viewcode-back" href="../../../api.html#patty.segmentation.get_red_mask">[docs]</a><span class="k">def</span> <span class="nf">get_red_mask</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Returns a mask for the red parts of a pointcloud&quot;&quot;&quot;</span>
-    <span class="n">redMask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">)):</span>
-        <span class="n">R</span><span class="p">,</span> <span class="n">G</span><span class="p">,</span> <span class="n">B</span> <span class="o">=</span> <span class="n">pointcloud</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">3</span><span class="p">:</span><span class="mi">6</span><span class="p">]</span>
-        <span class="n">H</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">colorsys</span><span class="o">.</span><span class="n">rgb_to_hsv</span><span class="p">(</span>
-            <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">(</span><span class="n">R</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">(</span><span class="n">G</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">(</span><span class="n">B</span><span class="p">))</span>
-        <span class="n">redMask</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">H</span> <span class="o">&gt;</span> <span class="mf">0.9</span> <span class="ow">and</span> <span class="n">S</span> <span class="o">&gt;</span> <span class="mf">0.5</span>
+    <span class="sd">&quot;&quot;&quot;Returns a mask for the red parts of a pointcloud.</span>
 
-    <span class="k">return</span> <span class="n">redMask</span></div>
+<span class="sd">    Red points are points that have hue larger than 0.9</span>
+<span class="sd">    and saturation larger than 0.5 in HSV colorspace.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">red_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">bool</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">xrange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pointcloud</span><span class="p">)):</span>
+        <span class="n">red</span><span class="p">,</span> <span class="n">grn</span><span class="p">,</span> <span class="n">blu</span> <span class="o">=</span> <span class="n">pointcloud</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">3</span><span class="p">:</span><span class="mi">6</span><span class="p">]</span>
+        <span class="n">hue</span><span class="p">,</span> <span class="n">sat</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">colorsys</span><span class="o">.</span><span class="n">rgb_to_hsv</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">(</span><span class="n">red</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">(</span><span class="n">grn</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">(</span><span class="n">blu</span><span class="p">))</span>
+        <span class="n">red_mask</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">hue</span> <span class="o">&gt;</span> <span class="mf">0.9</span> <span class="ow">and</span> <span class="n">sat</span> <span class="o">&gt;</span> <span class="mf">0.5</span>
+
+    <span class="k">return</span> <span class="n">red_mask</span></div>
 </pre></div>
 
           </div>
