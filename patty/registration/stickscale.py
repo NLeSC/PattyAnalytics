@@ -14,7 +14,6 @@ def get_stick_scale(pointcloud, eps=0.1, min_samples=20):
     Method:
     pointcloud --dbscan--> clusters --lengthEstimation-->
         lengths --ransac--> best length
-
     Arguments:
         pointcloud    Point cloud containing only measuring stick segments
                       (only the red, or only the white parts)
