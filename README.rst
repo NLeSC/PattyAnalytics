@@ -9,6 +9,9 @@
 .. |Coverage| image:: https://scrutinizer-ci.com/g/NLeSC/PattyAnalytics/badges/coverage.png?b=master
 .. _Coverage: https://scrutinizer-ci.com/g/NLeSC/PattyAnalytics/
 
+.. image:: https://zenodo.org/badge/doi/10.5281/zenodo.45925.svg
+   :target: http://dx.doi.org/10.5281/zenodo.45925
+
 Patty Analytics
 ===============
 
