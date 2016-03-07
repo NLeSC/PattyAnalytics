@@ -16,9 +16,8 @@ Patty Analytics
 ===============
 
 Reusable point cloud analytics software. Includes segmentation, registration,
-file format conversion. This makes uses of the
-(python bindings)[https://github.com/NLeSC/python-pcl]  of the
-Point Cloud Library (PCL).
+file format conversion. This makes use of the python bindings of the
+Point Cloud Library (PCL; <https://github.com/NLeSC/python-pcl>).
 
 Copyright 2014-2015 Netherlands eScience Center. Covered by the Apache 2.0
 License, see the file ``LICENSE.txt``.
