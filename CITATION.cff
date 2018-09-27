@@ -1,0 +1,63 @@
+# YAML 1.2
+---
+abstract: |
+    "<p>
+    Patty Analytics aims to register pointclouds that were generated from photos or video to an absolute position, scale and orientation.
+    </p>
+    <p>
+    Pointclouds generated from photos are generally messy; they have holes and floating unidentified objects. In our scripts we assume to have the following information: a map (drivemap) which has an extremely low resolution but has good absolute coordinates; a footprint polygon denoting more or less the latitude and longitude and area of the object (x and y coordinates). Finally, we have the high-resolution pointcloud of the object. By the nature of creating this pointcloud, it is densest at the object, since the photos usually center on this object. In some cases, there are also camera positions available, relative to the object.
+    </p>
+    <p>
+    Reusable point cloud analytics software. Includes segmentation, registration, file format conversion. This makes uses of the <a href='https://github.com/NLeSC/python-pcl'>python bindings</a> of the Point Cloud Library (PCL).
+    </p>"
+authors: 
+  -
+    affiliation: "Netherlands eScience Center"
+    family-names: Attema
+    given-names: Jisk
+    orcid: "https://orcid.org/0000-0002-0948-1176"
+  -
+    affiliation: "Netherlands eScience Center"
+    family-names: Borgdorff
+    given-names: Joris
+    orcid: "https://orcid.org/0000-0001-7911-9490"
+  -
+    affiliation: "Netherlands eScience Center"
+    family-names: Buitinck
+    given-names: Lars
+  -
+    affiliation: "Netherlands eScience Center"
+    family-names: "Martinez-Ortiz"
+    given-names: Carlos
+  -
+    affiliation: "Netherlands eScience Center"
+    family-names: Meijer
+    given-names: Christiaan
+  -
+    affiliation: "Netherlands eScience Center"
+    family-names: Spaaks
+    given-names: "Jurriaan H."
+    orcid: "https://orcid.org/0000-0002-7064-4069"
+  -
+    affiliation: "Netherlands eScience Center"
+    family-names: Maassen
+    given-names: Jason
+    orcid: "https://orcid.org/0000-0002-8172-4865"
+  -
+    affiliation: "Netherlands eScience Center"
+    family-names: Drost
+    given-names: Niels
+    orcid: "https://orcid.org/0000-0001-9795-7981"
+cff-version: "1.0.3"
+date-released: 2018-09-27
+keywords: 
+  - photogrammetry
+  - "point clouds"
+  - segmentation
+  - registration
+license: "Apache-2.0"
+message: "If you use this software, please cite it using these metadata."
+repository-code: "https://github.com/NLeSC/PattyAnalytics"
+title: PattyAnalytics
+version: "1.0.1"
+...
