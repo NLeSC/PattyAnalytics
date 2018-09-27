@@ -1,0 +1,52 @@
+{
+    "creators": [
+        {
+            "affiliation": "Netherlands eScience Center",
+            "name": "Attema, Jisk",
+            "orcid": "0000-0002-0948-1176"
+        },
+        {
+            "affiliation": "Netherlands eScience Center",
+            "name": "Borgdorff, Joris",
+            "orcid": "0000-0001-7911-9490"
+        },
+        {
+            "affiliation": "Netherlands eScience Center",
+            "name": "Buitinck, Lars"
+        },
+        {
+            "affiliation": "Netherlands eScience Center",
+            "name": "Martinez-Ortiz, Carlos"
+        },
+        {
+            "affiliation": "Netherlands eScience Center",
+            "name": "Meijer, Christiaan"
+        },
+        {
+            "affiliation": "Netherlands eScience Center",
+            "name": "Spaaks, Jurriaan H.",
+            "orcid": "0000-0002-7064-4069"
+        },
+        {
+            "affiliation": "Netherlands eScience Center",
+            "name": "Maassen, Jason",
+            "orcid": "0000-0002-8172-4865"
+        },
+        {
+            "affiliation": "Netherlands eScience Center",
+            "name": "Drost, Niels",
+            "orcid": "0000-0001-9795-7981"
+        }
+    ],
+    "description": "<p>Patty Analytics aims to register pointclouds that were generated from photos or video to an absolute position, scale and orientation.</p><p>Pointclouds generated from photos are generally messy; they have holes and floating unidentified objects. In our scripts we assume to have the following information: a map (drivemap) which has an extremely low resolution but has good absolute coordinates; a footprint polygon denoting more or less the latitude and longitude and area of the object (x and y coordinates). Finally, we have the high-resolution pointcloud of the object. By the nature of creating this pointcloud, it is densest at the object, since the photos usually center on this object. In some cases, there are also camera positions available, relative to the object.</p><p>Reusable point cloud analytics software. Includes segmentation, registration, file format conversion. This makes uses of the <a href=\"https://github.com/NLeSC/python-pcl\">python bindings</a> of the Point Cloud Library (PCL).</p>",
+    "keywords": [
+        "photogrammetry",
+        "point clouds",
+        "segmentation",
+        "registration"
+    ],
+    "license": {
+        "id": "Apache-2.0"
+    },
+    "title": "PattyAnalytics"
+}
